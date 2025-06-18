@@ -95,6 +95,7 @@ export default function CreateContractPage() {
       formData,
       customClauses,
       createdAt: new Date().toISOString(),
+      sharedWith: [], // Initialize sharedWith as an empty array
     };
 
     try {

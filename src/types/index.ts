@@ -17,5 +17,5 @@ export interface StoredContractData {
   formData: Record<string, any>;
   customClauses: CustomClause[];
   createdAt: string;
-  // sharedWith?: string[]; // For future sharing feature - not implemented in this step
+  sharedWith?: string[]; // Array of user emails this contract is shared with
 }
