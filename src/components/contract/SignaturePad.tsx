@@ -1,9 +1,9 @@
+
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Edit2 } from 'lucide-react';
+import { Check, ExternalLink } from 'lucide-react'; // Updated Edit2 to ExternalLink
 
 interface SignaturePadProps {
   partyName: string;
@@ -12,15 +12,13 @@ interface SignaturePadProps {
 }
 
 export default function SignaturePad({ partyName, onSign, isSigned }: SignaturePadProps) {
-  const [signing, setSigning] = useState(false);
+  // No 'signing' state needed as the actual signing process would be handled by the embedded tool.
 
-  const handleSign = () => {
-    setSigning(true);
-    // Simulate signing process
-    setTimeout(() => {
-      onSign();
-      setSigning(false);
-    }, 1500);
+  const handleInitiateSignature = () => {
+    // In a real scenario, this would initialize and display the
+    // embedded signing UI from the third-party service.
+    // For this demonstration, we directly call onSign to simulate completion.
+    onSign();
   };
 
   return (
@@ -36,30 +34,27 @@ export default function SignaturePad({ partyName, onSign, isSigned }: SignatureP
             <p className="font-semibold text-green-700">החוזה נחתם בהצלחה!</p>
           </div>
         ) : (
-          <div className="h-32 border-2 border-dashed border-muted-foreground/50 rounded-md flex items-center justify-center bg-background cursor-pointer hover:border-primary transition-colors"
-               onClick={!signing ? handleSign : undefined}
-               role="button"
-               tabIndex={0}
-               aria-label="אזור חתימה, לחץ לחתימה"
-          >
-            {signing ? (
-              <p className="text-primary">חותם...</p>
-            ) : (
-              <p className="text-muted-foreground">לחץ כאן כדי לחתום</p>
-            )}
-            
+          <div className="h-32 flex flex-col items-center justify-center text-center space-y-3 p-4 border border-dashed border-muted-foreground/30 rounded-md bg-background">
+            {/* Using an inline SVG for ShieldCheck to ensure availability and thematic consistency */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary opacity-75">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+            <p className="text-sm text-muted-foreground">
+              יוטען כאן ממשק חתימה מאובטח של ספק חיצוני.
+            </p>
           </div>
         )}
-         <p className="text-xs text-muted-foreground mt-2 text-center">
-              (זוהי הדגמה של חתימה דיגיטלית. במערכת אמיתית ישולב מנגנון חתימה מאובטח.)
-            </p>
       </CardContent>
       {!isSigned && (
-        <CardFooter className="p-6">
-          <Button onClick={handleSign} disabled={signing} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Edit2 className="mr-2 h-4 w-4" />
-            {signing ? 'בתהליך חתימה...' : 'אשר חתימה'}
+        <CardFooter className="p-6 flex-col items-center">
+          <Button onClick={handleInitiateSignature} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+            <ExternalLink className="mr-2 h-4 w-4" />
+            התחל תהליך חתימה
           </Button>
+          <p className="text-xs text-muted-foreground mt-3 text-center">
+            (הדגמה: לחיצה תסמן כחתום. במערכת אמיתית, יופעל כאן ממשק חתימה משובץ של ספק חיצוני.)
+          </p>
         </CardFooter>
       )}
     </Card>
