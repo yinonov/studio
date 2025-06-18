@@ -1,27 +1,23 @@
+
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import SignaturePad from '@/components/contract/SignaturePad';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getCurrentDateParts } from '@/data/templates'; // Re-use for consistent date formatting
+import { getCurrentDateParts } from '@/data/templates';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Printer, Download, Home as HomeIcon } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import type { StoredContractData } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
-
-interface StoredContractData {
-  templateId: string;
-  templateName?: string;
-  formData: Record<string, any>;
-  customClauses: { description: string; legalWording: string }[];
-  createdAt: string;
-}
+const CONTRACTS_STORAGE_KEY = 'chetzContracts';
 
 // Simplified interpolation for preview on this page.
-// In a real app, this logic might be shared or more robust.
 const interpolateStoredClause = (clause: string, data: Record<string, any>): string => {
   return clause.replace(/\{\{(\w+)\}\}/g, (match, key) => {
     return data[key] || `[${key}]`;
@@ -30,7 +26,10 @@ const interpolateStoredClause = (clause: string, data: Record<string, any>): str
 
 export default function ContractDisplayPage() {
   const params = useParams();
-  const contractId = params.contractId; // In this demo, it's 'dummy-contract-id'
+  const router = useRouter();
+  const { toast } = useToast();
+  const { currentUser, isLoading: authIsLoading } = useAuth();
+  const contractId = typeof params.contractId === 'string' ? params.contractId : null;
 
   const [contractData, setContractData] = useState<StoredContractData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,45 +38,83 @@ export default function ContractDisplayPage() {
   const [baseClausesText, setBaseClausesText] = useState<string>('');
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedData = localStorage.getItem('currentContract');
-      if (storedData) {
-        const parsedData: StoredContractData = JSON.parse(storedData);
-        setContractData(parsedData);
+    if (authIsLoading) return;
 
-        // Simulate fetching base clauses if needed or reconstruct text
-        // For demo, we'll re-fetch template (simplified)
-        // Ideally, full contract text would be saved, or template structure more accessible
-        if (parsedData.templateId) {
-          // This is a simplified stand-in. Real app would fetch full template.
-          // For now, let's assume we might need to reconstruct the text or it was saved fully.
-          // This section would be more complex in a real app.
-          // Let's just show a placeholder if we don't have base clauses directly.
-          
-          // Attempt to dynamically load templates to get baseClauses.
-          // This is not ideal for a production app (dynamic imports in useEffect can be tricky)
-          // but for demo purposes:
-          import('@/data/templates').then(module => {
-            const template = module.getTemplateById(parsedData.templateId);
-            if (template) {
-              const dateParts = getCurrentDateParts();
-              const fullFormData = { ...parsedData.formData, ...dateParts };
-              const interpolatedBaseClauses = template.baseClauses.map(clause => interpolateStoredClause(clause, fullFormData)).join('\n\n');
-              setBaseClausesText(interpolatedBaseClauses);
+    if (!currentUser) {
+      router.push(contractId ? `/login?redirect=/contracts/${contractId}` : '/login');
+      return;
+    }
+
+    if (typeof window !== 'undefined' && contractId) {
+      const allContractsString = localStorage.getItem(CONTRACTS_STORAGE_KEY);
+      if (allContractsString) {
+        try {
+          const allContracts: StoredContractData[] = JSON.parse(allContractsString);
+          const currentContract = allContracts.find(c => c.id === contractId);
+
+          if (currentContract) {
+            // Basic auth check: is the current user the owner?
+            // In a real app, you'd also check a sharedWith array.
+            if (currentContract.ownerId !== currentUser.id) {
+               toast({
+                title: 'גישה נדחתה',
+                description: 'אין לך הרשאה לצפות בחוזה זה.',
+                variant: 'destructive',
+              });
+              router.push('/templates'); // Or a "my contracts" page
+              return;
             }
-          });
-        }
 
+            setContractData(currentContract);
+
+            if (currentContract.templateId) {
+              import('@/data/templates').then(module => {
+                const template = module.getTemplateById(currentContract.templateId);
+                if (template) {
+                  const dateParts = getCurrentDateParts();
+                  const fullFormData = { ...currentContract.formData, ...dateParts };
+                  const interpolatedBaseClauses = template.baseClauses.map(clause => interpolateStoredClause(clause, fullFormData)).join('\n\n');
+                  setBaseClausesText(interpolatedBaseClauses);
+                }
+              });
+            }
+          } else {
+             toast({
+                title: 'שגיאה',
+                description: 'החוזה המבוקש לא נמצא.',
+                variant: 'destructive',
+              });
+              router.push('/templates');
+          }
+        } catch (error) {
+          console.error("Failed to parse contracts from localStorage", error);
+           toast({
+            title: 'שגיאה בטעינת החוזה',
+            description: 'אירעה בעיה בטעינת נתוני החוזה.',
+            variant: 'destructive',
+          });
+          router.push('/templates');
+        }
+      } else {
+         toast({
+            title: 'שגיאה',
+            description: 'לא נמצאו חוזים שמורים.',
+            variant: 'destructive',
+          });
+        router.push('/templates');
       }
       setIsLoading(false);
+    } else if (!contractId) {
+      toast({ title: 'שגיאה', description: 'מזהה חוזה חסר.', variant: 'destructive' });
+      router.push('/templates');
+      setIsLoading(false);
     }
-  }, []);
+  }, [contractId, currentUser, authIsLoading, router, toast]);
   
   const party1Name = contractData?.formData?.landlordName || contractData?.formData?.serviceProviderName || contractData?.formData?.employerName || "צד א'";
   const party2Name = contractData?.formData?.tenantName || contractData?.formData?.clientName || contractData?.formData?.employeeName || "צד ב'";
 
-
-  if (isLoading) {
+  if (authIsLoading || isLoading) {
     return (
       <div className="space-y-6 p-4 md:p-8">
         <Skeleton className="h-10 w-3/4" />
@@ -97,10 +134,11 @@ export default function ContractDisplayPage() {
   }
 
   if (!contractData) {
+    // Message already shown by toast, this is a fallback.
     return (
       <div className="text-center py-10">
-        <p className="text-xl text-destructive">לא נמצא חוזה להצגה.</p>
-        <Button asChild variant="link" className="mt-4">
+        <p className="text-xl text-muted-foreground">טוען נתוני חוזה או שלא נמצא חוזה...</p>
+         <Button asChild variant="link" className="mt-4">
           <Link href="/templates">חזור למאגר התבניות</Link>
         </Button>
       </div>
@@ -113,7 +151,7 @@ export default function ContractDisplayPage() {
     <div className="space-y-8 p-4 md:p-8 max-w-4xl mx-auto">
       <header className="text-center border-b pb-6 mb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-primary-foreground/90">
-          {contractData.templateName || 'חוזה'}
+          {contractData.templateName || 'חוזה'} <span className="text-sm text-muted-foreground">(ID: {contractData.id})</span>
         </h1>
         <p className="text-md text-muted-foreground mt-2">
           נוצר בתאריך: {new Date(contractData.createdAt).toLocaleDateString('he-IL')}
@@ -142,10 +180,10 @@ export default function ContractDisplayPage() {
       
       <div className="flex flex-col md:flex-row gap-4 justify-center mt-6">
           <Button variant="outline" onClick={() => typeof window !== "undefined" && window.print()}>
-            <Printer className="mr-2 h-4 w-4" /> הדפס חוזה
+            <Printer /> הדפס חוזה
           </Button>
-          <Button variant="outline" disabled> {/* Placeholder for download */}
-            <Download className="mr-2 h-4 w-4" /> הורד כ-PDF (בקרוב)
+          <Button variant="outline" disabled>
+            <Download /> הורד כ-PDF (בקרוב)
           </Button>
         </div>
 
@@ -177,7 +215,7 @@ export default function ContractDisplayPage() {
       <div className="text-center mt-12">
         <Button asChild variant="default" size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
           <Link href="/">
-            <HomeIcon className="mr-2 h-5 w-5" />
+            <HomeIcon />
             חזרה לדף הבית
           </Link>
         </Button>
