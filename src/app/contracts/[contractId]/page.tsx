@@ -12,11 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { Printer, Download, Home as HomeIcon, Share2, Users, Trash2, Loader2 } from 'lucide-react';
+import { Printer, Download, Home as HomeIcon, Share2, Users, Trash2, Loader2, Copy as CopyIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { StoredContractData } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
 
 const CONTRACTS_STORAGE_KEY = 'chetzContracts';
 
@@ -32,7 +31,7 @@ export default function ContractDisplayPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { currentUser, isFirebaseLoading } = useAuth(); // use isFirebaseLoading
+  const { currentUser, isFirebaseLoading } = useAuth();
   const contractId = typeof params.contractId === 'string' ? params.contractId : null;
 
   const [contractData, setContractData] = useState<StoredContractData | null>(null);
@@ -40,10 +39,10 @@ export default function ContractDisplayPage() {
   const [isSignedByParty1, setIsSignedByParty1] = useState(false);
   const [isSignedByParty2, setIsSignedByParty2] = useState(false);
   const [baseClausesText, setBaseClausesText] = useState<string>('');
-  const [shareEmail, setShareEmail] = useState('');
+  const [shareIdentifierInput, setShareIdentifierInput] = useState('');
 
   useEffect(() => {
-    if (isFirebaseLoading) return; // Wait for Firebase auth state
+    if (isFirebaseLoading) return;
 
     if (!currentUser) {
       const currentPath = `/contracts/${contractId}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
@@ -59,10 +58,11 @@ export default function ContractDisplayPage() {
           const currentContract = allContracts.find(c => c.id === contractId);
 
           if (currentContract) {
-            // Authorization check: owner or shared with?
-            // ownerId is UID, sharedWith is array of emails. currentUser.uid and currentUser.email
             const isOwner = currentContract.ownerId === currentUser.uid;
-            const isSharedWithUser = !!(currentUser.email && currentContract.sharedWith?.includes(currentUser.email));
+            const sharedWithArray = currentContract.sharedWith || [];
+            const isSharedViaEmail = !!(currentUser.email && sharedWithArray.includes(currentUser.email.toLowerCase()));
+            const isSharedViaPhone = !!(currentUser.phoneNumber && sharedWithArray.includes(currentUser.phoneNumber));
+            const isSharedWithUser = isSharedViaEmail || isSharedViaPhone;
             
             if (!isOwner && !isSharedWithUser) {
                toast({
@@ -122,16 +122,23 @@ export default function ContractDisplayPage() {
 
   const handleShareContract = (e: FormEvent) => {
     e.preventDefault();
-    if (!shareEmail.trim() || !contractData || !currentUser || currentUser.uid !== contractData.ownerId) {
-      toast({ title: 'שגיאה', description: 'לא ניתן לשתף. ודא שאתה הבעלים והזנת כתובת אימייל.', variant: 'destructive'});
-      return;
-    }
-    // Cannot share with self if owner's email is entered
-    if (currentUser.email && shareEmail.trim().toLowerCase() === currentUser.email.toLowerCase()) {
-      toast({ title: 'מידע', description: 'לא ניתן לשתף חוזה עם הבעלים שלו.', variant: 'default'});
+    const identifierToShareRaw = shareIdentifierInput.trim();
+
+    if (!identifierToShareRaw || !contractData || !currentUser || currentUser.uid !== contractData.ownerId) {
+      toast({ title: 'שגיאה', description: 'לא ניתן לשתף. ודא שאתה הבעלים והזנת אימייל או מספר טלפון תקין.', variant: 'destructive'});
       return;
     }
 
+    const isEmailInput = identifierToShareRaw.includes('@');
+    const normalizedIdentifierToShare = isEmailInput ? identifierToShareRaw.toLowerCase() : identifierToShareRaw;
+
+    const isSelfShareByEmail = currentUser.email && normalizedIdentifierToShare === currentUser.email.toLowerCase();
+    const isSelfShareByPhone = currentUser.phoneNumber && normalizedIdentifierToShare === currentUser.phoneNumber;
+
+    if (isOwner && (isSelfShareByEmail || isSelfShareByPhone)) {
+      toast({ title: 'מידע', description: 'לא ניתן לשתף חוזה עם עצמך.', variant: 'default'});
+      return;
+    }
 
     try {
       const allContractsString = localStorage.getItem(CONTRACTS_STORAGE_KEY);
@@ -145,19 +152,20 @@ export default function ContractDisplayPage() {
 
       const updatedContract = { ...allContracts[contractIndex] };
       updatedContract.sharedWith = updatedContract.sharedWith || [];
-      if (!updatedContract.sharedWith.includes(shareEmail.trim().toLowerCase())) {
-        updatedContract.sharedWith.push(shareEmail.trim().toLowerCase());
+      
+      if (!updatedContract.sharedWith.includes(normalizedIdentifierToShare)) {
+        updatedContract.sharedWith.push(normalizedIdentifierToShare);
       } else {
-        toast({ title: 'מידע', description: 'החוזה כבר משותף עם משתמש זה.', variant: 'default'});
-        setShareEmail('');
+        toast({ title: 'מידע', description: `החוזה כבר משותף עם ${normalizedIdentifierToShare}.`, variant: 'default'});
+        setShareIdentifierInput('');
         return;
       }
       
       allContracts[contractIndex] = updatedContract;
       localStorage.setItem(CONTRACTS_STORAGE_KEY, JSON.stringify(allContracts));
       setContractData(updatedContract); 
-      setShareEmail('');
-      toast({ title: 'הצלחה', description: `החוזה שותף עם ${shareEmail.trim()}`});
+      setShareIdentifierInput('');
+      toast({ title: 'הצלחה', description: `החוזה שותף עם ${normalizedIdentifierToShare}`});
 
     } catch (error) {
       console.error("Failed to share contract", error);
@@ -165,7 +173,7 @@ export default function ContractDisplayPage() {
     }
   };
   
-  const handleRemoveSharedUser = (emailToRemove: string) => {
+  const handleRemoveSharedUser = (identifierToRemove: string) => {
     if (!contractData || !currentUser || currentUser.uid !== contractData.ownerId) return;
 
     try {
@@ -176,12 +184,12 @@ export default function ContractDisplayPage() {
       if (contractIndex === -1) return;
 
       const updatedContract = { ...allContracts[contractIndex] };
-      updatedContract.sharedWith = (updatedContract.sharedWith || []).filter(email => email !== emailToRemove);
+      updatedContract.sharedWith = (updatedContract.sharedWith || []).filter(id => id !== identifierToRemove);
       
       allContracts[contractIndex] = updatedContract;
       localStorage.setItem(CONTRACTS_STORAGE_KEY, JSON.stringify(allContracts));
       setContractData(updatedContract);
-      toast({ title: 'הצלחה', description: `השיתוף עם ${emailToRemove} בוטל.`});
+      toast({ title: 'הצלחה', description: `השיתוף עם ${identifierToRemove} בוטל.`});
 
     } catch (error) {
       console.error("Failed to remove shared user", error);
@@ -189,11 +197,22 @@ export default function ContractDisplayPage() {
     }
   };
 
+  const handleCopyLink = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.href)
+        .then(() => {
+          toast({ title: 'הצלחה', description: 'הקישור לחוזה הועתק ללוח.' });
+        })
+        .catch(err => {
+          console.error('Failed to copy link: ', err);
+          toast({ title: 'שגיאה', description: 'לא ניתן היה להעתיק את הקישור.', variant: 'destructive' });
+        });
+    }
+  };
 
   const party1Name = contractData?.formData?.landlordName || contractData?.formData?.serviceProviderName || contractData?.formData?.employerName || "צד א'";
   const party2Name = contractData?.formData?.tenantName || contractData?.formData?.clientName || contractData?.formData?.employeeName || "צד ב'";
   const isOwner = currentUser && contractData && currentUser.uid === contractData.ownerId;
-
 
   if (isFirebaseLoading || isPageSpecificLoading) {
     return (
@@ -223,7 +242,6 @@ export default function ContractDisplayPage() {
     );
   }
 
-
   if (!contractData) {
     return (
       <div className="text-center py-10">
@@ -236,9 +254,7 @@ export default function ContractDisplayPage() {
   }
 
   const customClausesText = contractData.customClauses.map(c => c.legalWording).join('\n\n');
-  
-  // Get owner's email if possible (requires fetching user profile, mock for now)
-  const ownerDisplayId = contractData.ownerId; // For now display UID, could be an email if we had a lookup
+  const ownerDisplayId = contractData.ownerId; 
 
   return (
     <div className="space-y-8 p-4 md:p-8 max-w-4xl mx-auto">
@@ -247,7 +263,7 @@ export default function ContractDisplayPage() {
           {contractData.templateName || 'חוזה'} <span className="text-sm text-muted-foreground">(ID: {contractData.id})</span>
         </h1>
         <p className="text-md text-muted-foreground mt-2">
-          נוצר בתאריך: {new Date(contractData.createdAt).toLocaleDateString('he-IL')} | בעלים: {ownerDisplayId}
+          נוצר בתאריך: {new Date(contractData.createdAt).toLocaleDateString('he-IL')} | בעלים (UID): {ownerDisplayId}
         </p>
       </header>
 
@@ -275,6 +291,9 @@ export default function ContractDisplayPage() {
           <Button variant="outline" onClick={() => typeof window !== "undefined" && window.print()}>
             <Printer /> הדפס חוזה
           </Button>
+          <Button variant="outline" onClick={handleCopyLink}>
+            <CopyIcon /> העתק קישור
+          </Button>
           <Button variant="outline" disabled>
             <Download /> הורד כ-PDF (בקרוב)
           </Button>
@@ -284,18 +303,18 @@ export default function ContractDisplayPage() {
         <Card className="shadow-lg border-accent/30 mt-8">
           <CardHeader className="bg-accent/10">
             <CardTitle className="text-xl font-headline text-accent-foreground/90 flex items-center"><Share2 /> שתף חוזה זה</CardTitle>
-            <CardDescription>הזן כתובת אימייל של משתמש כדי לשתף איתו את החוזה (לקריאה בלבד).</CardDescription>
+            <CardDescription>הזן אימייל או מספר טלפון של משתמש כדי לשתף איתו את החוזה (לקריאה בלבד).</CardDescription>
           </CardHeader>
           <form onSubmit={handleShareContract}>
             <CardContent className="p-6 space-y-4">
               <div>
-                <Label htmlFor="shareEmail">כתובת אימייל לשיתוף</Label>
+                <Label htmlFor="shareIdentifier">אימייל או מספר טלפון לשיתוף</Label>
                 <Input 
-                  type="email" 
-                  id="shareEmail" 
-                  value={shareEmail} 
-                  onChange={(e) => setShareEmail(e.target.value)}
-                  placeholder="user@example.com"
+                  type="text" 
+                  id="shareIdentifier" 
+                  value={shareIdentifierInput} 
+                  onChange={(e) => setShareIdentifierInput(e.target.value)}
+                  placeholder="user@example.com / +972501234567"
                   className="mt-1"
                 />
               </div>
@@ -303,10 +322,10 @@ export default function ContractDisplayPage() {
                 <div>
                   <Label className="text-sm font-medium flex items-center"><Users className="w-4 h-4" /> משותף כעת עם:</Label>
                   <div className="mt-2 space-y-1">
-                    {contractData.sharedWith.map(email => (
-                      <div key={email} className="flex items-center justify-between p-2 bg-secondary/30 rounded-md">
-                        <span className="text-sm text-secondary-foreground">{email}</span>
-                        <Button variant="ghost" size="icon" onClick={() => handleRemoveSharedUser(email)} title={`בטל שיתוף עם ${email}`}>
+                    {contractData.sharedWith.map(identifier => (
+                      <div key={identifier} className="flex items-center justify-between p-2 bg-secondary/30 rounded-md">
+                        <span className="text-sm text-secondary-foreground">{identifier}</span>
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveSharedUser(identifier)} title={`בטל שיתוף עם ${identifier}`}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       </div>
@@ -330,15 +349,14 @@ export default function ContractDisplayPage() {
             </CardHeader>
             <CardContent className="p-6">
                 <ul className="list-disc pl-5 text-muted-foreground">
-                    {contractData.sharedWith.map(email => (
-                        <li key={email} className="text-sm">{email}</li>
+                    {contractData.sharedWith.map(identifier => (
+                        <li key={identifier} className="text-sm">{identifier}</li>
                     ))}
                 </ul>
                  {contractData.ownerId && <p className="text-xs mt-2 text-muted-foreground">בעל החוזה (UID): {contractData.ownerId}</p>}
             </CardContent>
          </Card>
       )}
-
 
       <section className="mt-10">
         <h2 className="text-2xl font-semibold text-center mb-8 text-primary-foreground/80">חתימות הצדדים</h2>
