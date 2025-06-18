@@ -4,10 +4,10 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogIn, LogOut, UserCircle } from 'lucide-react';
+import { LogIn, LogOut, UserCircle, Loader2 } from 'lucide-react';
 
 export default function Header() {
-  const { currentUser, logout, isLoading } = useAuth();
+  const { currentUser, logout, isFirebaseLoading } = useAuth();
 
   return (
     <header className="bg-primary/10 shadow-md sticky top-0 z-50 backdrop-blur-md">
@@ -23,21 +23,23 @@ export default function Header() {
             <Link href="/templates">מאגר תבניות</Link>
           </Button>
           
-          {isLoading ? (
-            <div className="w-24 h-8 bg-muted rounded animate-pulse"></div>
+          {isFirebaseLoading ? (
+             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           ) : currentUser ? (
             <>
-              <span className="text-sm text-muted-foreground hidden md:inline">{currentUser.email}</span>
+              <span className="text-sm text-muted-foreground hidden md:inline" title={currentUser.uid}>
+                {currentUser.displayName || currentUser.email || currentUser.phoneNumber || 'משתמש'}
+              </span>
               <Button variant="ghost" onClick={logout} className="text-primary-foreground hover:text-accent hover:bg-primary/20 text-sm sm:text-base">
                 <LogOut />
-                <span className="hidden sm:inline ml-2">התנתק</span>
+                <span className="hidden sm:inline">התנתק</span>
               </Button>
             </>
           ) : (
             <Button variant="ghost" asChild className="text-primary-foreground hover:text-accent hover:bg-primary/20 text-sm sm:text-base">
               <Link href="/login">
                 <LogIn />
-                <span className="hidden sm:inline ml-2">התחבר</span>
+                <span className="hidden sm:inline">התחבר</span>
               </Link>
             </Button>
           )}

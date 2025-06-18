@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { Template } from '@/data/templates';
 import { getTemplateById } from '@/data/templates';
@@ -9,7 +9,7 @@ import GuidedCreationForm from '@/components/contract/GuidedCreationForm';
 import AiClauseGenerator from '@/components/contract/AiClauseGenerator';
 import ContractPreview from '@/components/contract/ContractPreview';
 import { Button } from '@/components/ui/button';
-import { Save } from 'lucide-react';
+import { Save, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,20 +20,22 @@ const CONTRACTS_STORAGE_KEY = 'chetzContracts';
 export default function CreateContractPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { currentUser, isLoading: authIsLoading } = useAuth();
+  const { currentUser, isFirebaseLoading } = useAuth(); // Use isFirebaseLoading
   const templateId = typeof params.templateId === 'string' ? params.templateId : '';
 
   const [template, setTemplate] = useState<Template | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [customClauses, setCustomClauses] = useState<CustomClause[]>([]);
-  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [isPageSpecificLoading, setIsPageSpecificLoading] = useState(true);
 
   useEffect(() => {
-    if (authIsLoading) return;
+    if (isFirebaseLoading) return; // Wait for Firebase auth state to resolve
 
     if (!currentUser) {
-      router.push('/login?redirect=/templates/' + templateId + '/create');
+      const currentPath = `/templates/${templateId}/create${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+      router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
       return;
     }
 
@@ -54,9 +56,9 @@ export default function CreateContractPage() {
         });
         router.push('/templates');
       }
-      setIsPageLoading(false);
     }
-  }, [templateId, router, toast, currentUser, authIsLoading]);
+    setIsPageSpecificLoading(false);
+  }, [templateId, router, toast, currentUser, isFirebaseLoading, searchParams]);
 
   const handleFormDataChange = (fieldId: string, value: any) => {
     setFormData((prev) => ({ ...prev, [fieldId]: value }));
@@ -89,13 +91,13 @@ export default function CreateContractPage() {
     const newContractId = `contract-${Date.now().toString()}`;
     const contractData: StoredContractData = {
       id: newContractId,
-      ownerId: currentUser.id,
+      ownerId: currentUser.uid, // Use Firebase UID
       templateId,
       templateName: template?.name,
       formData,
       customClauses,
       createdAt: new Date().toISOString(),
-      sharedWith: [], // Initialize sharedWith as an empty array
+      sharedWith: [], 
     };
 
     try {
@@ -119,7 +121,7 @@ export default function CreateContractPage() {
     }
   };
 
-  if (authIsLoading || isPageLoading) {
+  if (isFirebaseLoading || isPageSpecificLoading) {
     return (
       <div className="space-y-8">
         <Skeleton className="h-12 w-1/2" />
@@ -138,6 +140,17 @@ export default function CreateContractPage() {
   if (!template) {
     return <p className="text-center text-destructive text-xl">תבנית לא קיימת או שלא ניתן לטעון אותה.</p>;
   }
+  
+  if (!currentUser && !isFirebaseLoading) {
+     // Should be caught by useEffect redirect, but as a fallback
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-xl text-muted-foreground">מפנה לדף התחברות...</p>
+      </div>
+    );
+  }
+
 
   return (
     <div className="space-y-10">

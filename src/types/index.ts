@@ -1,7 +1,9 @@
 
 export interface User {
-  id: string; // For mock purposes, this can be the email
-  email: string;
+  uid: string; // Firebase UID
+  email: string | null;
+  phoneNumber?: string | null;
+  displayName?: string | null;
 }
 
 export interface CustomClause {
@@ -11,11 +13,11 @@ export interface CustomClause {
 
 export interface StoredContractData {
   id: string; // Unique contract ID
-  ownerId: string; // User ID of the owner
+  ownerId: string; // User UID of the owner
   templateId: string;
   templateName?: string;
   formData: Record<string, any>;
   customClauses: CustomClause[];
   createdAt: string;
-  sharedWith?: string[]; // Array of user emails this contract is shared with
+  sharedWith?: string[]; // Array of user *emails* this contract is shared with (limitation for phone-only users)
 }
