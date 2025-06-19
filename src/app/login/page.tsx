@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2, Mail, Phone, ShieldCheck, ChevronRight } from 'lucide-react'; // Added ChevronRight
+import { Loader2, Mail, Phone, ShieldCheck, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RecaptchaVerifier, type ConfirmationResult } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -48,27 +48,52 @@ export default function LoginPage() {
     }
   }, [currentUser, router]);
 
-  const setupRecaptcha = useCallback(() => {
-    if (typeof window !== 'undefined' && recaptchaContainerRef.current && !recaptchaVerifierRef.current?.auth) {
-      if (recaptchaVerifierRef.current) { 
-         try { (recaptchaVerifierRef.current as any).clear(); } catch (e) { console.warn("Error clearing old recaptcha", e)}
-      }
-      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
-        'size': 'invisible',
-        'callback': () => { /* reCAPTCHA solved */ },
-        'expired-callback': () => {
-          toast({ title: 'שגיאה', description: 'אימות reCAPTCHA פג תוקף. נסה שוב.', variant: 'destructive' });
-        }
-      });
-      recaptchaVerifierRef.current.render().catch(err => console.error("Recaptcha render error", err));
-    }
-  }, [toast]);
-
   useEffect(() => {
-    if (authMethod === 'phone' && !confirmationResult) {
-      setupRecaptcha();
+    // This effect manages the RecaptchaVerifier lifecycle for phone authentication
+    if (authMethod === 'phone' && !confirmationResult && typeof window !== 'undefined' && recaptchaContainerRef.current) {
+        if (!recaptchaVerifierRef.current?.auth) { // Only initialize if not already present or tied to an auth instance
+            const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+                'size': 'invisible',
+                'callback': () => { /* reCAPTCHA solved */ },
+                'expired-callback': () => {
+                    toast({ title: 'שגיאה', description: 'אימות reCAPTCHA פג תוקף. נסה שוב.', variant: 'destructive' });
+                    // Optionally, try to re-render or clear and re-initialize
+                    if (recaptchaVerifierRef.current) {
+                        try { (recaptchaVerifierRef.current as any).clear(); } catch(e) {}
+                        recaptchaVerifierRef.current = null;
+                    }
+                }
+            });
+            verifier.render().then(() => {
+                recaptchaVerifierRef.current = verifier;
+            }).catch(err => {
+                console.error("Recaptcha render error:", err);
+                toast({ title: 'שגיאת reCAPTCHA', description: 'לא ניתן להציג את reCAPTCHA. ודא שהדפדפן מאפשר זאת.', variant: 'destructive' });
+                if (recaptchaVerifierRef.current) { // Attempt to clear if render fails
+                    try { (recaptchaVerifierRef.current as any).clear(); } catch(e) {}
+                }
+                recaptchaVerifierRef.current = null;
+            });
+        }
     }
-  }, [authMethod, confirmationResult, setupRecaptcha]);
+
+    return () => { // Cleanup function
+        const currentVerifier = recaptchaVerifierRef.current;
+        if (currentVerifier) {
+            try {
+                (currentVerifier as any).clear();
+            } catch (e) {
+                console.warn("Error clearing RecaptchaVerifier on cleanup:", e);
+            }
+            recaptchaVerifierRef.current = null;
+            // Remove the reCAPTCHA badge from the DOM
+            const badge = document.querySelector('.grecaptcha-badge');
+            if (badge?.parentElement) {
+                badge.parentElement.removeChild(badge);
+            }
+        }
+    };
+  }, [authMethod, confirmationResult, toast, auth]); // `auth` from firebase/auth is stable
 
 
   const handleGoogleSignIn = async () => { 
@@ -80,7 +105,7 @@ export default function LoginPage() {
   const handlePhoneSignIn = async (e: FormEvent) => { 
     e.preventDefault(); setIsSubmitting(true); setError(''); 
     if (!recaptchaVerifierRef.current) {
-      toast({title: 'שגיאה', description: 'reCAPTCHA לא מאותחל.', variant: 'destructive'});
+      toast({title: 'שגיאה', description: 'reCAPTCHA לא מאותחל. אנא המתן או רענן את הדף.', variant: 'destructive'});
       setIsSubmitting(false); return;
     }
     const appVerifier = recaptchaVerifierRef.current;
@@ -215,3 +240,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
