@@ -12,8 +12,6 @@ interface TemplateCardProps {
 }
 
 export default function TemplateCard({ template }: TemplateCardProps) {
-  // The icon component should be passed directly if resolved client-side,
-  // or a placeholder/default can be used.
   const IconComponent = template.icon || FileText;
 
   return (
@@ -21,8 +19,8 @@ export default function TemplateCard({ template }: TemplateCardProps) {
       <CardHeader className="p-6 text-center">
         {IconComponent && (
           <div className="mb-4 flex justify-center">
-            {/* If IconComponent is a LucideIcon */}
-            {typeof IconComponent === 'function' ? <IconComponent className="w-10 h-10 text-primary" /> : IconComponent}
+            {/* Always render IconComponent as a component instance if it exists */}
+            <IconComponent className="w-10 h-10 text-primary" />
           </div>
         )}
         <CardTitle className="text-xl font-bold text-primary-foreground/90">{template.title}</CardTitle>
