@@ -1,31 +1,35 @@
 
 'use client';
 
-import type { User } from '@/types';
-import { useRouter } from 'next/navigation';
+import type { User } from '@/types'; // Your app's User type
+import { useRouter, usePathname } from 'next/navigation';
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { 
   onAuthStateChanged, 
-  signOut, 
+  signOut as firebaseSignOut, 
   GoogleAuthProvider, 
   signInWithPopup,
   PhoneAuthProvider,
   signInWithPhoneNumber,
   RecaptchaVerifier,
-  type ConfirmationResult
+  type ConfirmationResult,
+  type User as FirebaseUser,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
 } from 'firebase/auth';
-import { auth } from '@/lib/firebase'; // Assuming firebase.ts is in src/lib
+import { auth } from '@/lib/firebase';
+import { createUserProfileDocument } from '@/firebase/userUtils';
 import { useToast } from '@/hooks/use-toast';
-
 
 interface AuthContextType {
   currentUser: User | null;
-  isLoading: boolean;
-  loginWithGoogle: () => Promise<void>;
+  isFirebaseLoading: boolean;
+  loginWithGoogle: () => Promise<FirebaseUser | null>;
   sendOtpToPhone: (phoneNumber: string, appVerifier: RecaptchaVerifier) => Promise<ConfirmationResult | null>;
-  verifyOtpAndLogin: (confirmationResult: ConfirmationResult, otp: string) => Promise<void>;
+  verifyOtpAndLogin: (confirmationResult: ConfirmationResult, otp: string) => Promise<FirebaseUser | null>;
+  signupWithEmail: (email: string, pass: string, additionalData?: Record<string, any>) => Promise<FirebaseUser | null>;
+  loginWithEmail: (email: string, pass: string) => Promise<FirebaseUser | null>;
   logout: () => Promise<void>;
-  isFirebaseLoading: boolean; // Renamed from isLoading to avoid conflict if component has its own isLoading
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,16 +38,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isFirebaseLoading, setIsFirebaseLoading] = useState(true);
   const router = useRouter();
-  const { toast } = useToast(); // Added useToast
+  const pathname = usePathname();
+  const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        await createUserProfileDocument(firebaseUser); // Ensure profile exists
         const appUser: User = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           phoneNumber: firebaseUser.phoneNumber,
           displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
         };
         setCurrentUser(appUser);
       } else {
@@ -51,44 +58,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setIsFirebaseLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
+
+  const handleAuthSuccess = (firebaseUser: FirebaseUser, redirectPath: string = '/dashboard') => {
+    const appUser: User = {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      phoneNumber: firebaseUser.phoneNumber,
+      displayName: firebaseUser.displayName,
+      photoURL: firebaseUser.photoURL,
+    };
+    setCurrentUser(appUser);
+    router.push(redirectPath);
+    return firebaseUser;
+  };
+
+  const handleAuthError = (error: any, defaultMessage: string) => {
+    console.error(defaultMessage, error);
+    toast({ title: 'שגיאה', description: error.message || defaultMessage, variant: 'destructive' });
+    return null;
+  };
 
   const loginWithGoogle = async () => {
     setIsFirebaseLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      // onAuthStateChanged will handle setting currentUser
-      // router.push('/'); // Redirect is handled by useEffect in login page or onAuthStateChanged listeners elsewhere
+      const result = await signInWithPopup(auth, provider);
+      await createUserProfileDocument(result.user);
+      return handleAuthSuccess(result.user);
     } catch (error: any) {
-      console.error("Google sign-in error", error);
-      toast({ title: 'שגיאה בהתחברות עם גוגל', description: error.message, variant: 'destructive' });
+      return handleAuthError(error, 'הכניסה עם גוגל נכשלה.');
     } finally {
-      // setIsFirebaseLoading(false); // Handled by onAuthStateChanged
+      setIsFirebaseLoading(false);
     }
   };
 
   const sendOtpToPhone = async (phoneNumber: string, appVerifier: RecaptchaVerifier): Promise<ConfirmationResult | null> => {
     setIsFirebaseLoading(true);
     try {
-      // No need to create PhoneAuthProvider instance explicitly for signInWithPhoneNumber
       const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-      // If successful, loading should persist until OTP verification or failure.
-      // setIsFirebaseLoading(false) is not called here intentionally.
+      toast({ title: 'קוד נשלח', description: 'קוד אימות נשלח למספר הטלפון שלך.' });
       return confirmationResult;
     } catch (error: any) {
-      console.error("Phone OTP send error", error);
       let description = error.message;
       if (error.code === 'auth/api-key-not-valid') {
-        description = 'Firebase API Key is not valid. Please check your Firebase project configuration and .env file. Ensure Phone Sign-in is enabled and the API key has permissions for Identity Toolkit API.';
+        description = 'מפתח API אינו תקין. בדוק את הגדרות Firebase.';
       } else if (error.code === 'auth/invalid-phone-number') {
         description = 'מספר הטלפון שהוזן אינו תקין.';
       } else if (error.code === 'auth/too-many-requests') {
         description = 'נשלחו יותר מדי בקשות. נסה שוב מאוחר יותר.';
       }
-      // Make sure toast is available or pass it as a dependency
       toast({ title: 'שגיאה בשליחת קוד', description, variant: 'destructive' });
       setIsFirebaseLoading(false);
       return null;
@@ -98,38 +118,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifyOtpAndLogin = async (confirmationResult: ConfirmationResult, otp: string) => {
     setIsFirebaseLoading(true);
     try {
-      await confirmationResult.confirm(otp);
-      // onAuthStateChanged will handle setting currentUser
-      // router.push('/'); // Redirect is handled by useEffect in login page or onAuthStateChanged listeners elsewhere
+      const result = await confirmationResult.confirm(otp);
+      await createUserProfileDocument(result.user);
+      return handleAuthSuccess(result.user);
     } catch (error: any) {
-      console.error("Phone OTP verification error", error);
-      let description = error.message;
-      if (error.code === 'auth/invalid-verification-code') {
-        description = 'קוד האימות שהוזן אינו תקין.';
-      } else if (error.code === 'auth/code-expired') {
-        description = 'קוד האימות פג תוקף. אנא שלח קוד חדש.';
-      }
-       toast({ title: 'שגיאה באימות הקוד', description, variant: 'destructive' });
+      return handleAuthError(error, 'אימות הקוד נכשל.');
     } finally {
-      // setIsFirebaseLoading(false); // Handled by onAuthStateChanged
+      setIsFirebaseLoading(false);
+    }
+  };
+  
+  const signupWithEmail = async (email: string, pass: string, additionalData: Record<string, any> = {}) => {
+    setIsFirebaseLoading(true);
+    try {
+      const { user } = await createUserWithEmailAndPassword(auth, email, pass);
+      await createUserProfileDocument(user, { ...additionalData, email });
+      return handleAuthSuccess(user);
+    } catch (error: any) {
+      return handleAuthError(error, 'יצירת החשבון נכשלה.');
+    } finally {
+      setIsFirebaseLoading(false);
+    }
+  };
+
+  const loginWithEmail = async (email: string, pass: string) => {
+    setIsFirebaseLoading(true);
+    try {
+      const { user } = await signInWithEmailAndPassword(auth, email, pass);
+      // Profile should exist, but good to ensure consistency if needed
+      // await createUserProfileDocument(user); 
+      return handleAuthSuccess(user);
+    } catch (error: any) {
+      return handleAuthError(error, 'הכניסה נכשלה.');
+    } finally {
+      setIsFirebaseLoading(false);
     }
   };
 
   const logout = async () => {
     setIsFirebaseLoading(true);
     try {
-      await signOut(auth);
-      router.push('/'); // Redirect to home on logout
+      await firebaseSignOut(auth);
+      setCurrentUser(null);
+      router.push('/'); 
     } catch (error: any) {
-      console.error("Logout error", error);
-      toast({ title: 'שגיאה בהתנתקות', description: error.message, variant: 'destructive' });
+      handleAuthError(error, 'ההתנתקות נכשלה.');
     } finally {
-      //setIsFirebaseLoading(false); // Handled by onAuthStateChanged
+      setIsFirebaseLoading(false);
     }
   };
   
   return (
-    <AuthContext.Provider value={{ currentUser, isLoading: isFirebaseLoading, loginWithGoogle, sendOtpToPhone, verifyOtpAndLogin, logout, isFirebaseLoading }}>
+    <AuthContext.Provider value={{ currentUser, isFirebaseLoading, loginWithGoogle, sendOtpToPhone, verifyOtpAndLogin, signupWithEmail, loginWithEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -142,4 +182,3 @@ export function useAuth() {
   }
   return context;
 }
-

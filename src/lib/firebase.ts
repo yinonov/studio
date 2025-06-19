@@ -1,7 +1,9 @@
 
 // src/lib/firebase.ts
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth';
+import { getAuth, type Auth } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getFunctions, type Functions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -20,11 +22,21 @@ if (!getApps().length) {
 }
 
 const auth: Auth = getAuth(app);
+const db: Firestore = getFirestore(app);
+const functions: Functions = getFunctions(app, 'asia-northeast1'); // Example region, change if needed
 
-// Comment out this line for production
-// if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && !auth.emulatorConfig) {
-//  connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+// Comment out emulator connections for production or if not using emulators
+// if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+//   if (!auth.emulatorConfig) {
+//     connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+//   }
+//   const firestoreEmulatorHost = process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_HOST || 'localhost';
+//   const firestoreEmulatorPort = parseInt(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT || '8080', 10);
+//   connectFirestoreEmulator(db, firestoreEmulatorHost, firestoreEmulatorPort);
+
+//   const functionsEmulatorHost = process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_HOST || 'localhost';
+//   const functionsEmulatorPort = parseInt(process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT || '5001', 10);
+//   connectFunctionsEmulator(functions, functionsEmulatorHost, functionsEmulatorPort);
 // }
 
-
-export { app, auth };
+export { app, auth, db, functions };

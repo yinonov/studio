@@ -1,11 +1,27 @@
+
+// This component was part of the original "Chetz Contracts" structure.
+// The new `ContractCreationPage` handles form rendering directly.
+// If this specific structure for a guided form is still needed, it would have to be
+// significantly adapted to work with the new step-based logic and template structure.
+// For now, this file can be considered deprecated or removed.
 'use client';
 
-import type { TemplateField } from '@/data/templates';
+// import type { TemplateField } from '@/data/templates'; // Path might be outdated
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+
+// Define TemplateField locally if not importing
+interface TemplateField {
+  id: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'textarea';
+  placeholder?: string;
+  required?: boolean;
+}
+
 
 interface GuidedCreationFormProps {
   fields: TemplateField[];
@@ -17,6 +33,19 @@ export default function GuidedCreationForm({ fields, formData, onFormDataChange 
   const handleInputChange = (fieldId: string, value: any) => {
     onFormDataChange(fieldId, value);
   };
+
+  if (!fields || fields.length === 0) {
+    return (
+        <Card className="shadow-lg border-primary/20">
+            <CardHeader className="bg-primary/10">
+                <CardTitle className="text-2xl font-headline text-primary-foreground/90">פרטי החוזה</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+                <p className="text-muted-foreground">לא הוגדרו שדות עבור תבנית זו.</p>
+            </CardContent>
+        </Card>
+    );
+  }
 
   return (
     <Card className="shadow-lg border-primary/20">
@@ -37,7 +66,7 @@ export default function GuidedCreationForm({ fields, formData, onFormDataChange 
                 onChange={(e) => handleInputChange(field.id, e.target.value)}
                 placeholder={field.placeholder || ''}
                 rows={3}
-                className="bg-background border-input focus:border-primary focus:ring-primary"
+                className="bg-background"
               />
             ) : (
               <Input
@@ -46,7 +75,7 @@ export default function GuidedCreationForm({ fields, formData, onFormDataChange 
                 value={formData[field.id] || ''}
                 onChange={(e) => handleInputChange(field.id, e.target.value)}
                 placeholder={field.placeholder || ''}
-                className="bg-background border-input focus:border-primary focus:ring-primary"
+                className="bg-background"
               />
             )}
             {index < fields.length - 1 && <Separator className="my-4 !mt-6" />}
