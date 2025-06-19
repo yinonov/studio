@@ -9,7 +9,7 @@ import { createDraftContract, updateContractData } from '@/firebase/contractServ
 import type { Template, StoredContractData } from '@/types';
 import FormInput from '@/components/shared/FormInput';
 import { Button } from '@/components/ui/button';
-import { Loader2, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, ShieldCheck, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Progress } from "@/components/ui/progress"
@@ -61,7 +61,7 @@ export default function ContractCreationPage() {
                 const parties = [
                     { name: data.party1Name || '', email: data.party1Email || ''},
                     { name: data.party2Name || '', email: data.party2Email || ''}
-                ].filter(p => p.name && p.email); // Only include parties with name and email
+                ].filter(p => p.name && p.email); 
                 
                 const contractTitle = data.contractTitle || template?.title || 'חוזה ללא כותרת';
 
@@ -77,7 +77,7 @@ export default function ContractCreationPage() {
                 setIsSaving(false);
             }
         }, 1500), 
-    [template?.title]);
+    [template?.title, toast]);
 
     useEffect(() => {
         if (isFirebaseLoading) return;
@@ -102,18 +102,11 @@ export default function ContractCreationPage() {
                 }
                 setTemplate(fetchedTemplate);
                 
-                // Check if a contractId is passed in query params (for editing existing draft)
                 const queryParams = new URLSearchParams(window.location.search);
                 const existingContractId = queryParams.get('contractId');
 
                 if (existingContractId) {
-                    // TODO: Fetch existing contract data and populate formData
-                    // For now, just setting contractId
                     setContractId(existingContractId);
-                    // const existingContract = await fetchContractById(existingContractId);
-                    // if (existingContract && existingContract.formData) {
-                    //    setFormData(existingContract.formData);
-                    // }
                      toast({title:"טיוטה נטענה", description: "ממשיך עריכת טיוטה קיימת."});
 
                 } else {
@@ -124,10 +117,13 @@ export default function ContractCreationPage() {
                         throw new Error("Failed to create draft contract.");
                     }
                 }
-                const initialData: Record<string, string> = {}; // Start with empty form
-                fetchedTemplate.fields?.forEach(field => {
-                     if (field.id === 'contractTitle') initialData[field.id] = fetchedTemplate.title; // Pre-fill contract title from template title
+                const initialData: Record<string, string> = {};
+                (fetchedTemplate.fields || []).forEach(field => {
+                     if (field.id === 'contractTitle') initialData[field.id] = fetchedTemplate.title; 
                 });
+                 if (!initialData.contractTitle && fetchedTemplate.title) {
+                    initialData.contractTitle = fetchedTemplate.title;
+                }
                 setFormData(initialData);
 
             } catch (err: any) {
@@ -153,9 +149,9 @@ export default function ContractCreationPage() {
 
     const nextStep = () => {
         if (currentStep < STEPS_CONFIG.length) {
-            const currentStepFields = STEPS_CONFIG[currentStep - 1].fields;
+            const currentStepConfig = STEPS_CONFIG[currentStep - 1];
             const missingRequired = template?.fields?.filter(f =>
-                f.required && currentStepFields.includes(f.id) && (!formData[f.id] || String(formData[f.id]).trim() === '')
+                f.required && currentStepConfig.fields.includes(f.id) && (!formData[f.id] || String(formData[f.id]).trim() === '')
             );
             if (missingRequired && missingRequired.length > 0) {
                 toast({ title: "שדות חובה חסרים", description: `אנא מלא: ${missingRequired.map(f=>f.label).join(', ')}`, variant: "destructive"});
@@ -200,13 +196,12 @@ export default function ContractCreationPage() {
         if (!template) return <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />;
         
         const currentStepConfig = STEPS_CONFIG[currentStep - 1];
-        const fieldsForCurrentStep = template.fields?.filter(field => currentStepConfig.fields.includes(field.id));
-
-        if (currentStep === 3) { // Review and Send step
+        
+        if (currentStep === STEPS_CONFIG.length) { // Review and Send step
              return (
                 <div className="text-center space-y-6">
-                    <h3 className="text-2xl font-bold text-gray-900">סקירה ושליחה לחתימה</h3>
-                    <p className="text-gray-600">
+                    <h3 className="text-2xl font-bold">סקירה ושליחה לחתימה</h3>
+                    <p className="text-muted-foreground">
                         אנא בדוק/י את כל הפרטים שהזנת בתצוגה המקדימה. לחיצה על הכפתור תכין את החוזה ותשלח אותו לחתימת הצדדים.
                     </p>
                     <Button onClick={handleSendForSignature} size="lg" variant="accent" className="font-semibold" disabled={isSaving}>
@@ -218,21 +213,23 @@ export default function ContractCreationPage() {
             );
         }
 
+        const fieldsForCurrentStep = template.fields?.filter(field => currentStepConfig.fields.includes(field.id)) || [];
+
         return (
             <div className="space-y-6">
                 {currentStep === 1 && (
                     <>
                         <FormInput label="כותרת החוזה (פנימי)" name="contractTitle" value={formData.contractTitle || template.title || ''} onChange={handleDataChange} placeholder="לדוגמה: הסכם שכירות הרצל 1" required={true}/>
-                        <h3 className="text-xl font-bold text-gray-900 border-b pb-2 pt-4">צד א' (לדוגמה: משכיר/נותן שירות)</h3>
+                        <h3 className="text-xl font-bold border-b pb-2 pt-4">צד א' (לדוגמה: משכיר/נותן שירות)</h3>
                         <FormInput label="שם מלא" name="party1Name" value={formData.party1Name || ''} onChange={handleDataChange} placeholder="ישראל ישראלי" required={template.fields?.find(f=>f.id === 'party1Name')?.required ?? true} />
                         <FormInput label="אימייל" name="party1Email" type="email" value={formData.party1Email || ''} onChange={handleDataChange} placeholder="israel@example.com" required={template.fields?.find(f=>f.id === 'party1Email')?.required ?? true} />
                         
-                        <h3 className="text-xl font-bold text-gray-900 border-b pb-2 pt-4">צד ב' (לדוגמה: שוכר/לקוח)</h3>
+                        <h3 className="text-xl font-bold border-b pb-2 pt-4">צד ב' (לדוגמה: שוכר/לקוח)</h3>
                         <FormInput label="שם מלא" name="party2Name" value={formData.party2Name || ''} onChange={handleDataChange} placeholder="משה לוי" required={template.fields?.find(f=>f.id === 'party2Name')?.required ?? true} />
                         <FormInput label="אימייל" name="party2Email" type="email" value={formData.party2Email || ''} onChange={handleDataChange} placeholder="moshe@example.com" required={template.fields?.find(f=>f.id === 'party2Email')?.required ?? true} />
                     </>
                 )}
-                {currentStep === 2 && template.fields?.filter(f => STEPS_CONFIG[1].fields.includes(f.id)).map(field => (
+                {currentStep !== 1 && fieldsForCurrentStep.map(field => (
                      <FormInput 
                         key={field.id}
                         label={field.label} 
@@ -244,7 +241,7 @@ export default function ContractCreationPage() {
                         required={field.required}
                     />
                 ))}
-                {currentStep === 2 && !template.fields?.some(f => STEPS_CONFIG[1].fields.includes(f.id)) && (
+                {currentStep !== 1 && fieldsForCurrentStep.length === 0 && (
                     <p className="text-muted-foreground">אין שדות מוגדרים לשלב זה בתבנית.</p>
                 )}
             </div>
@@ -253,7 +250,7 @@ export default function ContractCreationPage() {
 
     if (isPageLoading || !currentUser) {
         return (
-            <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+            <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
                 <Loader2 className="w-12 h-12 animate-spin text-primary" />
                 <p className="mt-4 text-muted-foreground">טוען...</p>
             </div>
@@ -264,7 +261,7 @@ export default function ContractCreationPage() {
         return (
             <Card className="rounded-2xl shadow-lg">
                 <CardHeader>
-                    <CardTitle className="text-2xl text-center text-gray-900">ממשק חתימה</CardTitle>
+                    <CardTitle className="text-2xl text-center">ממשק חתימה</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <iframe 
@@ -295,8 +292,8 @@ export default function ContractCreationPage() {
     return (
         <section className="space-y-8">
             <div className="text-center">
-                <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900">יצירת: {template.title}</h1>
-                <p className="mt-2 text-md text-gray-600">מלא/י את הפרטים הבאים ליצירת החוזה. הטיוטה נשמרת אוטומטית.</p>
+                <h1 className="text-3xl md:text-4xl font-extrabold">יצירת: {formData.contractTitle || template.title}</h1>
+                <p className="mt-2 text-md text-muted-foreground">מלא/י את הפרטים הבאים ליצירת החוזה. הטיוטה נשמרת אוטומטית.</p>
             </div>
 
             <Progress value={progressPercentage} className="w-full h-2.5 mb-8 rounded-full" />
@@ -305,7 +302,7 @@ export default function ContractCreationPage() {
                 <div className="lg:col-span-3 order-1 lg:sticky lg:top-28 self-start h-fit">
                     <Card className="shadow-md rounded-2xl">
                         <CardHeader>
-                            <CardTitle className="text-lg font-semibold text-gray-900">שלבי יצירה</CardTitle>
+                            <CardTitle className="text-lg font-semibold">שלבי יצירה</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <ul className="space-y-3">
@@ -313,7 +310,7 @@ export default function ContractCreationPage() {
                                     <li key={index} 
                                         className={`flex items-center p-3 rounded-lg transition-all cursor-default
                                             ${currentStep === index + 1 ? 'bg-primary/10 text-primary font-semibold border-r-4 border-primary' : 
-                                            (currentStep > index + 1 ? 'text-accent/80' : 'text-gray-600 hover:bg-muted/50')}`}
+                                            (currentStep > index + 1 ? 'text-accent/80' : 'text-muted-foreground hover:bg-muted/50')}`}
                                     >
                                         <div className={`w-6 h-6 rounded-full flex items-center justify-center ml-3 flex-shrink-0 text-xs
                                             ${currentStep === index + 1 ? 'bg-primary text-primary-foreground' : 
@@ -332,7 +329,7 @@ export default function ContractCreationPage() {
                 <div className="lg:col-span-5 order-3 lg:order-2">
                     <Card className="rounded-2xl shadow-lg">
                         <CardHeader>
-                            <CardTitle className="text-2xl text-gray-900">{STEPS_CONFIG[currentStep-1].name}</CardTitle>
+                            <CardTitle className="text-2xl">{STEPS_CONFIG[currentStep-1].name}</CardTitle>
                         </CardHeader>
                         <CardContent className="min-h-[300px] md:min-h-[400px]">
                             {renderStepContent()}
@@ -367,3 +364,4 @@ export default function ContractCreationPage() {
         </section>
     );
 }
+
