@@ -1,3 +1,4 @@
+
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
 
@@ -5,3 +6,15 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+  # Other options:
+  # minInstances: 0
+  # concurrency: 80
+  # cpu: 1
+  # memoryMiB: 512
+  # timeoutSeconds: 60
+
+# خدمتكم App Hosting يمكن أيضا أن تستدعي خدمات Cloud أخرى مثل Cloud SQL
+# https://firebase.google.com/docs/app-hosting/cloud-sql
+# databases:
+# - instanceName: 'PROJECT_ID:REGION:INSTANCE_ID' # Replace with your Cloud SQL instance
+#   databaseName: 'DATABASE_NAME'                 # Replace with your database name

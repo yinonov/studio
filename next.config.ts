@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-    // unoptimized: true, // No longer needed without output: 'export'
+    // unoptimized: true, // Ensure this is commented out or removed for App Hosting
   },
   // output: 'export', // Ensure this is commented out or removed for App Hosting
 };
