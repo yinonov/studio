@@ -8,9 +8,8 @@
     "rewrites": [
       {
         "source": "**",
-        "run": {
-          "serviceId": "smart-contracts-254e8",
-          "region": "asia-northeast1"
+        "apphosting": {
+          "backendId": "smart-contracts-254e8"
         }
       }
     ],
@@ -41,3 +40,4 @@
     "rules": "storage.rules"
   }
 }
+
