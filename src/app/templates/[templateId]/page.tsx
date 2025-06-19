@@ -1,3 +1,4 @@
+
 // src/app/templates/[templateId]/page.tsx
 import { redirect } from 'next/navigation';
 
@@ -7,6 +8,7 @@ export async function generateStaticParams() {
   // For `output: 'export'`, dynamic Server Components need this.
   // Returning an empty array means Next.js won't pre-render any specific
   // instances of this redirector page at build time.
+  // This satisfies the build requirement.
   return [];
 }
 
