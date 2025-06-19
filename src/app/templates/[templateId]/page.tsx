@@ -2,7 +2,7 @@
 // src/app/templates/[templateId]/page.tsx
 import { redirect } from 'next/navigation';
 
-// No 'use client' here - this is now a Server Component
+// No 'use client' here - this is a Server Component
 
 export async function generateStaticParams() {
   // For `output: 'export'`, dynamic Server Components need this.
@@ -28,3 +28,5 @@ export default function TemplateRedirectPage({ params }: { params: { templateId:
   // However, React requires a component to return valid JSX or null.
   return null;
 }
+
+    

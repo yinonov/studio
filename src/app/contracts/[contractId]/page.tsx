@@ -279,7 +279,7 @@ export default function ContractViewPage() {
 
     return (
         <section className="space-y-8">
-            <Button onClick={() => router.push('/dashboard')} variant="ghost" className="flex items-center text-gray-600 hover:text-primary font-semibold mb-2 sm:mb-4">
+            <Button onClick={() => router.push('/dashboard')} variant="ghost" className="flex items-center text-gray-600 hover:text-accent-foreground font-semibold mb-2 sm:mb-4">
                 <ChevronRight className="w-5 h-5 ml-1" />
                 חזרה ללוח הבקרה
             </Button>

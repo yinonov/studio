@@ -76,7 +76,7 @@ export default function ContractCreationPage() {
                 setIsSaving(false);
             }
         }, 1500), 
-    [toast]); // Added toast to dependency array
+    [toast]);
 
     useEffect(() => {
         if (isFirebaseLoading) return;
@@ -111,7 +111,7 @@ export default function ContractCreationPage() {
                 (fetchedTemplate.fields || []).forEach(field => {
                     if (field.id && fetchedTemplate.defaultValues && fetchedTemplate.defaultValues[field.id]) {
                          initialData[field.id] = fetchedTemplate.defaultValues[field.id];
-                    } else if (field.id) { // Ensure field.id exists before assigning empty string
+                    } else if (field.id) { 
                          initialData[field.id] = '';
                     }
                 });
@@ -163,7 +163,7 @@ export default function ContractCreationPage() {
     };
 
     const nextStep = () => {
-        if (currentStep < STEPS_CONFIG.length && template) { // ensure template is not null
+        if (currentStep < STEPS_CONFIG.length && template) {
             const currentStepConfig = STEPS_CONFIG[currentStep - 1];
             const missingRequired = template.fields?.filter(f =>
                 f.required && currentStepConfig.fields.includes(f.id) && (!formData[f.id] || String(formData[f.id]).trim() === '')
@@ -234,7 +234,7 @@ export default function ContractCreationPage() {
 
         const fieldsForCurrentStep = template.fields?.filter(field => field.id && currentStepConfig.fields.includes(field.id)) || [];
         
-        if (currentStep === 1) { // Parties and Title step
+        if (currentStep === 1) {
             const partyFieldsConfig = [
                 { id: 'contractTitle', label: 'כותרת החוזה (פנימי)', type: 'text', placeholder: "לדוגמה: הסכם שכירות הרצל 1", required: true, group: "כותרת" },
                 { id: 'party1Name', label: "שם צד א'", type: 'text', placeholder: "ישראל ישראלי", required: true, group: "צד א'" },
@@ -247,7 +247,6 @@ export default function ContractCreationPage() {
             return (
                  <div className="space-y-6">
                     {partyFieldsConfig.map(field => {
-                        // Find corresponding field from template.fields to get accurate 'required' status, if defined there.
                         const templateFieldDefinition = template.fields?.find(f => f.id === field.id);
                         const isRequired = templateFieldDefinition?.required !== undefined ? templateFieldDefinition.required : field.required;
 
@@ -294,7 +293,7 @@ export default function ContractCreationPage() {
         );
     };
 
-    if (isPageLoading || (!currentUser && !isFirebaseLoading)) { // Check for currentUser and isFirebaseLoading
+    if (isPageLoading || (!currentUser && !isFirebaseLoading)) {
         return (
             <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
                 <Loader2 className="w-12 h-12 animate-spin text-primary" />
@@ -312,7 +311,7 @@ export default function ContractCreationPage() {
         );
     }
     
-    if (error && !template && currentUser) { // Only show error if user is logged in and template failed to load
+    if (error && !template && currentUser) {
          return (
             <div className="text-center py-10">
                 <p className="text-xl text-destructive mb-4">{error}</p>
