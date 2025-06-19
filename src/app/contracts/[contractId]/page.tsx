@@ -28,12 +28,7 @@ interface AuditLogItem {
   icon: React.ReactElement;
 }
 
-// Add this function for static export compatibility
-export async function generateStaticParams() {
-  // Returning an empty array means Next.js won't pre-render any specific
-  // contract pages at build time. They will be client-side rendered.
-  return [];
-}
+// generateStaticParams removed as this is a Client Component
 
 function interpolateWithDefaults(text: string, data: Record<string, string>): string {
   if (typeof text !== 'string') {
@@ -146,7 +141,7 @@ export default function ContractViewPage() {
 
    const getStatusTextClass = (status?: string): string => {
        switch (status) {
-           case "pending": return "text-yellow-800"; // Tailwind class from spec
+           case "pending": return "text-yellow-800"; 
            default: return "";
        }
    };
@@ -181,7 +176,7 @@ export default function ContractViewPage() {
                 setIsProcessing(false);
                 return;
             }
-            const updatedSharedWith = [...(contract.sharedWith || []), shareIdentifier.trim()]; // Keep original casing for display
+            const updatedSharedWith = [...(contract.sharedWith || []), shareIdentifier.trim()]; 
             await updateContractData(contract.id, { sharedWith: updatedSharedWith });
             setContract(prev => prev ? { ...prev, sharedWith: updatedSharedWith } : null);
             toast({ title: "הצלחה", description: `החוזה שותף עם ${shareIdentifier.trim()}.` });
@@ -223,7 +218,6 @@ export default function ContractViewPage() {
         setIsProcessing(true);
         setError('');
         try {
-            // Update status to 'pending' if it's 'draft'
             if (contract.status === 'draft') {
                 await updateContractData(contractId, { status: 'pending' });
                 setContract(prev => prev ? { ...prev, status: 'pending' } : null);
@@ -258,7 +252,7 @@ export default function ContractViewPage() {
         );
     }
 
-    if (error && !contract) { // Only show full page error if contract couldn't be loaded at all
+    if (error && !contract) { 
         return (
             <div className="text-center py-10">
                 <p className="text-xl text-destructive mb-4">{error}</p>
@@ -341,7 +335,7 @@ export default function ContractViewPage() {
                                     src={contract.signingUrl} 
                                     title="חתימת חוזה" 
                                     className="w-full h-[60vh] sm:h-[70vh] border rounded-lg shadow-inner"
-                                    allow="camera;microphone" // Required by some signing providers
+                                    allow="camera;microphone" 
                                 ></iframe>
                              </div>
                         ) : (

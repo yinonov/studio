@@ -14,12 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Progress } from "@/components/ui/progress";
 import ContractLivePreview from '@/components/contract/ContractLivePreview';
 
-// Add this function for static export compatibility
-export async function generateStaticParams() {
-  // Returning an empty array means Next.js won't pre-render any specific
-  // template creation pages at build time. They will be client-side rendered.
-  return [];
-}
+// generateStaticParams removed as this is a Client Component
 
 function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (...args: Parameters<F>) => void {
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -37,7 +32,7 @@ function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (..
 
 const STEPS_CONFIG = [
     { name: 'צדדים וכותרת', fields: ['contractTitle', 'party1Name', 'party1Email', 'party2Name', 'party2Email'] },
-    { name: 'תנאים עיקריים', fields: ['address', 'rentAmount', 'startDate', 'serviceDescription', 'serviceFee', 'effectiveDate', 'confidentialInformationDescription', 'disclosingParty', 'receivingParty', 'additionalNotes'] }, // Added more fields
+    { name: 'תנאים עיקריים', fields: ['address', 'rentAmount', 'startDate', 'serviceDescription', 'serviceFee', 'effectiveDate', 'confidentialInformationDescription', 'disclosingParty', 'receivingParty', 'additionalNotes'] }, 
     { name: 'סקירה וסיום', fields: [] }
 ];
 
@@ -63,8 +58,8 @@ export default function ContractCreationPage() {
             try {
                 const parties = [
                     { name: data.party1Name || '', email: data.party1Email || ''},
-                    { name: data.party2Name || '', email: data.party2Name ? (data.party2Email || '') : ''} // Only add party2 if name exists
-                ].filter(p => p.name); // Filter out parties without a name
+                    { name: data.party2Name || '', email: data.party2Name ? (data.party2Email || '') : ''} 
+                ].filter(p => p.name); 
                 
                 const contractTitle = data.contractTitle || currentTemplate?.title || 'חוזה ללא כותרת';
 
@@ -72,7 +67,7 @@ export default function ContractCreationPage() {
                     formData: data, 
                     parties,
                     title: contractTitle,
-                    status: 'draft' // Ensure it stays draft during auto-save
+                    status: 'draft' 
                 });
             } catch (err) {
                 console.error("Error auto-saving draft:", err);
@@ -129,7 +124,6 @@ export default function ContractCreationPage() {
                     const existingContract = await fetchContractById(existingContractId);
                     if (existingContract && existingContract.ownerId === currentUser.uid) {
                         setContractId(existingContractId);
-                        // Merge existing form data with template defaults, prioritizing existing data
                         setFormData(prev => ({...initialData, ...existingContract.formData, contractTitle: existingContract.title || initialData.contractTitle || fetchedTemplate.title }));
                         toast({title:"טיוטה נטענה", description: "ממשיך עריכת טיוטה קיימת."});
                     } else if (existingContract) {
@@ -137,7 +131,6 @@ export default function ContractCreationPage() {
                          toast({ title: "שגיאת הרשאה", description: "אינך מורשה לערוך טיוטה זו.", variant: "destructive"});
                     } else {
                          toast({ title: "שגיאה", description: "טיוטה קיימת לא נמצאה.", variant: "destructive"});
-                         // Proceed to create a new draft
                          const newContractId = await createDraftContract(currentUser.uid, fetchedTemplate);
                          setContractId(newContractId);
                          setFormData(initialData);
@@ -160,7 +153,7 @@ export default function ContractCreationPage() {
     }, [currentUser, isFirebaseLoading, router, templateId, toast]);
 
     useEffect(() => {
-        if (contractId && Object.keys(formData).length > 0 && template) { // Pass template to debouncedSave
+        if (contractId && Object.keys(formData).length > 0 && template) { 
             debouncedSaveContract(contractId, formData, template);
         }
     }, [formData, contractId, template, debouncedSaveContract]);
@@ -204,7 +197,7 @@ export default function ContractCreationPage() {
                 formData, 
                 parties,
                 title: contractTitle,
-                status: 'draft' // Explicitly save as draft
+                status: 'draft' 
             }); 
             toast({ title: "טיוטה נשמרה!", description: "החוזה נשמר כטיוטה."});
             router.push(`/contracts/${contractId}`);
@@ -223,7 +216,7 @@ export default function ContractCreationPage() {
         
         const currentStepConfig = STEPS_CONFIG[currentStep - 1];
         
-        if (currentStep === STEPS_CONFIG.length) { // Review and Save step
+        if (currentStep === STEPS_CONFIG.length) { 
              return (
                 <div className="text-center space-y-6">
                     <h3 className="text-2xl font-bold">סקירה ושמירת טיוטה</h3>
@@ -241,7 +234,6 @@ export default function ContractCreationPage() {
 
         const fieldsForCurrentStep = template.fields?.filter(field => currentStepConfig.fields.includes(field.id)) || [];
         
-        // Special handling for first step to group party fields if not already in template.fields
         if (currentStep === 1) {
             const partyFieldsConfig = [
                 { id: 'contractTitle', label: 'כותרת החוזה (פנימי)', type: 'text', placeholder: "לדוגמה: הסכם שכירות הרצל 1", required: true },
@@ -251,7 +243,6 @@ export default function ContractCreationPage() {
                 { id: 'party2Email', label: "אימייל צד ב'", type: 'email', placeholder: "sarah@example.com", required: false, group: "צד ב'" },
             ];
 
-            // Ensure template fields don't duplicate these, or use template's version if more specific
             const combinedFields = partyFieldsConfig.map(pf => {
                  const templateField = template.fields?.find(f => f.id === pf.id);
                  return templateField ? {...templateField, group: pf.group } : pf;
@@ -267,7 +258,7 @@ export default function ContractCreationPage() {
                             <React.Fragment key={field.id}>
                                 {showGroupHeader && <h3 className="text-xl font-bold border-b pb-2 pt-4">{field.group}</h3>}
                                 <FormInput 
-                                    key={field.id} /* Use field.id for key */
+                                    key={field.id} 
                                     label={field.label} 
                                     name={field.id} 
                                     type={field.type as 'text' | 'email'} 
@@ -291,7 +282,7 @@ export default function ContractCreationPage() {
                         key={field.id}
                         label={field.label} 
                         name={field.id} 
-                        type={field.type as 'text' | 'number' | 'date' | 'textarea'} // Cast for safety
+                        type={field.type as 'text' | 'number' | 'date' | 'textarea'} 
                         value={formData[field.id] || ''} 
                         onChange={handleDataChange} 
                         placeholder={field.placeholder}
@@ -314,7 +305,7 @@ export default function ContractCreationPage() {
         );
     }
         
-    if (!template && !isPageLoading) { // Check after loading is complete
+    if (!template && !isPageLoading) { 
         return (
             <div className="text-center py-10">
                 <p className="text-xl text-destructive mb-4">{error || "שגיאה: לא ניתן היה לטעון את תבנית החוזה."}</p>
@@ -323,7 +314,6 @@ export default function ContractCreationPage() {
         );
     }
     
-    // If there's a general error AND template is also null (meaning loading template might have failed)
     if (error && !template) {
          return (
             <div className="text-center py-10">
@@ -378,7 +368,7 @@ export default function ContractCreationPage() {
                             <CardTitle className="text-2xl">{STEPS_CONFIG[currentStep-1].name}</CardTitle>
                         </CardHeader>
                         <CardContent className="min-h-[300px] md:min-h-[400px]">
-                            {error && !template && <p className="text-destructive">{error}</p>} {/* Show error here if template failed to load but page didn't fully stop */}
+                            {error && !template && <p className="text-destructive">{error}</p>} 
                             {template && renderStepContent()}
                         </CardContent>
                         <CardFooter className="flex justify-between items-center mt-6 pt-6 border-t">

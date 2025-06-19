@@ -1,37 +1,29 @@
 
-// This file can be removed if direct navigation to template detail is not needed.
-// Or it can be a template detail page before creation.
-// For now, redirecting to creation page or showing a message.
+// src/app/templates/[templateId]/page.tsx
+import { redirect } from 'next/navigation';
 
-'use client';
-import { useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+// No 'use client' here - this is now a Server Component
 
-// Add this function for static export compatibility
 export async function generateStaticParams() {
+  // For `output: 'export'`, dynamic Server Components need this.
   // Returning an empty array means Next.js won't pre-render any specific
-  // template detail pages at build time. They will be client-side rendered or redirected.
+  // instances of this redirector page at build time.
   return [];
 }
 
-export default function TemplateDetailPage() {
-  const router = useRouter();
-  const params = useParams();
-  const templateId = params.templateId;
+// Params will be { templateId: string }
+export default function TemplateRedirectPage({ params }: { params: { templateId: string } }) {
+  const { templateId } = params;
 
-  useEffect(() => {
-    if (templateId) {
-      router.replace(`/templates/${templateId}/create`);
-    } else {
-      router.replace('/templates');
-    }
-  }, [router, templateId]);
+  if (templateId) {
+    redirect(`/templates/${templateId}/create`);
+  } else {
+    // This case should ideally not happen if templateId is always present in the route.
+    // Redirect to the general templates page as a fallback.
+    redirect('/templates');
+  }
 
-  return (
-    <div className="flex justify-center items-center h-64">
-      <Loader2 className="w-12 h-12 animate-spin text-primary" />
-      <p className="ml-4">מעביר לדף יצירת חוזה...</p>
-    </div>
-  );
+  // This component will not actually render anything visible because the redirect occurs before rendering.
+  // However, React requires a component to return valid JSX or null.
+  return null;
 }
