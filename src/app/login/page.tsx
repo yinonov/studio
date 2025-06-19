@@ -8,14 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2, Mail, Phone, ShieldCheck } from 'lucide-react';
+import { Loader2, Mail, Phone, ShieldCheck, ChevronRight } from 'lucide-react'; // Added ChevronRight
 import { useToast } from '@/hooks/use-toast';
 import { RecaptchaVerifier, type ConfirmationResult } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import Link from 'next/link';
-import FormInput from '@/components/shared/FormInput'; // Using the refactored FormInput
+import FormInput from '@/components/shared/FormInput';
 
-// Inline SVG for Google Icon
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-5 h-5 sm:w-6 sm:h-6">
     <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path>
@@ -33,7 +32,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [phone, setPhoneState] = useState(''); // Renamed to avoid conflict
+  const [phone, setPhoneState] = useState('');
   const [otp, setOtp] = useState('');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [error, setError] = useState('');
@@ -51,7 +50,7 @@ export default function LoginPage() {
 
   const setupRecaptcha = useCallback(() => {
     if (typeof window !== 'undefined' && recaptchaContainerRef.current && !recaptchaVerifierRef.current?.auth) {
-      if (recaptchaVerifierRef.current) { // Clear previous instance if any
+      if (recaptchaVerifierRef.current) { 
          try { (recaptchaVerifierRef.current as any).clear(); } catch (e) { console.warn("Error clearing old recaptcha", e)}
       }
       recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
@@ -122,22 +121,22 @@ export default function LoginPage() {
       </div>
     );
   }
-   if (currentUser) return null; // Should be redirected by useEffect
+   if (currentUser) return null;
 
 
   return (
     <div className="flex justify-center items-center py-8 md:py-12">
-      <Card className="w-full max-w-md shadow-xl border-primary/20">
+      <Card className="w-full max-w-md rounded-2xl shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl sm:text-3xl font-bold text-primary-foreground/90">כניסה / הרשמה</CardTitle>
-          <CardDescription>התחבר כדי לנהל את החוזים שלך</CardDescription>
+          <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900">כניסה / הרשמה</CardTitle>
+          <CardDescription className="text-gray-600">התחבר כדי לנהל את החוזים שלך</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-8 pb-6 sm:pb-8">
           <div id="recaptcha-container" ref={recaptchaContainerRef} className="my-2"></div>
           <Button 
             onClick={handleGoogleSignIn} 
             variant="outline" 
-            className="w-full text-base py-3 border-border hover:bg-muted/50"
+            className="w-full text-base py-3 font-semibold"
             disabled={isSubmitting || isFirebaseLoading}
           >
             {isSubmitting ? <Loader2 className="animate-spin" /> : <GoogleIcon />}
@@ -145,23 +144,23 @@ export default function LoginPage() {
           </Button>
 
           <div className="relative flex py-3 items-center">
-            <div className="flex-grow border-t border-border"></div>
-            <span className="flex-shrink mx-4 text-sm text-muted-foreground">או</span>
-            <div className="flex-grow border-t border-border"></div>
+            <div className="flex-grow border-t border-gray-300"></div>
+            <span className="flex-shrink mx-4 text-sm text-gray-500">או</span>
+            <div className="flex-grow border-t border-gray-300"></div>
           </div>
 
-          <div className="flex justify-center border border-border rounded-lg p-1 bg-muted/30">
+          <div className="flex justify-center border border-gray-300 rounded-lg p-1 bg-gray-100">
             <Button 
               onClick={() => { setAuthMethod('email'); setError(''); setConfirmationResult(null); }} 
-              variant={authMethod === 'email' ? 'default' : 'ghost'}
-              className={`w-1/2 py-2 transition-shadow duration-300 ${authMethod === 'email' ? 'shadow-md bg-primary text-primary-foreground hover:bg-primary/90' : 'text-muted-foreground hover:bg-muted/60'}`}
+              variant={authMethod === 'email' ? 'secondary' : 'ghost'} 
+              className={`w-1/2 py-2 transition-shadow duration-300 ${authMethod === 'email' ? 'shadow-md !bg-white' : 'text-gray-600 hover:!bg-gray-200'}`}
             >
               <Mail className="ml-2 h-4 w-4" />אימייל
             </Button>
             <Button 
               onClick={() => { setAuthMethod('phone'); setError(''); }} 
-              variant={authMethod === 'phone' ? 'default' : 'ghost'}
-              className={`w-1/2 py-2 transition-shadow duration-300 ${authMethod === 'phone' ? 'shadow-md bg-primary text-primary-foreground hover:bg-primary/90' : 'text-muted-foreground hover:bg-muted/60'}`}
+              variant={authMethod === 'phone' ? 'secondary' : 'ghost'}
+              className={`w-1/2 py-2 transition-shadow duration-300 ${authMethod === 'phone' ? 'shadow-md !bg-white' : 'text-gray-600 hover:!bg-gray-200'}`}
             >
               <Phone className="ml-2 h-4 w-4" />טלפון
             </Button>
@@ -171,7 +170,7 @@ export default function LoginPage() {
               <form onSubmit={handleEmailLogin} className="space-y-4 sm:space-y-6">
                 <FormInput label="אימייל" name="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
                 <FormInput label="סיסמה" name="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
-                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3" disabled={isSubmitting || isFirebaseLoading}>
+                <Button type="submit" className="w-full font-semibold py-3" disabled={isSubmitting || isFirebaseLoading}>
                   {isSubmitting ? <Loader2 className="animate-spin" /> : 'כניסה'}
                 </Button>
               </form>
@@ -184,18 +183,18 @@ export default function LoginPage() {
                   value={phone} 
                   onChange={e => setPhoneState(e.target.value)} 
                   placeholder="05X-XXX-XXXX"
-                  inputClassName="pr-12 text-left" // For LTR input of number
+                  inputClassName="pr-12 text-left" 
                 >
                   <span className="absolute right-3 text-muted-foreground">+972</span>
                 </FormInput>
-                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3" disabled={isSubmitting || isFirebaseLoading}>
+                <Button type="submit" className="w-full font-semibold py-3" disabled={isSubmitting || isFirebaseLoading}>
                   {isSubmitting ? <Loader2 className="animate-spin" /> : 'שלח קוד אימות'}
                 </Button>
               </form>
             ) : (
               <form onSubmit={handleVerifyOtp} className="space-y-4 sm:space-y-6">
                 <FormInput label="קוד אימות" name="otp" type="text" value={otp} onChange={e => setOtp(e.target.value)} placeholder="הזן קוד בן 6 ספרות" />
-                <Button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3" disabled={isSubmitting || isFirebaseLoading}>
+                <Button type="submit" variant="accent" className="w-full font-semibold py-3" disabled={isSubmitting || isFirebaseLoading}>
                   {isSubmitting ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
                   אימות וכניסה
                 </Button>
@@ -204,8 +203,8 @@ export default function LoginPage() {
                 </Button>
               </form>
             )}
-            {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
-             <p className="text-center text-xs sm:text-sm text-muted-foreground pt-4">
+            {error && <p className="text-destructive text-sm text-center mt-4">{error}</p>}
+             <p className="text-center text-xs sm:text-sm text-gray-600 pt-4">
               חדש פה?{' '}
               <Link href="/signup" className="font-semibold text-primary hover:underline">
                 צור חשבון

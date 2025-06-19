@@ -10,8 +10,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['PT Sans', 'sans-serif'],
-        headline: ['Playfair Display', 'serif'],
+        sans: ['Heebo', 'sans-serif'], // Set Heebo as the primary sans-serif font
         code: ['monospace'],
       },
       colors: {
@@ -55,7 +54,7 @@ export default {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
-        sidebar: {
+        sidebar: { // Keeping sidebar for ShadCN ui/sidebar component, adjust if not used
           DEFAULT: 'hsl(var(--sidebar-background))',
           foreground: 'hsl(var(--sidebar-foreground))',
           primary: 'hsl(var(--sidebar-primary))',
@@ -67,9 +66,9 @@ export default {
         },
       },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        lg: 'var(--radius)', // 8px from globals.css
+        md: 'calc(var(--radius) - 2px)', // 6px
+        sm: 'calc(var(--radius) - 4px)', // 4px
       },
       keyframes: {
         'accordion-down': {

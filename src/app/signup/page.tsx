@@ -33,7 +33,6 @@ export default function SignupPage() {
       return;
     }
     await signupWithEmail(email, password);
-    // Redirect is handled by AuthContext or useEffect on currentUser change
     setIsSubmitting(false);
   };
 
@@ -47,10 +46,10 @@ export default function SignupPage() {
 
   return (
     <div className="flex justify-center items-center py-8 md:py-12">
-      <Card className="w-full max-w-md shadow-xl border-primary/20">
+      <Card className="w-full max-w-md rounded-2xl shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl sm:text-3xl font-bold text-primary-foreground/90">יצירת חשבון חדש</CardTitle>
-          <CardDescription>הצטרף לפלטפורמת החוזים החכמים</CardDescription>
+          <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900">יצירת חשבון חדש</CardTitle>
+          <CardDescription className="text-gray-600">הצטרף לפלטפורמת החוזים החכמים</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-8 pb-6 sm:pb-8">
           <form onSubmit={handleSignup} className="space-y-4 sm:space-y-6">
@@ -75,13 +74,13 @@ export default function SignupPage() {
             {error && <p className="text-destructive text-sm text-right">{error}</p>}
             <Button 
               type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3" 
+              className="w-full font-semibold py-3" 
               disabled={isSubmitting || isFirebaseLoading}
             >
               {isSubmitting ? <Loader2 className="animate-spin" /> : 'הרשמה'}
             </Button>
           </form>
-          <p className="text-center text-xs sm:text-sm text-muted-foreground pt-4">
+          <p className="text-center text-xs sm:text-sm text-gray-600 pt-4">
             יש לך כבר חשבון?{' '}
             <Link href="/login" className="font-semibold text-primary hover:underline">
               התחבר/י

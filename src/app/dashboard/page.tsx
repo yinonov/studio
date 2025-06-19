@@ -11,8 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns'; // For date formatting
-import { he } from 'date-fns/locale'; // Hebrew locale for date-fns
+import { format } from 'date-fns';
+import { he } from 'date-fns/locale';
 
 export default function DashboardPage() {
     const { currentUser, isFirebaseLoading } = useAuth();
@@ -43,15 +43,15 @@ export default function DashboardPage() {
             }
         );
 
-        return () => unsubscribe(); // Cleanup subscription on component unmount
+        return () => unsubscribe();
     }, [currentUser, isFirebaseLoading, router]);
 
-    const getStatusVariant = (status?: string): "default" | "secondary" | "destructive" | "outline" => {
+    const getStatusVariant = (status?: string): "default" | "secondary" | "destructive" | "outline" | "accent" => {
         switch (status) {
-            case "completed": return "default"; // Using primary color for completed
-            case "pending": return "secondary";
-            case "draft": return "outline";
-            default: return "outline";
+            case "completed": return "accent"; // Green for completed
+            case "pending": return "outline"; // Yellow text on outline - check globals.css for text-yellow-800 if needed
+            case "draft": return "secondary"; // Gray for draft
+            default: return "secondary";
         }
     };
     
@@ -63,11 +63,18 @@ export default function DashboardPage() {
             default: return status || 'לא ידוע';
         }
     };
+    
+    const getStatusTextClass = (status?: string): string => {
+         switch (status) {
+            case "pending": return "text-yellow-800"; // From design spec
+            default: return "";
+        }
+    }
+
 
     const formatDate = (timestamp: any) => {
         if (!timestamp) return 'N/A';
         try {
-            // Firestore Timestamps have a toDate() method
             const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
             return format(date, 'd בMMMM yyyy, HH:mm', { locale: he });
         } catch (e) {
@@ -86,16 +93,16 @@ export default function DashboardPage() {
     return (
         <section className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <h1 className="text-3xl md:text-4xl font-extrabold text-primary-foreground/90">לוח הבקרה שלי</h1>
-                <Button onClick={() => router.push('/templates')} size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900">לוח הבקרה שלי</h1>
+                <Button onClick={() => router.push('/templates')} size="lg">
                     <PlusCircle className="ml-2 h-5 w-5" />
                     צור חוזה חדש
                 </Button>
             </div>
 
-            <Card className="shadow-xl border-primary/10">
+            <Card className="rounded-2xl shadow-lg">
                 <CardHeader>
-                    <CardTitle className="text-2xl font-bold text-primary-foreground/80">החוזים שלי</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-gray-900">החוזים שלי</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {isLoadingContracts && (
@@ -121,10 +128,10 @@ export default function DashboardPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="text-right">כותרת</TableHead>
-                                        <TableHead className="text-right">סטטוס</TableHead>
-                                        <TableHead className="text-right">עדכון אחרון</TableHead>
-                                        <TableHead className="text-right hidden sm:table-cell">צדדים</TableHead>
+                                        <TableHead className="text-right text-gray-600 font-semibold">כותרת</TableHead>
+                                        <TableHead className="text-right text-gray-600 font-semibold">סטטוס</TableHead>
+                                        <TableHead className="text-right text-gray-600 font-semibold">עדכון אחרון</TableHead>
+                                        <TableHead className="text-right hidden sm:table-cell text-gray-600 font-semibold">צדדים</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -134,14 +141,14 @@ export default function DashboardPage() {
                                             onClick={() => router.push(`/contracts/${contract.id}`)}
                                             className="cursor-pointer hover:bg-muted/50"
                                         >
-                                            <TableCell className="font-medium text-primary-foreground/90">{contract.title || 'ללא כותרת'}</TableCell>
+                                            <TableCell className="font-medium text-gray-900">{contract.title || 'ללא כותרת'}</TableCell>
                                             <TableCell>
-                                                <Badge variant={getStatusVariant(contract.status)} className="text-xs">
+                                                <Badge variant={getStatusVariant(contract.status)} className={`text-xs ${getStatusTextClass(contract.status)}`}>
                                                     {getStatusText(contract.status)}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">{formatDate(contract.lastUpdatedAt)}</TableCell>
-                                            <TableCell className="text-muted-foreground text-sm hidden sm:table-cell">
+                                            <TableCell className="text-gray-600 text-sm">{formatDate(contract.lastUpdatedAt)}</TableCell>
+                                            <TableCell className="text-gray-600 text-sm hidden sm:table-cell">
                                                 {contract.parties?.map(p => p.name).join(', ') || 'לא צוינו'}
                                             </TableCell>
                                         </TableRow>

@@ -43,16 +43,16 @@ export default function TemplatesPage() {
     return (
         <section className="space-y-10 md:space-y-12">
             <div className="text-center">
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-primary-foreground/90">
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">
                     ספריית תבניות החוזים
                 </h1>
-                <p className="mt-3 md:mt-4 max-w-2xl mx-auto text-md md:text-lg text-muted-foreground">
+                <p className="mt-3 md:mt-4 max-w-2xl mx-auto text-md md:text-lg text-gray-600">
                     מצא/י את התבנית המשפטית המושלמת לצרכים שלך. כל התבניות מותאמות לשוק הישראלי.
                 </p>
             </div>
 
             {error && (
-                <div className="text-center p-4 bg-destructive/10 text-destructive rounded-md">
+                <div className="text-center p-4 bg-destructive/10 text-destructive rounded-lg">
                     <p>{error}</p>
                     <Button onClick={() => window.location.reload()} variant="link" className="text-destructive">
                         נסה לרענן
