@@ -14,6 +14,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Progress } from "@/components/ui/progress";
 import ContractLivePreview from '@/components/contract/ContractLivePreview';
 
+// Add this function for static export compatibility
+export async function generateStaticParams() {
+  // Returning an empty array means Next.js won't pre-render any specific
+  // template creation pages at build time. They will be client-side rendered.
+  return [];
+}
+
 function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (...args: Parameters<F>) => void {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     return function executedFunction(...args: Parameters<F>) {
@@ -417,5 +424,3 @@ export default function ContractCreationPage() {
         </section>
     );
 }
-
-    

@@ -28,6 +28,13 @@ interface AuditLogItem {
   icon: React.ReactElement;
 }
 
+// Add this function for static export compatibility
+export async function generateStaticParams() {
+  // Returning an empty array means Next.js won't pre-render any specific
+  // contract pages at build time. They will be client-side rendered.
+  return [];
+}
+
 function interpolateWithDefaults(text: string, data: Record<string, string>): string {
   if (typeof text !== 'string') {
     return '';
@@ -278,7 +285,7 @@ export default function ContractViewPage() {
 
     return (
         <section className="space-y-8">
-            <Button onClick={() => router.push('/dashboard')} variant="ghost" className="flex items-center text-primary font-semibold mb-2 sm:mb-4">
+            <Button onClick={() => router.push('/dashboard')} variant="ghost" className="flex items-center text-gray-600 hover:text-primary font-semibold mb-2 sm:mb-4">
                 <ChevronRight className="w-5 h-5 ml-1" />
                 חזרה ללוח הבקרה
             </Button>

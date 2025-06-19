@@ -8,6 +8,13 @@ import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
+// Add this function for static export compatibility
+export async function generateStaticParams() {
+  // Returning an empty array means Next.js won't pre-render any specific
+  // template detail pages at build time. They will be client-side rendered or redirected.
+  return [];
+}
+
 export default function TemplateDetailPage() {
   const router = useRouter();
   const params = useParams();
