@@ -70,13 +70,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       photoURL: firebaseUser.photoURL,
     };
     setCurrentUser(appUser);
-    router.push(redirectPath);
+    // Check if redirect is trying to go to login or signup, if so redirect to dashboard
+    const currentSearchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const redirectTo = currentSearchParams?.get('redirect');
+
+    if (redirectTo && redirectTo !== '/login' && redirectTo !== '/signup') {
+        router.push(redirectTo);
+    } else {
+        router.push(redirectPath);
+    }
     return firebaseUser;
   };
 
-  const handleAuthError = (error: any, defaultMessage: string) => {
-    console.error(defaultMessage, error);
-    toast({ title: 'שגיאה', description: error.message || defaultMessage, variant: 'destructive' });
+  const handleAuthError = (error: any, defaultMessage: string, method?: 'google' | 'phone' | 'email') => {
+    console.error(`${method || 'Authentication'} error: `, error);
+    let description = error.message || defaultMessage;
+
+    if (method === 'google') {
+        switch (error.code) {
+            case 'auth/popup-closed-by-user':
+                description = 'חלון הכניסה של גוגל נסגר על ידך. נסה שוב.';
+                break;
+            case 'auth/cancelled-popup-request':
+                description = 'בקשת הכניסה עם גוגל בוטלה. נסה שוב.';
+                break;
+            case 'auth/popup-blocked':
+                description = 'חלון הכניסה של גוגל נחסם על ידי הדפדפן. אנא אפשר חלונות קופצים עבור אתר זה.';
+                break;
+            case 'auth/operation-not-allowed':
+                description = 'כניסה עם גוגל אינה מאופשרת. פנה לתמיכה.';
+                break;
+            case 'auth/account-exists-with-different-credential':
+                description = 'קיים כבר חשבון עם אימייל זה אך עם שיטת כניסה אחרת. נסה להתחבר בשיטה האחרת.';
+                break;
+        }
+    } else if (error.code === 'auth/api-key-not-valid') {
+        description = 'מפתח ה-API של Firebase אינו תקין. אנא בדוק את הגדרות הפרויקט.';
+    }
+    
+    toast({ title: 'שגיאה', description, variant: 'destructive' });
     return null;
   };
 
@@ -88,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await createUserProfileDocument(result.user);
       return handleAuthSuccess(result.user);
     } catch (error: any) {
-      return handleAuthError(error, 'הכניסה עם גוגל נכשלה.');
+      return handleAuthError(error, 'הכניסה עם גוגל נכשלה.', 'google');
     } finally {
       setIsFirebaseLoading(false);
     }
@@ -112,6 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast({ title: 'שגיאה בשליחת קוד', description, variant: 'destructive' });
       setIsFirebaseLoading(false);
       return null;
+    }  finally {
+        setIsFirebaseLoading(false); // Ensure loading is set to false in finally
     }
   };
 
@@ -122,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await createUserProfileDocument(result.user);
       return handleAuthSuccess(result.user);
     } catch (error: any) {
-      return handleAuthError(error, 'אימות הקוד נכשל.');
+      return handleAuthError(error, 'אימות הקוד נכשל.', 'phone');
     } finally {
       setIsFirebaseLoading(false);
     }
@@ -132,10 +166,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsFirebaseLoading(true);
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email, pass);
-      await createUserProfileDocument(user, { ...additionalData, email });
+      await createUserProfileDocument(user, { ...additionalData, email }); // Pass email in additionalData too
       return handleAuthSuccess(user);
-    } catch (error: any) {
-      return handleAuthError(error, 'יצירת החשבון נכשלה.');
+    } catch (error: any)
+     {
+      let customErrorMessage = 'יצירת החשבון נכשלה.';
+      if (error.code === 'auth/email-already-in-use') {
+        customErrorMessage = 'כתובת האימייל כבר בשימוש. נסה להתחבר או להשתמש באימייל אחר.';
+      }
+      return handleAuthError(error, customErrorMessage, 'email');
     } finally {
       setIsFirebaseLoading(false);
     }
@@ -145,11 +184,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsFirebaseLoading(true);
     try {
       const { user } = await signInWithEmailAndPassword(auth, email, pass);
-      // Profile should exist, but good to ensure consistency if needed
-      // await createUserProfileDocument(user); 
       return handleAuthSuccess(user);
     } catch (error: any) {
-      return handleAuthError(error, 'הכניסה נכשלה.');
+      let customErrorMessage = 'הכניסה נכשלה. בדוק אימייל וסיסמה.';
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        customErrorMessage = 'אימייל או סיסמה שגויים. אנא נסה שוב.';
+      }
+      return handleAuthError(error, customErrorMessage, 'email');
     } finally {
       setIsFirebaseLoading(false);
     }
