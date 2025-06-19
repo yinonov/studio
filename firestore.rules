@@ -1,0 +1,45 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users collection:
+    // Allow users to read and write their own profile.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Templates collection:
+    // Allow anyone to read templates.
+    // Writes to templates should typically be restricted (e.g., only from an admin tool or disabled from client).
+    match /templates/{templateId} {
+      allow read: if true;
+      allow write: if false; // Example: Disallow client-side writes. Manage templates via Firebase console or admin SDK.
+    }
+
+    // Contracts collection:
+    match /contracts/{contractId} {
+      // Allow authenticated users to create contracts if they are setting themselves as the owner.
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+
+      // Allow read if:
+      // 1. User is authenticated AND is the owner.
+      // 2. User is authenticated AND their email is in the sharedWith array (if sharedWith contains emails).
+      // 3. User is authenticated AND their UID is in the sharedWith array (if sharedWith contains UIDs).
+      // 4. User is authenticated AND their phone number is in the sharedWith array (if sharedWith contains phone numbers).
+      allow read: if request.auth != null &&
+                   (resource.data.ownerId == request.auth.uid ||
+                    (resource.data.sharedWith is list && request.auth.token.email in resource.data.sharedWith) ||
+                    (resource.data.sharedWith is list && request.auth.uid in resource.data.sharedWith) ||
+                    (resource.data.sharedWith is list && request.auth.token.phone_number in resource.data.sharedWith)
+                   );
+
+      // Allow update if user is authenticated and is the owner.
+      allow update: if request.auth != null && resource.data.ownerId == request.auth.uid;
+
+      // Allow delete if user is authenticated and is the owner.
+      allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
+    }
+  }
+}
