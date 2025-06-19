@@ -1,4 +1,3 @@
-
 // src/app/templates/[templateId]/page.tsx
 import { redirect } from 'next/navigation';
 
