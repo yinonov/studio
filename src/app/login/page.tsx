@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -133,7 +133,7 @@ export default function LoginPage() {
           <CardDescription>התחבר כדי לנהל את החוזים שלך</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-8 pb-6 sm:pb-8">
-          <div id="recaptcha-container" className="my-2"></div>
+          <div id="recaptcha-container" ref={recaptchaContainerRef} className="my-2"></div>
           <Button 
             onClick={handleGoogleSignIn} 
             variant="outline" 
