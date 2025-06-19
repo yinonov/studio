@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Progress } from "@/components/ui/progress";
 import ContractLivePreview from '@/components/contract/ContractLivePreview';
 
-// generateStaticParams removed as this is a Client Component
+// generateStaticParams MUST NOT be here as this is a Client Component
 
 function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (...args: Parameters<F>) => void {
     let timeout: ReturnType<typeof setTimeout> | null = null;
