@@ -33,11 +33,11 @@
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run lint",
         "npm --prefix \"$RESOURCE_DIR\" run build"
-      ]
+      ],
+      "runtime": "nodejs18"
     }
   ],
   "storage": {
     "rules": "storage.rules"
   }
 }
-
