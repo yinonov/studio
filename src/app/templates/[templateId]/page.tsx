@@ -4,13 +4,12 @@ import { redirect } from 'next/navigation';
 
 // No 'use client' here - this is a Server Component
 
-export async function generateStaticParams() {
-  // For `output: 'export'`, dynamic Server Components need this.
-  // Returning an empty array means Next.js won't pre-render any specific
-  // instances of this redirector page at build time.
-  // This satisfies the build requirement.
-  return [];
-}
+// generateStaticParams is no longer strictly required to prevent build errors
+// when not using output: 'export'. It can be removed for simplicity here
+// as this page's sole purpose is redirection.
+// export async function generateStaticParams() {
+//   return [];
+// }
 
 // Params will be { templateId: string }
 export default function TemplateRedirectPage({ params }: { params: { templateId: string } }) {
@@ -28,5 +27,3 @@ export default function TemplateRedirectPage({ params }: { params: { templateId:
   // However, React requires a component to return valid JSX or null.
   return null;
 }
-
-    

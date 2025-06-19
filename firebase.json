@@ -5,18 +5,22 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "public": "out",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
     ]
+    // "public": "out", // Removed for serverful deployment
+    // "rewrites": [ // Removed for serverful deployment
+    //   {
+    //     "source": "**",
+    //     "destination": "/index.html"
+    //   }
+    // ]
+    // With apphosting.yaml, Firebase CLI should handle rewrites to the App Hosting backend.
+    // If specific rewrites to App Hosting are needed, they would look like:
+    // "rewrites": [ { "source": "**", "apphosting": { "backendId": "your-backend-id" }} ]
+    // but often, this is implicit with apphosting.yaml.
   },
   "storage": {
     "rules": "storage.rules"
