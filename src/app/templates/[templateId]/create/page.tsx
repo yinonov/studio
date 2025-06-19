@@ -4,17 +4,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchTemplateById } from '@/firebase/templateServices';
-import { createDraftContract, updateContractData } from '@/firebase/contractServices';
-import type { Template, StoredContractData } from '@/types';
+import { fetchTemplateById, type Template } from '@/firebase/templateServices';
+import { createDraftContract, updateContractData, fetchContractById } from '@/firebase/contractServices';
 import FormInput from '@/components/shared/FormInput';
 import { Button } from '@/components/ui/button';
-import { Loader2, ChevronLeft, ChevronRight, ShieldCheck, CheckCircle } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Save, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Progress } from "@/components/ui/progress"
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
+import { Progress } from "@/components/ui/progress";
 import ContractLivePreview from '@/components/contract/ContractLivePreview';
 
 function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (...args: Parameters<F>) => void {
@@ -32,9 +29,9 @@ function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (..
 }
 
 const STEPS_CONFIG = [
-    { name: 'צדדים', fields: ['party1Name', 'party1Email', 'party2Name', 'party2Email'] },
-    { name: 'תנאים עיקריים', fields: ['address', 'rentAmount', 'startDate'] },
-    { name: 'סקירה ושליחה', fields: [] }
+    { name: 'צדדים וכותרת', fields: ['contractTitle', 'party1Name', 'party1Email', 'party2Name', 'party2Email'] },
+    { name: 'תנאים עיקריים', fields: ['address', 'rentAmount', 'startDate', 'serviceDescription', 'serviceFee', 'effectiveDate', 'confidentialInformationDescription', 'disclosingParty', 'receivingParty', 'additionalNotes'] }, // Added more fields
+    { name: 'סקירה וסיום', fields: [] }
 ];
 
 export default function ContractCreationPage() {
@@ -50,39 +47,43 @@ export default function ContractCreationPage() {
     const [contractId, setContractId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isPageLoading, setIsPageLoading] = useState(true);
-    const [signingUrl, setSigningUrl] = useState<string | null>(null);
     const [error, setError] = useState('');
     
     const debouncedSaveContract = useCallback(
-        debounce(async (cid: string | null, data: Record<string, string>) => {
-            if (!cid || Object.keys(data).length === 0) return;
+        debounce(async (cid: string | null, data: Record<string, string>, currentTemplate: Template | null) => {
+            if (!cid || Object.keys(data).length === 0 || !currentTemplate) return;
             setIsSaving(true);
             try {
                 const parties = [
                     { name: data.party1Name || '', email: data.party1Email || ''},
-                    { name: data.party2Name || '', email: data.party2Email || ''}
-                ].filter(p => p.name && p.email); 
+                    { name: data.party2Name || '', email: data.party2Name ? (data.party2Email || '') : ''} // Only add party2 if name exists
+                ].filter(p => p.name); // Filter out parties without a name
                 
-                const contractTitle = data.contractTitle || template?.title || 'חוזה ללא כותרת';
+                const contractTitle = data.contractTitle || currentTemplate?.title || 'חוזה ללא כותרת';
 
                 await updateContractData(cid, { 
                     formData: data, 
                     parties,
-                    title: contractTitle
+                    title: contractTitle,
+                    status: 'draft' // Ensure it stays draft during auto-save
                 });
             } catch (err) {
                 console.error("Error auto-saving draft:", err);
-                toast({ title: "שגיאה בשמירת טיוטה", variant: "destructive" });
+                toast({ title: "שגיאה בשמירת טיוטה אוטומטית", variant: "destructive" });
             } finally {
                 setIsSaving(false);
             }
         }, 1500), 
-    [template?.title, toast]);
+    []);
 
     useEffect(() => {
         if (isFirebaseLoading) return;
         if (!currentUser) {
-            router.push(`/login?redirect=/templates/${templateId}/create`);
+            const redirectPath = templateId ? `/templates/${templateId}/create` : '/templates';
+            const queryParams = new URLSearchParams(window.location.search);
+            const existingContractId = queryParams.get('contractId');
+            const finalRedirect = existingContractId ? `${redirectPath}?contractId=${existingContractId}` : redirectPath;
+            router.push(`/login?redirect=${encodeURIComponent(finalRedirect)}`);
             return;
         }
         if (!templateId) {
@@ -104,27 +105,41 @@ export default function ContractCreationPage() {
                 
                 const queryParams = new URLSearchParams(window.location.search);
                 const existingContractId = queryParams.get('contractId');
+                let initialData: Record<string, string> = {};
+                (fetchedTemplate.fields || []).forEach(field => {
+                    if (field.id && fetchedTemplate.defaultValues && fetchedTemplate.defaultValues[field.id]) {
+                         initialData[field.id] = fetchedTemplate.defaultValues[field.id];
+                    } else {
+                         initialData[field.id] = '';
+                    }
+                });
+                if (!initialData.contractTitle && fetchedTemplate.title) {
+                   initialData.contractTitle = fetchedTemplate.title;
+                }
+
 
                 if (existingContractId) {
-                    setContractId(existingContractId);
-                     toast({title:"טיוטה נטענה", description: "ממשיך עריכת טיוטה קיימת."});
-
-                } else {
-                    const newContractId = await createDraftContract(currentUser.uid, { id: fetchedTemplate.id, title: fetchedTemplate.title });
-                    if (newContractId) {
-                        setContractId(newContractId);
+                    const existingContract = await fetchContractById(existingContractId);
+                    if (existingContract && existingContract.ownerId === currentUser.uid) {
+                        setContractId(existingContractId);
+                        // Merge existing form data with template defaults, prioritizing existing data
+                        setFormData(prev => ({...initialData, ...existingContract.formData, contractTitle: existingContract.title || initialData.contractTitle || fetchedTemplate.title }));
+                        toast({title:"טיוטה נטענה", description: "ממשיך עריכת טיוטה קיימת."});
+                    } else if (existingContract) {
+                         setError("אין לך הרשאה לערוך טיוטה זו.");
+                         toast({ title: "שגיאת הרשאה", description: "אינך מורשה לערוך טיוטה זו.", variant: "destructive"});
                     } else {
-                        throw new Error("Failed to create draft contract.");
+                         toast({ title: "שגיאה", description: "טיוטה קיימת לא נמצאה.", variant: "destructive"});
+                         // Proceed to create a new draft
+                         const newContractId = await createDraftContract(currentUser.uid, fetchedTemplate);
+                         setContractId(newContractId);
+                         setFormData(initialData);
                     }
+                } else {
+                    const newContractId = await createDraftContract(currentUser.uid, fetchedTemplate);
+                    setContractId(newContractId);
+                    setFormData(initialData);
                 }
-                const initialData: Record<string, string> = {};
-                (fetchedTemplate.fields || []).forEach(field => {
-                     if (field.id === 'contractTitle') initialData[field.id] = fetchedTemplate.title; 
-                });
-                 if (!initialData.contractTitle && fetchedTemplate.title) {
-                    initialData.contractTitle = fetchedTemplate.title;
-                }
-                setFormData(initialData);
 
             } catch (err: any) {
                 setError("שגיאה בטעינת תבנית או יצירת טיוטה.");
@@ -138,10 +153,10 @@ export default function ContractCreationPage() {
     }, [currentUser, isFirebaseLoading, router, templateId, toast]);
 
     useEffect(() => {
-        if (contractId && Object.keys(formData).length > 0) {
-            debouncedSaveContract(contractId, formData);
+        if (contractId && Object.keys(formData).length > 0 && template) { // Pass template to debouncedSave
+            debouncedSaveContract(contractId, formData, template);
         }
-    }, [formData, contractId, debouncedSaveContract]);
+    }, [formData, contractId, template, debouncedSaveContract]);
 
     const handleDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -164,28 +179,32 @@ export default function ContractCreationPage() {
         if (currentStep > 1) setCurrentStep(currentStep - 1);
     };
 
-    const handleSendForSignature = async () => {
-        if (!contractId) {
-            toast({ title: "שגיאה", description: "מזהה חוזה לא קיים.", variant: "destructive" });
+    const handleFinalizeAndSave = async () => {
+        if (!contractId || !template) {
+            toast({ title: "שגיאה", description: "מזהה חוזה או תבנית לא קיימים.", variant: "destructive" });
             return;
         }
         setIsSaving(true); setError('');
         try {
-             const contractTitle = formData.contractTitle || template?.title || 'חוזה ללא כותרת';
-            await updateContractData(contractId, { formData, status: 'pending', title: contractTitle }); 
+            const parties = [
+                { name: formData.party1Name || '', email: formData.party1Email || ''},
+                { name: formData.party2Name || '', email: formData.party2Name ? (formData.party2Email || '') : ''}
+            ].filter(p => p.name);
+            
+            const contractTitle = formData.contractTitle || template?.title || 'חוזה ללא כותרת';
 
-            const initiateSigningSession = httpsCallable(functions, 'initiateSigningSession');
-            const result: any = await initiateSigningSession({ contractId });
-            if (result.data.signingUrl) {
-                setSigningUrl(result.data.signingUrl);
-                 await updateContractData(contractId, { signingUrl: result.data.signingUrl });
-                toast({ title: "החוזה נשלח לחתימה!", description: "יוטען ממשק החתימה."});
-            } else {
-                throw new Error(result.data.error || "לא התקבלה כתובת URL לחתימה.");
-            }
+            await updateContractData(contractId, { 
+                formData, 
+                parties,
+                title: contractTitle,
+                status: 'draft' // Explicitly save as draft
+            }); 
+            toast({ title: "טיוטה נשמרה!", description: "החוזה נשמר כטיוטה."});
+            router.push(`/contracts/${contractId}`);
+
         } catch (err: any) {
-            setError("התנעת תהליך החתימה נכשלה.");
-            toast({ title: "שגיאה בשליחה לחתימה", description: err.message, variant: "destructive"});
+            setError("שמירת החוזה הסופית נכשלה.");
+            toast({ title: "שגיאה בשמירת החוזה", description: err.message, variant: "destructive"});
             console.error(err);
         } finally {
             setIsSaving(false);
@@ -197,16 +216,16 @@ export default function ContractCreationPage() {
         
         const currentStepConfig = STEPS_CONFIG[currentStep - 1];
         
-        if (currentStep === STEPS_CONFIG.length) { // Review and Send step
+        if (currentStep === STEPS_CONFIG.length) { // Review and Save step
              return (
                 <div className="text-center space-y-6">
-                    <h3 className="text-2xl font-bold">סקירה ושליחה לחתימה</h3>
+                    <h3 className="text-2xl font-bold">סקירה ושמירת טיוטה</h3>
                     <p className="text-muted-foreground">
-                        אנא בדוק/י את כל הפרטים שהזנת בתצוגה המקדימה. לחיצה על הכפתור תכין את החוזה ותשלח אותו לחתימת הצדדים.
+                        אנא בדוק/י את כל הפרטים שהזנת בתצוגה המקדימה. לחיצה על הכפתור תשמור את החוזה כטיוטה ותעביר אותך לדף פרטי החוזה.
                     </p>
-                    <Button onClick={handleSendForSignature} size="lg" variant="accent" className="font-semibold" disabled={isSaving}>
-                        {isSaving ? <Loader2 className="animate-spin ml-2" /> : <ShieldCheck className="ml-2 h-5 w-5" />}
-                        {isSaving ? 'מעבד ושולח...' : 'שלח חוזה לחתימה'}
+                    <Button onClick={handleFinalizeAndSave} size="lg" variant="accent" className="font-semibold" disabled={isSaving}>
+                        {isSaving ? <Loader2 className="animate-spin ml-2" /> : <Save className="ml-2 h-5 w-5" />}
+                        {isSaving ? 'שומר...' : 'שמור טיוטה ועבור לפרטים'}
                     </Button>
                     {error && <p className="text-destructive text-sm mt-4">{error}</p>}
                 </div>
@@ -214,35 +233,66 @@ export default function ContractCreationPage() {
         }
 
         const fieldsForCurrentStep = template.fields?.filter(field => currentStepConfig.fields.includes(field.id)) || [];
+        
+        // Special handling for first step to group party fields if not already in template.fields
+        if (currentStep === 1) {
+            const partyFieldsConfig = [
+                { id: 'contractTitle', label: 'כותרת החוזה (פנימי)', type: 'text', placeholder: "לדוגמה: הסכם שכירות הרצל 1", required: true },
+                { id: 'party1Name', label: "שם צד א'", type: 'text', placeholder: "ישראל ישראלי", required: true, group: "צד א'" },
+                { id: 'party1Email', label: "אימייל צד א'", type: 'email', placeholder: "israel@example.com", required: true, group: "צד א'" },
+                { id: 'party2Name', label: "שם צד ב'", type: 'text', placeholder: "שרה לוי", required: false, group: "צד ב'" },
+                { id: 'party2Email', label: "אימייל צד ב'", type: 'email', placeholder: "sarah@example.com", required: false, group: "צד ב'" },
+            ];
+
+            // Ensure template fields don't duplicate these, or use template's version if more specific
+            const combinedFields = partyFieldsConfig.map(pf => {
+                 const templateField = template.fields?.find(f => f.id === pf.id);
+                 return templateField ? {...templateField, group: pf.group } : pf;
+            });
+            
+            let lastGroup = '';
+            return (
+                 <div className="space-y-6">
+                    {combinedFields.map(field => {
+                        const showGroupHeader = field.group && field.group !== lastGroup;
+                        if (field.group) lastGroup = field.group;
+                        return (
+                            <React.Fragment key={field.id}>
+                                {showGroupHeader && <h3 className="text-xl font-bold border-b pb-2 pt-4">{field.group}</h3>}
+                                <FormInput 
+                                    key={field.id} /* Use field.id for key */
+                                    label={field.label} 
+                                    name={field.id} 
+                                    type={field.type as 'text' | 'email'} 
+                                    value={formData[field.id] || ''} 
+                                    onChange={handleDataChange} 
+                                    placeholder={field.placeholder}
+                                    required={field.required}
+                                />
+                            </React.Fragment>
+                        );
+                    })}
+                </div>
+            );
+        }
+
 
         return (
             <div className="space-y-6">
-                {currentStep === 1 && (
-                    <>
-                        <FormInput label="כותרת החוזה (פנימי)" name="contractTitle" value={formData.contractTitle || template.title || ''} onChange={handleDataChange} placeholder="לדוגמה: הסכם שכירות הרצל 1" required={true}/>
-                        <h3 className="text-xl font-bold border-b pb-2 pt-4">צד א' (לדוגמה: משכיר/נותן שירות)</h3>
-                        <FormInput label="שם מלא" name="party1Name" value={formData.party1Name || ''} onChange={handleDataChange} placeholder="ישראל ישראלי" required={template.fields?.find(f=>f.id === 'party1Name')?.required ?? true} />
-                        <FormInput label="אימייל" name="party1Email" type="email" value={formData.party1Email || ''} onChange={handleDataChange} placeholder="israel@example.com" required={template.fields?.find(f=>f.id === 'party1Email')?.required ?? true} />
-                        
-                        <h3 className="text-xl font-bold border-b pb-2 pt-4">צד ב' (לדוגמה: שוכר/לקוח)</h3>
-                        <FormInput label="שם מלא" name="party2Name" value={formData.party2Name || ''} onChange={handleDataChange} placeholder="משה לוי" required={template.fields?.find(f=>f.id === 'party2Name')?.required ?? true} />
-                        <FormInput label="אימייל" name="party2Email" type="email" value={formData.party2Email || ''} onChange={handleDataChange} placeholder="moshe@example.com" required={template.fields?.find(f=>f.id === 'party2Email')?.required ?? true} />
-                    </>
-                )}
-                {currentStep !== 1 && fieldsForCurrentStep.map(field => (
+                {fieldsForCurrentStep.map(field => (
                      <FormInput 
                         key={field.id}
                         label={field.label} 
                         name={field.id} 
-                        type={field.type} 
+                        type={field.type as 'text' | 'number' | 'date' | 'textarea'} // Cast for safety
                         value={formData[field.id] || ''} 
                         onChange={handleDataChange} 
                         placeholder={field.placeholder}
                         required={field.required}
                     />
                 ))}
-                {currentStep !== 1 && fieldsForCurrentStep.length === 0 && (
-                    <p className="text-muted-foreground">אין שדות מוגדרים לשלב זה בתבנית.</p>
+                {fieldsForCurrentStep.length === 0 && currentStep !== STEPS_CONFIG.length && (
+                    <p className="text-muted-foreground">אין שדות מוגדרים לשלב זה בתבנית. לחץ על "הבא" כדי להמשיך.</p>
                 )}
             </div>
         );
@@ -256,32 +306,21 @@ export default function ContractCreationPage() {
             </div>
         );
     }
-    
-    if (signingUrl) {
-        return (
-            <Card className="rounded-2xl shadow-lg">
-                <CardHeader>
-                    <CardTitle className="text-2xl text-center">ממשק חתימה</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <iframe 
-                        src={signingUrl} 
-                        title="חתימת חוזה" 
-                        className="w-full h-[70vh] sm:h-[80vh] border-0 rounded-md shadow-inner"
-                        allow="camera;microphone"
-                    ></iframe>
-                     <Button onClick={() => router.push(`/contracts/${contractId}`)} variant="link" className="mt-4">
-                        חזור לפרטי החוזה
-                    </Button>
-                </CardContent>
-            </Card>
-        );
-    }
-    
-    if (!template) {
+        
+    if (!template && !isPageLoading) { // Check after loading is complete
         return (
             <div className="text-center py-10">
                 <p className="text-xl text-destructive mb-4">{error || "שגיאה: לא ניתן היה לטעון את תבנית החוזה."}</p>
+                <Button onClick={() => router.push('/templates')} variant="outline" className="mt-4">חזור למאגר התבניות</Button>
+            </div>
+        );
+    }
+    
+    // If there's a general error AND template is also null (meaning loading template might have failed)
+    if (error && !template) {
+         return (
+            <div className="text-center py-10">
+                <p className="text-xl text-destructive mb-4">{error}</p>
                 <Button onClick={() => router.push('/templates')} variant="outline" className="mt-4">חזור למאגר התבניות</Button>
             </div>
         );
@@ -292,7 +331,7 @@ export default function ContractCreationPage() {
     return (
         <section className="space-y-8">
             <div className="text-center">
-                <h1 className="text-3xl md:text-4xl font-extrabold">יצירת: {formData.contractTitle || template.title}</h1>
+                <h1 className="text-3xl md:text-4xl font-extrabold">יצירת: {formData.contractTitle || template?.title || 'טעינת כותרת...'}</h1>
                 <p className="mt-2 text-md text-muted-foreground">מלא/י את הפרטים הבאים ליצירת החוזה. הטיוטה נשמרת אוטומטית.</p>
             </div>
 
@@ -332,7 +371,8 @@ export default function ContractCreationPage() {
                             <CardTitle className="text-2xl">{STEPS_CONFIG[currentStep-1].name}</CardTitle>
                         </CardHeader>
                         <CardContent className="min-h-[300px] md:min-h-[400px]">
-                            {renderStepContent()}
+                            {error && !template && <p className="text-destructive">{error}</p>} {/* Show error here if template failed to load but page didn't fully stop */}
+                            {template && renderStepContent()}
                         </CardContent>
                         <CardFooter className="flex justify-between items-center mt-6 pt-6 border-t">
                              <Button 
@@ -344,24 +384,38 @@ export default function ContractCreationPage() {
                                 <ChevronRight className="ml-2 w-5 h-5" />
                                 הקודם
                             </Button>
-                            <Button 
-                                onClick={nextStep} 
-                                className="font-semibold" 
-                                disabled={currentStep >= STEPS_CONFIG.length || isSaving}
-                                variant={currentStep === STEPS_CONFIG.length -1 ? "accent" : "default"}
-                            >
-                                {currentStep === STEPS_CONFIG.length -1 ? "סקירה ושליחה" : "הבא"}
-                                <ChevronLeft className="mr-2 w-5 h-5" />
-                            </Button>
+                            {currentStep < STEPS_CONFIG.length ? (
+                                <Button 
+                                    onClick={nextStep} 
+                                    className="font-semibold" 
+                                    disabled={isSaving}
+                                    variant={currentStep === STEPS_CONFIG.length -1 ? "accent" : "default"}
+                                >
+                                    {currentStep === STEPS_CONFIG.length -1 ? "סקירה וסיום" : "הבא"}
+                                    <ChevronLeft className="mr-2 w-5 h-5" />
+                                </Button>
+                            ) : (
+                                 <Button 
+                                    onClick={handleFinalizeAndSave} 
+                                    size="lg" 
+                                    variant="accent" 
+                                    className="font-semibold" 
+                                    disabled={isSaving}
+                                >
+                                    {isSaving ? <Loader2 className="animate-spin ml-2" /> : <Save className="ml-2 h-5 w-5" />}
+                                    {isSaving ? 'שומר...' : 'שמור טיוטה ועבור לפרטים'}
+                                </Button>
+                            )}
                         </CardFooter>
                     </Card>
                 </div>
                 
                 <div className="lg:col-span-4 order-2 lg:order-3 lg:sticky lg:top-28 self-start h-fit">
-                   <ContractLivePreview template={template} formData={formData} contractTitle={formData.contractTitle || template.title} />
+                   <ContractLivePreview template={template} formData={formData} contractTitle={formData.contractTitle || template?.title} />
                 </div>
             </div>
         </section>
     );
 }
 
+    

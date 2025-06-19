@@ -8,7 +8,7 @@ import { fetchContractById, updateContractData } from '@/firebase/contractServic
 import type { StoredContractData } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Download, Share2, FileText, CheckCircle, User, ChevronRight, Edit, Trash2, Copy, Phone, Mail } from 'lucide-react';
+import { Loader2, Download, Share2, FileText, CheckCircle, User, ChevronRight, Edit, Trash2, Copy, Phone, Mail, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -16,6 +16,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/lib/firebase';
+import { fetchTemplateById, type Template } from '@/firebase/templateServices';
+
 
 interface AuditLogItem {
   action: string;
@@ -23,6 +27,25 @@ interface AuditLogItem {
   date: string;
   icon: React.ReactElement;
 }
+
+function interpolateWithDefaults(text: string, data: Record<string, string>): string {
+  if (typeof text !== 'string') {
+    return '';
+  }
+  return text.replace(/\{\{(.+?)\}\}/g, (_match, captured) => {
+    const parts = captured.split('||');
+    const fieldName = parts[0].trim();
+    const defaultValue = parts.length > 1 ? parts[1].trim() : `[${fieldName}]`;
+    
+    const valueFromData = data[fieldName];
+
+    if (valueFromData !== undefined && valueFromData !== null && valueFromData !== '') {
+      return String(valueFromData);
+    }
+    return defaultValue;
+  });
+}
+
 
 export default function ContractViewPage() {
     const { currentUser, isFirebaseLoading } = useAuth();
@@ -32,10 +55,11 @@ export default function ContractViewPage() {
     const { toast } = useToast();
 
     const [contract, setContract] = useState<StoredContractData | null>(null);
+    const [template, setTemplate] = useState<Template | null>(null);
     const [isLoadingContract, setIsLoadingContract] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [shareIdentifier, setShareIdentifier] = useState('');
-    const [isSharing, setIsSharing] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false); // General processing state
 
     const isOwner = contract && currentUser && contract.ownerId === currentUser.uid;
 
@@ -73,7 +97,10 @@ export default function ContractViewPage() {
                     setContract(null);
                 } else {
                     setContract(fetchedContract);
-                    // Access check will be done after contract is set and currentUser is available
+                    if (fetchedContract.templateId) {
+                        const fetchedTemplate = await fetchTemplateById(fetchedContract.templateId);
+                        setTemplate(fetchedTemplate);
+                    }
                 }
             } catch (err: any) {
                 console.error("Error fetching contract:", err);
@@ -110,12 +137,13 @@ export default function ContractViewPage() {
         }
     };
 
-    const getStatusTextClass = (status?: string): string => {
-        switch (status) {
-           case "pending": return "text-yellow-800";
+   const getStatusTextClass = (status?: string): string => {
+       switch (status) {
+           case "pending": return "text-yellow-800"; // Tailwind class from spec
            default: return "";
        }
-   }
+   };
+
 
     const formatDate = (timestamp: any) => {
         if (!timestamp) return 'N/A';
@@ -130,37 +158,38 @@ export default function ContractViewPage() {
     const handleShareContract = async () => {
         if (!contract || !shareIdentifier.trim() || !isOwner) return;
 
-        const normalizedIdentifier = shareIdentifier.trim();
-        if (normalizedIdentifier === currentUser?.email || normalizedIdentifier === currentUser?.phoneNumber) {
+        const normalizedIdentifier = shareIdentifier.trim().toLowerCase();
+        if ((currentUser?.email && normalizedIdentifier === currentUser.email.toLowerCase()) || 
+            (currentUser?.phoneNumber && normalizedIdentifier === currentUser.phoneNumber)) {
             toast({ title: "שגיאה", description: "לא ניתן לשתף חוזה עם עצמך.", variant: "destructive" });
             return;
         }
-
-        setIsSharing(true);
+        
+        setIsProcessing(true);
         try {
-            const currentSharedWith = contract.sharedWith || [];
-            if (currentSharedWith.map(s => s.toLowerCase()).includes(normalizedIdentifier.toLowerCase())) {
+            const currentSharedWith = contract.sharedWith?.map(s => s.toLowerCase()) || [];
+            if (currentSharedWith.includes(normalizedIdentifier)) {
                 toast({ title: "מידע", description: "החוזה כבר משותף עם משתמש זה.", variant: "default" });
                 setShareIdentifier('');
-                setIsSharing(false);
+                setIsProcessing(false);
                 return;
             }
-            const updatedSharedWith = [...currentSharedWith, normalizedIdentifier];
+            const updatedSharedWith = [...(contract.sharedWith || []), shareIdentifier.trim()]; // Keep original casing for display
             await updateContractData(contract.id, { sharedWith: updatedSharedWith });
             setContract(prev => prev ? { ...prev, sharedWith: updatedSharedWith } : null);
-            toast({ title: "הצלחה", description: `החוזה שותף עם ${normalizedIdentifier}.` });
+            toast({ title: "הצלחה", description: `החוזה שותף עם ${shareIdentifier.trim()}.` });
             setShareIdentifier('');
         } catch (err) {
             console.error("Error sharing contract:", err);
             toast({ title: "שגיאה", description: "שיתוף החוזה נכשל.", variant: "destructive" });
         } finally {
-            setIsSharing(false);
+            setIsProcessing(false);
         }
     };
 
     const handleRemoveShare = async (identifierToRemove: string) => {
         if (!contract || !isOwner) return;
-        setIsSharing(true);
+        setIsProcessing(true);
         try {
             const updatedSharedWith = contract.sharedWith?.filter(u => u.toLowerCase() !== identifierToRemove.toLowerCase()) || [];
             await updateContractData(contract.id, { sharedWith: updatedSharedWith });
@@ -170,7 +199,7 @@ export default function ContractViewPage() {
             console.error("Error removing share:", err);
             toast({ title: "שגיאה", description: "הסרת השיתוף נכשלה.", variant: "destructive" });
         } finally {
-            setIsSharing(false);
+            setIsProcessing(false);
         }
     };
     
@@ -182,6 +211,37 @@ export default function ContractViewPage() {
         }
     };
 
+    const handleSendForSignature = async () => {
+        if (!contractId || !isOwner || (contract.status !== 'draft' && contract.status !== 'pending')) return;
+        setIsProcessing(true);
+        setError('');
+        try {
+            // Update status to 'pending' if it's 'draft'
+            if (contract.status === 'draft') {
+                await updateContractData(contractId, { status: 'pending' });
+                setContract(prev => prev ? { ...prev, status: 'pending' } : null);
+            }
+            
+            const initiateSigningSession = httpsCallable(functions, 'initiateSigningSession');
+            const result: any = await initiateSigningSession({ contractId });
+            
+            if (result.data.signingUrl) {
+                await updateContractData(contractId, { signingUrl: result.data.signingUrl, status: 'pending' });
+                setContract(prev => prev ? { ...prev, signingUrl: result.data.signingUrl, status: 'pending' } : null);
+                toast({ title: "מוכן לחתימה!", description: "ממשק החתימה יטען כעת."});
+            } else {
+                throw new Error(result.data.error || "לא התקבלה כתובת URL לחתימה מהשרת.");
+            }
+        } catch (err: any) {
+            setError("התנעת תהליך החתימה נכשלה. ודא שפונקציית השרת `initiateSigningSession` פרוסה ועובדת כראוי.");
+            toast({ title: "שגיאה בשליחה לחתימה", description: err.message, variant: "destructive"});
+            console.error(err);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+
     if (isLoadingContract || isFirebaseLoading) {
         return (
             <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -191,7 +251,7 @@ export default function ContractViewPage() {
         );
     }
 
-    if (error) {
+    if (error && !contract) { // Only show full page error if contract couldn't be loaded at all
         return (
             <div className="text-center py-10">
                 <p className="text-xl text-destructive mb-4">{error}</p>
@@ -199,7 +259,7 @@ export default function ContractViewPage() {
             </div>
         );
     }
-
+    
     if (!contract || !currentUser || !hasAccess()) { 
         return (
              <div className="text-center py-10">
@@ -210,8 +270,8 @@ export default function ContractViewPage() {
     }
     
     const auditLog: AuditLogItem[] = [
-        { action: "חוזה נוצר", user: "את/ה", date: formatDate(contract.createdAt), icon: <FileText className="text-primary" /> },
-        (contract.status === 'pending' || contract.status === 'completed') && { action: "נשלח לחתימה", user: "את/ה", date: formatDate(contract.lastUpdatedAt), icon: <Share2 className="text-gray-500" /> },
+        { action: "חוזה נוצר", user: contract.ownerId === currentUser.uid ? "את/ה" : "הבעלים", date: formatDate(contract.createdAt), icon: <FileText className="text-primary" /> },
+        (contract.status === 'pending' || contract.status === 'completed') && contract.signingUrl && { action: "נשלח לחתימה", user: contract.ownerId === currentUser.uid ? "את/ה" : "הבעלים", date: formatDate(contract.lastUpdatedAt), icon: <Send className="text-blue-500" /> },
         contract.status === 'completed' && { action: "החוזה נחתם", user: "כל הצדדים", date: formatDate(contract.lastUpdatedAt), icon: <CheckCircle className="text-accent" /> }
     ].filter(Boolean) as AuditLogItem[];
 
@@ -227,8 +287,8 @@ export default function ContractViewPage() {
                 <CardHeader className="bg-card border-b p-4 sm:p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div className="text-right sm:text-right">
-                            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">{contract.title || 'חוזה ללא כותרת'}</h1>
-                            <CardDescription className="mt-1 text-xs sm:text-sm text-gray-600">
+                            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">{contract.title || 'חוזה ללא כותרת'}</h1>
+                            <CardDescription className="mt-1 text-xs sm:text-sm text-muted-foreground">
                                 נוצר ב: {formatDate(contract.createdAt)} | עדכון אחרון: {formatDate(contract.lastUpdatedAt)}
                             </CardDescription>
                         </div>
@@ -236,14 +296,25 @@ export default function ContractViewPage() {
                              <Badge variant={getStatusVariant(contract.status)} className={`text-sm px-3 py-1 self-start sm:self-auto ${getStatusTextClass(contract.status)}`}>
                                 {getStatusText(contract.status)}
                             </Badge>
-                            <div className="flex gap-2 mt-2 sm:mt-0">
+                            <div className="flex gap-2 mt-2 sm:mt-0 flex-wrap justify-start sm:justify-end">
                                 <Button variant="secondary" size="sm" disabled>
                                     <Download className="ml-2 h-4 w-4"/>הורד PDF (בקרוב)
                                 </Button>
-                                {contract.status === 'draft' && isOwner && (
+                                {isOwner && contract.status === 'draft' && (
                                    <Button variant="outline" size="sm" onClick={() => router.push(`/templates/${contract.templateId}/create?contractId=${contract.id}`)}>
                                        <Edit className="ml-2 h-4 w-4"/>ערוך טיוטה
                                    </Button>
+                                )}
+                                 {isOwner && (contract.status === 'draft' || (contract.status === 'pending' && !contract.signingUrl)) && (
+                                    <Button 
+                                        variant="default" 
+                                        size="sm" 
+                                        onClick={handleSendForSignature}
+                                        disabled={isProcessing}
+                                    >
+                                        {isProcessing ? <Loader2 className="ml-2 h-4 w-4 animate-spin"/> : <Send className="ml-2 h-4 w-4"/>}
+                                        {contract.status === 'draft' ? 'שלח לחתימה' : 'הכן מחדש לחתימה'}
+                                    </Button>
                                 )}
                                 <Button variant="outline" size="sm" onClick={handleCopyLink}>
                                     <Copy className="ml-2 h-4 w-4"/>העתק קישור
@@ -255,56 +326,68 @@ export default function ContractViewPage() {
 
                 <CardContent className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2">
-                        <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">תצוגה מקדימה של המסמך</h3>
-                        <ScrollArea className="h-[500px] md:h-[600px] border rounded-lg bg-gray-50 p-4 shadow-inner">
-                            <div className="prose prose-sm max-w-none text-right leading-relaxed text-gray-600">
-                                <h4 className="text-center font-bold text-lg mb-4 text-gray-900">{contract.title}</h4>
-                                <p><strong>תאריך:</strong> {formatDate(contract.createdAt)}</p>
-                                <hr className="my-3"/>
-                                {contract.formData?.party1Name && <p><strong>צד א':</strong> {contract.formData.party1Name} ({contract.formData.party1Email || 'אין אימייל'})</p>}
-                                {contract.formData?.party2Name && <p><strong>צד ב':</strong> {contract.formData.party2Name} ({contract.formData.party2Email || 'אין אימייל'})</p>}
-                                <hr className="my-3"/>
-                                {Object.entries(contract.formData || {}).map(([key, value]) => {
-                                    if (key.startsWith('party') || !value) return null;
-                                    const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                                    return <p key={key}><strong>{label}:</strong> {String(value)}</p>;
-                                })}
-                                <br />
-                                <p className="text-center text-muted-foreground mt-6">[... שאר הטקסט המשפטי של החוזה יוצג כאן ...]</p>
-                                {contract.customClauses && contract.customClauses.length > 0 && (
-                                    <>
-                                        <h5 className="font-semibold mt-4 text-gray-900">סעיפים מותאמים אישית:</h5>
-                                        {contract.customClauses.map((clause, idx) => (
-                                            <p key={idx} className="text-xs mt-1 whitespace-pre-wrap">{clause.legalWording}</p>
-                                        ))}
-                                    </>
-                                )}
-                            </div>
-                        </ScrollArea>
-                         {contract.signingUrl && contract.status === 'pending' && (
-                             <div className="mt-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">ממשק חתימה</h3>
+                        {error && <p className="text-destructive mb-4">{error}</p>}
+                        {contract.status === 'pending' && contract.signingUrl ? (
+                             <div className="mt-0">
+                                <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">ממשק חתימה</h3>
                                 <iframe 
                                     src={contract.signingUrl} 
                                     title="חתימת חוזה" 
-                                    className="w-full h-[60vh] border rounded-lg shadow-inner"
+                                    className="w-full h-[60vh] sm:h-[70vh] border rounded-lg shadow-inner"
+                                    allow="camera;microphone" // Required by some signing providers
                                 ></iframe>
                              </div>
-                         )}
+                        ) : (
+                            <>
+                                <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">תצוגה מקדימה של המסמך</h3>
+                                <ScrollArea className="h-[500px] md:h-[600px] border rounded-lg bg-muted/50 p-4 shadow-inner">
+                                    <div className="prose prose-sm max-w-none text-right leading-relaxed text-foreground/80">
+                                        <h4 className="text-center font-bold text-lg mb-4 text-foreground">{contract.title}</h4>
+                                        {template?.baseClauses && template.baseClauses.length > 0 ? (
+                                          template.baseClauses.map((clause, index) => (
+                                            <p 
+                                              key={index} 
+                                              className="mb-3" 
+                                              dangerouslySetInnerHTML={{ __html: interpolateWithDefaults(clause, contract.formData || {}).replace(/\n/g, '<br />') }} 
+                                            />
+                                          ))
+                                        ) : (
+                                           Object.entries(contract.formData || {}).map(([key, value]) => {
+                                                if (key.startsWith('party') || !value) return null;
+                                                const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                                                return <p key={key}><strong>{label}:</strong> {String(value)}</p>;
+                                            }) 
+                                        )}
+                                        
+                                        {contract.customClauses && contract.customClauses.length > 0 && (
+                                            <>
+                                                <h5 className="font-semibold mt-4 text-foreground">סעיפים מותאמים אישית:</h5>
+                                                {contract.customClauses.map((clause, idx) => (
+                                                    <p key={idx} className="text-xs mt-1 whitespace-pre-wrap">{clause.legalWording}</p>
+                                                ))}
+                                            </>
+                                        )}
+                                        {(!template?.baseClauses || template.baseClauses.length === 0) && Object.keys(contract.formData || {}).length === 0 && (
+                                           <p className="text-center text-muted-foreground mt-6">[ אין תוכן להצגה בחוזה זה ]</p>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            </>
+                        )}
                     </div>
 
                     <div className="lg:col-span-1 space-y-6">
-                        <Card className="rounded-2xl shadow-lg">
+                        <Card className="rounded-2xl shadow-md">
                             <CardHeader>
-                                <CardTitle className="text-lg font-semibold flex items-center justify-between text-gray-900">
-                                    <span>צדדים בחוזה</span> <User className="w-5 h-5 text-gray-500" />
+                                <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
+                                    <span>צדדים בחוזה</span> <User className="w-5 h-5 text-muted-foreground" />
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <ul className="space-y-2 text-sm text-gray-600">
+                                <ul className="space-y-2 text-sm text-muted-foreground">
                                     {contract.parties && contract.parties.length > 0 ? contract.parties.map((party, i) => (
                                         <li key={i} className="flex justify-between items-center p-2 bg-muted/30 rounded-md">
-                                            <span className="font-medium text-gray-900">{party.name}</span>
+                                            <span className="font-medium text-foreground">{party.name}</span>
                                             <span className="text-xs">{party.email}</span>
                                         </li>
                                     )) : <li className="text-gray-500">לא צוינו צדדים.</li>}
@@ -312,10 +395,10 @@ export default function ContractViewPage() {
                             </CardContent>
                         </Card>
                         
-                        <Card className="rounded-2xl shadow-lg">
+                        <Card className="rounded-2xl shadow-md">
                             <CardHeader>
-                                <CardTitle className="text-lg font-semibold flex items-center justify-between text-gray-900">
-                                    <span>היסטוריית פעילות</span> <FileText className="w-5 h-5 text-gray-500" />
+                                <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
+                                    <span>היסטוריית פעילות</span> <FileText className="w-5 h-5 text-muted-foreground" />
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
@@ -324,8 +407,8 @@ export default function ContractViewPage() {
                                         <li key={index} className="flex items-start flex-row-reverse gap-3 text-sm">
                                             <div className="bg-muted p-2 rounded-full mt-0.5">{log.icon}</div>
                                             <div className="text-right">
-                                                <p className="font-medium text-gray-900">{log.action}</p>
-                                                <p className="text-xs text-gray-500">על ידי {log.user} ב-{log.date}</p>
+                                                <p className="font-medium text-foreground">{log.action}</p>
+                                                <p className="text-xs text-muted-foreground">על ידי {log.user} ב-{log.date}</p>
                                             </div>
                                         </li>
                                     ))}
@@ -333,16 +416,16 @@ export default function ContractViewPage() {
                             </CardContent>
                         </Card>
 
-                        <Card className="rounded-2xl shadow-lg">
-                            <CardHeader>
-                                <CardTitle className="text-lg font-semibold flex items-center justify-between text-gray-900">
-                                    <span>שיתוף החוזה</span> <Share2 className="w-5 h-5 text-gray-500" />
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {isOwner && (
+                        {isOwner && (
+                            <Card className="rounded-2xl shadow-md">
+                                <CardHeader>
+                                    <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
+                                        <span>שיתוף החוזה</span> <Share2 className="w-5 h-5 text-muted-foreground" />
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="share-identifier" className="text-gray-700">שתף עם (אימייל או טלפון):</Label>
+                                        <Label htmlFor="share-identifier" className="text-foreground/80">שתף עם (אימייל או טלפון):</Label>
                                         <div className="flex gap-2">
                                             <Input 
                                                 id="share-identifier" 
@@ -351,39 +434,39 @@ export default function ContractViewPage() {
                                                 onChange={(e) => setShareIdentifier(e.target.value)}
                                                 placeholder="you@example.com או 05X-XXX-XXXX"
                                                 className="flex-grow"
+                                                disabled={isProcessing}
                                             />
-                                            <Button onClick={handleShareContract} disabled={isSharing || !shareIdentifier.trim()} variant="secondary">
-                                                {isSharing ? <Loader2 className="animate-spin"/> : <Share2 />}
+                                            <Button onClick={handleShareContract} disabled={isProcessing || !shareIdentifier.trim()} variant="secondary">
+                                                {isProcessing ? <Loader2 className="animate-spin"/> : <Share2 />}
                                                 שתף
                                             </Button>
                                         </div>
                                     </div>
-                                )}
-                                <div>
-                                    <h4 className="text-sm font-medium text-gray-700 mb-2">משותף עם:</h4>
-                                    {(!contract.sharedWith || contract.sharedWith.length === 0) && <p className="text-xs text-gray-500">החוזה אינו משותף עם משתמשים אחרים עדיין.</p>}
-                                    <ul className="space-y-1 text-sm">
-                                        {contract.sharedWith?.map(identifier => (
-                                            <li key={identifier} className="flex items-center justify-between p-1.5 bg-muted/30 rounded-md">
-                                                <span className="text-gray-600 flex items-center">
-                                                    {identifier.includes('@') ? <Mail className="w-3 h-3 ml-2 text-gray-500"/> : <Phone className="w-3 h-3 ml-2 text-gray-500"/>}
-                                                    {identifier}
-                                                </span>
-                                                {isOwner && (
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveShare(identifier)} disabled={isSharing}>
+                                    <div>
+                                        <h4 className="text-sm font-medium text-foreground/80 mb-2">משותף עם:</h4>
+                                        {(!contract.sharedWith || contract.sharedWith.length === 0) && <p className="text-xs text-muted-foreground">החוזה אינו משותף עם משתמשים אחרים עדיין.</p>}
+                                        <ul className="space-y-1 text-sm">
+                                            {contract.sharedWith?.map(identifier => (
+                                                <li key={identifier} className="flex items-center justify-between p-1.5 bg-muted/30 rounded-md">
+                                                    <span className="text-muted-foreground flex items-center">
+                                                        {identifier.includes('@') ? <Mail className="w-3 h-3 ml-2 text-gray-500"/> : <Phone className="w-3 h-3 ml-2 text-gray-500"/>}
+                                                        {identifier}
+                                                    </span>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveShare(identifier)} disabled={isProcessing}>
                                                         <Trash2 className="w-3 h-3 text-destructive"/>
                                                     </Button>
-                                                )}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </CardContent>
-                        </Card>
-
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
                 </CardContent>
             </Card>
         </section>
     );
 }
+
+    
