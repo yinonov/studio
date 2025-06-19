@@ -25,7 +25,7 @@ export default function Header() {
             <Button 
               variant={pathname === '/templates' ? 'secondary' : 'ghost'} 
               asChild 
-              className="text-sm sm:text-base px-2 sm:px-3 py-1 sm:py-2 h-auto text-gray-600 hover:text-primary"
+              className="text-sm sm:text-base px-2 sm:px-3 py-1 sm:py-2 h-auto text-gray-600"
             >
               <Link href="/templates">תבניות</Link>
             </Button>
@@ -37,7 +37,7 @@ export default function Header() {
                 <Button 
                   variant={pathname === '/dashboard' ? 'secondary' : 'ghost'} 
                   asChild 
-                  className="text-sm sm:text-base px-2 sm:px-3 py-1 sm:py-2 h-auto text-gray-600 hover:text-primary"
+                  className="text-sm sm:text-base px-2 sm:px-3 py-1 sm:py-2 h-auto text-gray-600"
                 >
                   <Link href="/dashboard" className="flex items-center gap-1">
                     <LayoutDashboard className="w-4 h-4 hidden sm:inline" />

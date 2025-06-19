@@ -222,8 +222,8 @@ export default function ContractViewPage() {
                 setContract(prev => prev ? { ...prev, status: 'pending' } : null);
             }
             
-            const initiateSigningSession = httpsCallable(functions, 'initiateSigningSession');
-            const result: any = await initiateSigningSession({ contractId });
+            const initiateSigningSessionFn = httpsCallable(functions, 'initiateSigningSession');
+            const result: any = await initiateSigningSessionFn({ contractId });
             
             if (result.data.signingUrl) {
                 await updateContractData(contractId, { signingUrl: result.data.signingUrl, status: 'pending' });
@@ -278,7 +278,7 @@ export default function ContractViewPage() {
 
     return (
         <section className="space-y-8">
-            <Button onClick={() => router.push('/dashboard')} variant="ghost" className="flex items-center text-primary hover:text-primary/80 font-semibold mb-2 sm:mb-4">
+            <Button onClick={() => router.push('/dashboard')} variant="ghost" className="flex items-center text-primary font-semibold mb-2 sm:mb-4">
                 <ChevronRight className="w-5 h-5 ml-1" />
                 חזרה ללוח הבקרה
             </Button>
@@ -468,5 +468,3 @@ export default function ContractViewPage() {
         </section>
     );
 }
-
-    
