@@ -76,13 +76,13 @@ export default function ContractCreationPage() {
                 setIsSaving(false);
             }
         }, 1500), 
-    []);
+    [toast]); // Added toast to dependency array
 
     useEffect(() => {
         if (isFirebaseLoading) return;
         if (!currentUser) {
             const redirectPath = templateId ? `/templates/${templateId}/create` : '/templates';
-            const queryParams = new URLSearchParams(window.location.search);
+            const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams('');
             const existingContractId = queryParams.get('contractId');
             const finalRedirect = existingContractId ? `${redirectPath}?contractId=${existingContractId}` : redirectPath;
             router.push(`/login?redirect=${encodeURIComponent(finalRedirect)}`);
@@ -105,13 +105,13 @@ export default function ContractCreationPage() {
                 }
                 setTemplate(fetchedTemplate);
                 
-                const queryParams = new URLSearchParams(window.location.search);
+                const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams('');
                 const existingContractId = queryParams.get('contractId');
                 let initialData: Record<string, string> = {};
                 (fetchedTemplate.fields || []).forEach(field => {
                     if (field.id && fetchedTemplate.defaultValues && fetchedTemplate.defaultValues[field.id]) {
                          initialData[field.id] = fetchedTemplate.defaultValues[field.id];
-                    } else {
+                    } else if (field.id) { // Ensure field.id exists before assigning empty string
                          initialData[field.id] = '';
                     }
                 });
@@ -163,9 +163,9 @@ export default function ContractCreationPage() {
     };
 
     const nextStep = () => {
-        if (currentStep < STEPS_CONFIG.length) {
+        if (currentStep < STEPS_CONFIG.length && template) { // ensure template is not null
             const currentStepConfig = STEPS_CONFIG[currentStep - 1];
-            const missingRequired = template?.fields?.filter(f =>
+            const missingRequired = template.fields?.filter(f =>
                 f.required && currentStepConfig.fields.includes(f.id) && (!formData[f.id] || String(formData[f.id]).trim() === '')
             );
             if (missingRequired && missingRequired.length > 0) {
@@ -191,7 +191,7 @@ export default function ContractCreationPage() {
                 { name: formData.party2Name || '', email: formData.party2Name ? (formData.party2Email || '') : ''}
             ].filter(p => p.name);
             
-            const contractTitle = formData.contractTitle || template?.title || 'חוזה ללא כותרת';
+            const contractTitle = formData.contractTitle || template.title || 'חוזה ללא כותרת';
 
             await updateContractData(contractId, { 
                 formData, 
@@ -232,40 +232,38 @@ export default function ContractCreationPage() {
             );
         }
 
-        const fieldsForCurrentStep = template.fields?.filter(field => currentStepConfig.fields.includes(field.id)) || [];
+        const fieldsForCurrentStep = template.fields?.filter(field => field.id && currentStepConfig.fields.includes(field.id)) || [];
         
-        if (currentStep === 1) {
+        if (currentStep === 1) { // Parties and Title step
             const partyFieldsConfig = [
-                { id: 'contractTitle', label: 'כותרת החוזה (פנימי)', type: 'text', placeholder: "לדוגמה: הסכם שכירות הרצל 1", required: true },
+                { id: 'contractTitle', label: 'כותרת החוזה (פנימי)', type: 'text', placeholder: "לדוגמה: הסכם שכירות הרצל 1", required: true, group: "כותרת" },
                 { id: 'party1Name', label: "שם צד א'", type: 'text', placeholder: "ישראל ישראלי", required: true, group: "צד א'" },
                 { id: 'party1Email', label: "אימייל צד א'", type: 'email', placeholder: "israel@example.com", required: true, group: "צד א'" },
-                { id: 'party2Name', label: "שם צד ב'", type: 'text', placeholder: "שרה לוי", required: false, group: "צד ב'" },
-                { id: 'party2Email', label: "אימייל צד ב'", type: 'email', placeholder: "sarah@example.com", required: false, group: "צד ב'" },
+                { id: 'party2Name', label: "שם צד ב'", type: 'text', placeholder: "שרה לוי", required: template.fields?.find(f=>f.id === 'party2Name')?.required || false, group: "צד ב'" },
+                { id: 'party2Email', label: "אימייל צד ב'", type: 'email', placeholder: "sarah@example.com", required: template.fields?.find(f=>f.id === 'party2Email')?.required || false, group: "צד ב'" },
             ];
-
-            const combinedFields = partyFieldsConfig.map(pf => {
-                 const templateField = template.fields?.find(f => f.id === pf.id);
-                 return templateField ? {...templateField, group: pf.group } : pf;
-            });
             
             let lastGroup = '';
             return (
                  <div className="space-y-6">
-                    {combinedFields.map(field => {
+                    {partyFieldsConfig.map(field => {
+                        // Find corresponding field from template.fields to get accurate 'required' status, if defined there.
+                        const templateFieldDefinition = template.fields?.find(f => f.id === field.id);
+                        const isRequired = templateFieldDefinition?.required !== undefined ? templateFieldDefinition.required : field.required;
+
                         const showGroupHeader = field.group && field.group !== lastGroup;
                         if (field.group) lastGroup = field.group;
                         return (
                             <React.Fragment key={field.id}>
                                 {showGroupHeader && <h3 className="text-xl font-bold border-b pb-2 pt-4">{field.group}</h3>}
                                 <FormInput 
-                                    key={field.id} 
                                     label={field.label} 
                                     name={field.id} 
                                     type={field.type as 'text' | 'email'} 
                                     value={formData[field.id] || ''} 
                                     onChange={handleDataChange} 
                                     placeholder={field.placeholder}
-                                    required={field.required}
+                                    required={isRequired}
                                 />
                             </React.Fragment>
                         );
@@ -296,7 +294,7 @@ export default function ContractCreationPage() {
         );
     };
 
-    if (isPageLoading || !currentUser) {
+    if (isPageLoading || (!currentUser && !isFirebaseLoading)) { // Check for currentUser and isFirebaseLoading
         return (
             <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
                 <Loader2 className="w-12 h-12 animate-spin text-primary" />
@@ -314,7 +312,7 @@ export default function ContractCreationPage() {
         );
     }
     
-    if (error && !template) {
+    if (error && !template && currentUser) { // Only show error if user is logged in and template failed to load
          return (
             <div className="text-center py-10">
                 <p className="text-xl text-destructive mb-4">{error}</p>
@@ -365,10 +363,9 @@ export default function ContractCreationPage() {
                 <div className="lg:col-span-5 order-3 lg:order-2">
                     <Card className="rounded-2xl shadow-lg">
                         <CardHeader>
-                            <CardTitle className="text-2xl">{STEPS_CONFIG[currentStep-1].name}</CardTitle>
+                            <CardTitle className="text-2xl">{STEPS_CONFIG[currentStep-1]?.name || 'טוען שלב...'}</CardTitle>
                         </CardHeader>
                         <CardContent className="min-h-[300px] md:min-h-[400px]">
-                            {error && !template && <p className="text-destructive">{error}</p>} 
                             {template && renderStepContent()}
                         </CardContent>
                         <CardFooter className="flex justify-between items-center mt-6 pt-6 border-t">
@@ -414,3 +411,5 @@ export default function ContractCreationPage() {
         </section>
     );
 }
+
+    
