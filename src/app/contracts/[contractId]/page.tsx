@@ -28,7 +28,7 @@ interface AuditLogItem {
   icon: React.ReactElement;
 }
 
-// generateStaticParams removed as this is a Client Component
+// generateStaticParams MUST NOT be here as this is a Client Component
 
 function interpolateWithDefaults(text: string, data: Record<string, string>): string {
   if (typeof text !== 'string') {
@@ -469,3 +469,5 @@ export default function ContractViewPage() {
         </section>
     );
 }
+
+    
