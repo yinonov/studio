@@ -126,8 +126,6 @@ export const initiateSigningSession = onCall(async (request) => {
       // Add more signers here if needed
     ],
     // Correct structure for HttpFile: only fileUrl is expected.
-    // The 'name' of the file for display is often derived from the URL by Dropbox Sign
-    // or handled by the overall 'title' of the signature request.
     files: [{ fileUrl: placeholderDocumentUrl }],
     metadata: {
       contractId: contractId,
