@@ -1,8 +1,8 @@
 
 import * as functions from "firebase-functions";
-import *logger from "firebase-functions/logger";
+import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
-import *admin from "firebase-admin";
+import * as admin from "firebase-admin";
 import {
   SignatureRequestApi,
   EmbeddedApi,
@@ -16,10 +16,12 @@ const dropboxSignApiKey = functions.config().dropbox_sign?.apikey;
 const dropboxSignClientId = functions.config().dropbox_sign?.clientid;
 
 if (!dropboxSignApiKey) {
-  logger.error("Dropbox Sign API key is not configured. Set with: firebase functions:config:set dropbox_sign.apikey=\"YOUR_API_KEY\"");
+  logger.error(`Dropbox Sign API key is not configured.
+    Set with: firebase functions:config:set dropbox_sign.apikey="YOUR_API_KEY"`);
 }
 if (!dropboxSignClientId) {
-    logger.error("Dropbox Sign Client ID is not configured. Set with: firebase functions:config:set dropbox_sign.clientid=\"YOUR_CLIENT_ID\"");
+    logger.error(`Dropbox Sign Client ID is not configured.
+      Set with: firebase functions:config:set dropbox_sign.clientid=\"YOUR_CLIENT_ID\"`);
 }
 
 // Initialize Dropbox Sign API clients
