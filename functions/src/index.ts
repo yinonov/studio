@@ -1,3 +1,4 @@
+
 import * as functions from "firebase-functions";
 import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
@@ -313,3 +314,4 @@ export const initiateSigningSession = onCall(async (request) => {
 //     logger.warn("Webhook: Received event with no event_type or event object missing.");
 //   }
 // });
+    
