@@ -1,3 +1,4 @@
+
 import * as functions from "firebase-functions";
 import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
@@ -148,8 +149,8 @@ export const initiateSigningSession = onCall(async (request) => {
       },
       // Add more signers here if needed
     ],
-    // Correct structure for HttpFile: only fileUrl is expected.
-    files: [{ fileUrl: placeholderDocumentUrl }],
+    // Correct way to specify files by URL
+    fileUrls: [placeholderDocumentUrl],
     metadata: {
       contractId: contractId,
       userId: userId,
@@ -162,7 +163,8 @@ export const initiateSigningSession = onCall(async (request) => {
       "Sending signature request to Dropbox Sign with data:",
       JSON.stringify({
         ...signatureRequestData,
-        signers: signatureRequestData.signers?.map((s) => ({
+        // Use non-null assertion for signers in logging as we know it's defined
+        signers: signatureRequestData.signers!.map((s) => ({
           ...s,
           emailAddress: "[REDACTED]",
         })),
