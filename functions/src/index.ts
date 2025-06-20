@@ -138,7 +138,7 @@ export const initiateSigningSession = onCall(async (request) => {
     "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
   const signatureRequestData: SignatureRequestCreateEmbeddedRequest = {
-    clientId: dropboxSignClientId,
+    clientId: dropboxSignClientId, // Client ID is required for embedded signing
     title: contractTitle, // This title is for the overall signature request
     subject: `Please sign: ${contractTitle}`,
     message: `Please review and sign the document: ${contractTitle}. Initiated by user ${userId}.`,
@@ -314,3 +314,5 @@ export const initiateSigningSession = onCall(async (request) => {
 //     logger.warn("Webhook: Received event with no event_type or event object missing.");
 //   }
 // });
+
+    
