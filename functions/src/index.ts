@@ -8,7 +8,6 @@ import {
   EmbeddedApi,
   type SignatureRequestCreateEmbeddedRequest,
   type ErrorResponseError,
-  // Configuration, // Not used directly
 } from "@dropbox/sign";
 
 admin.initializeApp();
@@ -16,34 +15,24 @@ admin.initializeApp();
 const dropboxSignApiKey = functions.config().dropbox_sign?.apikey;
 const dropboxSignClientId = functions.config().dropbox_sign?.clientid;
 
+// Initialize SDK instances globally
+const signatureRequestApi = new SignatureRequestApi();
+const embeddedApi = new EmbeddedApi();
+
 if (!dropboxSignApiKey) {
   logger.error(`Dropbox Sign API key is not configured.
     Set with: firebase functions:config:set dropbox_sign.apikey="YOUR_API_KEY"`);
-  // Note: The function will still deploy, but will fail at runtime if this is missing.
-  // Consider throwing an error here if you want to prevent deployment/initialization without it,
-  // though onCall functions might handle this gracefully by failing the call.
 }
 if (!dropboxSignClientId) {
   logger.error(`Dropbox Sign Client ID is not configured.
       Set with: firebase functions:config:set dropbox_sign.clientid="YOUR_CLIENT_ID"`);
-  // Note: Similar to above, runtime failure is expected if missing.
-}
-
-const signatureRequestApi = new SignatureRequestApi();
-if (dropboxSignApiKey) {
-  signatureRequestApi.username = dropboxSignApiKey;
-}
-
-const embeddedApi = new EmbeddedApi();
-if (dropboxSignApiKey) {
-  embeddedApi.username = dropboxSignApiKey;
 }
 
 /**
  * Initiates an embedded signing session with Dropbox Sign.
  */
 export const initiateSigningSession = onCall(
-  { cors: true }, // Explicitly enable CORS
+  { cors: true }, 
   async (request) => {
     logger.info("initiateSigningSession called with data: ", request.data);
 
@@ -54,8 +43,9 @@ export const initiateSigningSession = onCall(
       );
     }
 
+    // Critical runtime checks for configuration
     if (!dropboxSignApiKey) {
-      logger.error("Dropbox Sign API key is missing in function configuration.");
+      logger.error("Dropbox Sign API key is missing in function configuration at runtime.");
       throw new HttpsError(
         "internal",
         "E-signature service is not configured correctly. API key missing."
@@ -63,13 +53,17 @@ export const initiateSigningSession = onCall(
     }
     if (!dropboxSignClientId) {
       logger.error(
-        "Dropbox Sign Client ID is missing in function configuration."
+        "Dropbox Sign Client ID is missing in function configuration at runtime."
       );
       throw new HttpsError(
         "internal",
         "E-signature service is not configured correctly. Client ID missing."
       );
     }
+
+    // Configure SDK instances with the API key now that we know it exists
+    signatureRequestApi.username = dropboxSignApiKey;
+    embeddedApi.username = dropboxSignApiKey;
 
     const contractId = request.data.contractId;
     if (!contractId || typeof contractId !== "string") {
@@ -146,11 +140,11 @@ export const initiateSigningSession = onCall(
       message: `Please review and sign the document: ${contractTitle}. Initiated by user ${userId}.`,
       signers: [
         {
-          emailAddress: signerEmail as string, // Asserting signerEmail is defined due to prior checks
+          emailAddress: signerEmail as string, 
           name: contractData?.parties?.[0]?.name || "Signer",
         },
       ],
-      fileUrls: [placeholderDocumentUrl], // Use fileUrls for URLs
+      fileUrls: [placeholderDocumentUrl],
       metadata: {
         contractId: contractId,
         userId: userId,
@@ -163,8 +157,7 @@ export const initiateSigningSession = onCall(
         "Sending signature request to Dropbox Sign with data:",
         JSON.stringify({
           ...signatureRequestData,
-          // Safely map signers for logging, ensuring signers is not undefined
-          signers: (signatureRequestData.signers || []).map((s) => ({
+          signers: (signatureRequestData.signers || []).map((s) => ({ // Safely map signers
             ...s,
             emailAddress: "[REDACTED]",
           })),
@@ -235,7 +228,6 @@ export const initiateSigningSession = onCall(
         apiError.response.data.error &&
         apiError.response.data.error.error_msg
       ) {
-        // Handling for axios-like error structures, if the SDK wraps errors this way
         errorMessage = `E-signature provider error: ${apiError.response.data.error.error_msg}`;
         logger.error(
           "Dropbox Sign API call failed (axios-like error):",
@@ -258,5 +250,3 @@ export const initiateSigningSession = onCall(
     }
   }
 );
-
-    
