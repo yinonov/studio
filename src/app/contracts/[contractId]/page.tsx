@@ -234,9 +234,10 @@ export default function ContractViewPage() {
                 throw new Error(result.data.error || "לא התקבלה כתובת URL לחתימה מהשרת.");
             }
         } catch (err: any) {
-            setError("התנעת תהליך החתימה נכשלה. ודא שפונקציית השרת `initiateSigningSession` פרוסה ועובדת כראוי.");
-            toast({ title: "שגיאה בשליחה לחתימה", description: err.message, variant: "destructive"});
-            console.error(err);
+            const actualErrorMessage = err.message || (err.details && typeof err.details === 'object' ? JSON.stringify(err.details) : String(err.details)) || "No specific error message from function.";
+            setError(`התנעת תהליך החתימה נכשלה. ${actualErrorMessage}. ודא שפונקציית השרת \`initiateSigningSession\` פרוסה ועובדת כראוי, ובדוק את הלוגים של הפונקציה ב-Firebase Console.`);
+            toast({ title: "שגיאה בשליחה לחתימה", description: err.message || "Function call failed", variant: "destructive"});
+            console.error("Error calling initiateSigningSession function:", err);
         } finally {
             setIsProcessing(false);
         }
@@ -327,7 +328,7 @@ export default function ContractViewPage() {
 
                 <CardContent className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2">
-                        {error && <p className="text-destructive mb-4">{error}</p>}
+                        {error && <p className="text-destructive mb-4 text-sm">{error}</p>}
                         {contract.status === 'pending' && contract.signingUrl ? (
                              <div className="mt-0">
                                 <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">ממשק חתימה</h3>
@@ -469,5 +470,3 @@ export default function ContractViewPage() {
         </section>
     );
 }
-
-    
