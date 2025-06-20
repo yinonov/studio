@@ -313,5 +313,3 @@ export const initiateSigningSession = onCall(async (request) => {
 //     logger.warn("Webhook: Received event with no event_type or event object missing.");
 //   }
 // });
-
-    
