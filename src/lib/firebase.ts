@@ -23,7 +23,7 @@ if (!getApps().length) {
 
 const auth: Auth = getAuth(app);
 const db: Firestore = getFirestore(app);
-const functions: Functions = getFunctions(app, 'asia-northeast1'); // Example region, change if needed
+const functions: Functions = getFunctions(app, 'us-central1'); // Changed to us-central1
 
 // Comment out emulator connections for production or if not using emulators
 // if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
