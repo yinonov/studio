@@ -8,7 +8,7 @@ import { fetchContractById, updateContractData } from '@/firebase/contractServic
 import type { StoredContractData } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Download, Share2, FileText, CheckCircle, User, ChevronRight, Edit, Trash2, Copy, Phone, Mail, Send } from 'lucide-react';
+import { Loader2, Download, Share2, FileText, CheckCircle, User, ChevronRight, Edit, Trash2, Copy, Phone, Mail, Send, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -48,6 +48,8 @@ function interpolateWithDefaults(text: string, data: Record<string, string>): st
   });
 }
 
+const PLACEHOLDER_SIGNING_URL_SUBSTRING = "REQUIRES_IMPLEMENTATION";
+
 
 export default function ContractViewPage() {
     const { currentUser, isFirebaseLoading } = useAuth();
@@ -62,6 +64,7 @@ export default function ContractViewPage() {
     const [error, setError] = useState<string | null>(null);
     const [shareIdentifier, setShareIdentifier] = useState('');
     const [isProcessing, setIsProcessing] = useState(false); // General processing state
+    const [showESignIntegrationMessage, setShowESignIntegrationMessage] = useState(false);
 
     const isOwner = contract && currentUser && contract.ownerId === currentUser.uid;
 
@@ -92,6 +95,7 @@ export default function ContractViewPage() {
         const loadContract = async () => {
             setIsLoadingContract(true);
             setError(null);
+            setShowESignIntegrationMessage(false);
             try {
                 const fetchedContract = await fetchContractById(contractId);
                 if (!fetchedContract) {
@@ -99,6 +103,9 @@ export default function ContractViewPage() {
                     setContract(null);
                 } else {
                     setContract(fetchedContract);
+                    if (fetchedContract.signingUrl?.includes(PLACEHOLDER_SIGNING_URL_SUBSTRING)) {
+                        setShowESignIntegrationMessage(true);
+                    }
                     if (fetchedContract.templateId) {
                         const fetchedTemplate = await fetchTemplateById(fetchedContract.templateId);
                         setTemplate(fetchedTemplate);
@@ -217,11 +224,13 @@ export default function ContractViewPage() {
         if (!contractId || !isOwner || (contract.status !== 'draft' && contract.status !== 'pending')) return;
         setIsProcessing(true);
         setError('');
+        setShowESignIntegrationMessage(false);
         try {
-            if (contract.status === 'draft') {
-                await updateContractData(contractId, { status: 'pending' });
-                setContract(prev => prev ? { ...prev, status: 'pending' } : null);
-            }
+            // Always set to pending, regardless of current status (draft or already pending)
+            // This ensures that if a signing URL was previously generated and perhaps expired,
+            // or if the user wants to re-initiate, the status reflects this intent.
+            await updateContractData(contractId, { status: 'pending' });
+            // setContract(prev => prev ? { ...prev, status: 'pending' } : null); // Optimistic update for status
             
             const initiateSigningSessionFn = httpsCallable(functions, 'initiateSigningSession');
             const result: any = await initiateSigningSessionFn({ contractId });
@@ -229,7 +238,13 @@ export default function ContractViewPage() {
             if (result.data.signingUrl) {
                 await updateContractData(contractId, { signingUrl: result.data.signingUrl, status: 'pending' });
                 setContract(prev => prev ? { ...prev, signingUrl: result.data.signingUrl, status: 'pending' } : null);
-                toast({ title: "מוכן לחתימה!", description: "ממשק החתימה יטען כעת."});
+                
+                if (result.data.signingUrl.includes(PLACEHOLDER_SIGNING_URL_SUBSTRING)) {
+                    setShowESignIntegrationMessage(true);
+                    toast({ title: "הכנה לחתימה", description: "החוזה מוכן לשילוב עם ספק חתימות. יש להשלים את ההטמעה בפונקציית השרת.", variant: "default" });
+                } else {
+                    toast({ title: "מוכן לחתימה!", description: "ממשק החתימה יטען כעת."});
+                }
             } else {
                 throw new Error(result.data.error || "לא התקבלה כתובת URL לחתימה מהשרת.");
             }
@@ -307,7 +322,7 @@ export default function ContractViewPage() {
                                        <Edit className="ml-2 h-4 w-4"/>ערוך טיוטה
                                    </Button>
                                 )}
-                                 {isOwner && (contract.status === 'draft' || (contract.status === 'pending' && !contract.signingUrl)) && (
+                                 {isOwner && (contract.status === 'draft' || contract.status === 'pending') && (
                                     <Button 
                                         variant="default" 
                                         size="sm" 
@@ -329,17 +344,33 @@ export default function ContractViewPage() {
                 <CardContent className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2">
                         {error && <p className="text-destructive mb-4 text-sm">{error}</p>}
-                        {contract.status === 'pending' && contract.signingUrl ? (
+                        
+                        {showESignIntegrationMessage && contract.status === 'pending' && (
+                            <div className="mt-0 p-4 border border-dashed border-yellow-500 bg-yellow-50 rounded-lg text-yellow-700">
+                                <div className="flex items-center">
+                                    <AlertTriangle className="h-6 w-6 mr-3 text-yellow-600" />
+                                    <div>
+                                        <h4 className="font-bold text-lg">הטמעת ספק חתימות נדרשת</h4>
+                                        <p className="text-sm">
+                                            החוזה מוכן לשליחה לחתימה. השלב הבא הוא להטמיע ספק חתימות דיגיטליות (כגון DocuSign, Dropbox Sign) בפונקציית השרת <code>initiateSigningSession</code>.
+                                            כרגע, הפונקציה מחזירה URL זמני. לאחר ההטמעה, לחיצה על "הכן מחדש לחתימה" תפעיל את תהליך החתימה האמיתי.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {contract.status === 'pending' && contract.signingUrl && !showESignIntegrationMessage ? (
                              <div className="mt-0">
                                 <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">ממשק חתימה</h3>
                                 <iframe 
                                     src={contract.signingUrl} 
                                     title="חתימת חוזה" 
                                     className="w-full h-[60vh] sm:h-[70vh] border rounded-lg shadow-inner"
-                                    allow="camera;microphone" 
+                                    allow="camera;microphone" // Common permissions for e-sign providers
                                 ></iframe>
                              </div>
-                        ) : (
+                        ) : !showESignIntegrationMessage && ( // Only show preview if not showing the integration message or the iframe
                             <>
                                 <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">תצוגה מקדימה של המסמך</h3>
                                 <ScrollArea className="h-[500px] md:h-[600px] border rounded-lg bg-muted/50 p-4 shadow-inner">
