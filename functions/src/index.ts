@@ -1,8 +1,8 @@
 
 import * as functions from "firebase-functions";
-import * as logger from "firebase-functions/logger";
+import *logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
-import * as admin from "firebase-admin";
+import *admin from "firebase-admin";
 import {
   SignatureRequestApi,
   EmbeddedApi,
@@ -22,13 +22,16 @@ if (!dropboxSignClientId) {
     logger.error("Dropbox Sign Client ID is not configured. Set with: firebase functions:config:set dropbox_sign.clientid=\"YOUR_CLIENT_ID\"");
 }
 
-// Configuration object for Dropbox Sign SDK
-const dropboxSignConfigObj = {
-  username: dropboxSignApiKey, // API Key is passed as username
-};
+// Initialize Dropbox Sign API clients
+const signatureRequestApi = new SignatureRequestApi();
+if (dropboxSignApiKey) {
+  signatureRequestApi.username = dropboxSignApiKey; // API Key is passed as username
+}
 
-const signatureRequestApi = new SignatureRequestApi(dropboxSignConfigObj);
-const embeddedApi = new EmbeddedApi(dropboxSignConfigObj);
+const embeddedApi = new EmbeddedApi();
+if (dropboxSignApiKey) {
+  embeddedApi.username = dropboxSignApiKey; // API Key is passed as username
+}
 
 
 /**
@@ -88,12 +91,8 @@ export const initiateSigningSession = onCall(async (request) => {
     if (contractData.parties && contractData.parties.length > 0 && contractData.parties[0].email) {
       signerEmail = contractData.parties[0].email;
     } else {
-      // Fallback if no specific party email is in the contract.
-      // This might happen if parties were not defined or if the contract structure is different.
-      // Using the initiator's email as a last resort, but this should be reviewed for production logic.
-      signerEmail = request.auth.token.email; // Initiator's email
+      signerEmail = request.auth.token.email; 
       if(!signerEmail) {
-        // This case should be rare if the user is authenticated
         throw new HttpsError('invalid-argument', 'Signer email is not available for the contract or the initiator.');
       }
       logger.warn(`No specific party email found for contract ${contractId}. Using initiator's email: ${signerEmail}`);
@@ -105,8 +104,6 @@ export const initiateSigningSession = onCall(async (request) => {
     throw new HttpsError('internal', `Failed to fetch contract details: ${error.message}`);
   }
 
-  // Use a publicly accessible dummy PDF for testing if you don't generate one dynamically.
-  // Ensure this URL is valid and accessible by Dropbox Sign servers.
   const placeholderDocumentUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
   const signatureRequestData: SignatureRequestCreateEmbeddedRequest = {
@@ -116,36 +113,25 @@ export const initiateSigningSession = onCall(async (request) => {
     message: `Please review and sign the document: ${contractTitle}. Initiated by user ${userId}.`,
     signers: [
       {
-        emailAddress: signerEmail as string, // Type assertion as we expect it to be defined by now
-        name: contractData?.parties?.[0]?.name || 'Signer', // Use party name or default
+        emailAddress: signerEmail as string, 
+        name: contractData?.parties?.[0]?.name || 'Signer', 
       },
-      // Add more signers here if your contract supports multiple parties
     ],
-    // file_urls: [placeholderDocumentUrl], // Use file_urls for URLs
-    files: [{ name: `${contractTitle}.pdf`, fileUrl: placeholderDocumentUrl }], // if using `files` property
+    files: [{ name: `${contractTitle}.pdf`, fileUrl: placeholderDocumentUrl }],
     metadata: {
       contractId: contractId,
       userId: userId,
     },
-    testMode: true, // IMPORTANT: Set to true for testing, false for live requests
-    // signingOptions: { // This structure may vary slightly with the new SDK or be part of the main request
-    //   draw: true,
-    //   type: true,
-    //   upload: false,
-    //   phone: false,
-    //   defaultType: 'draw',
-    // },
+    testMode: true, 
   };
 
   try {
-    // Log the request data (excluding sensitive parts like full email if needed for production logs)
     logger.info("Sending signature request to Dropbox Sign with data:", JSON.stringify({
         ...signatureRequestData,
         signers: signatureRequestData.signers.map(s => ({...s, emailAddress: "[REDACTED]"}) )
     }));
 
     const result = await signatureRequestApi.signatureRequestCreateEmbedded(signatureRequestData);
-    // The actual response object is in result.body for this SDK
     const signatureRequestDetails = result.body.signatureRequest;
 
     if (!signatureRequestDetails?.signatures?.[0]?.signatureId) {
@@ -156,9 +142,7 @@ export const initiateSigningSession = onCall(async (request) => {
 
     logger.info(`Signature request created: ${signatureRequestDetails.signatureRequestId}, signature_id for signer 0: ${signatureId}`);
 
-    // Get the embedded sign URL for the first signer's signature
     const embeddedResponse = await embeddedApi.embeddedSignUrl(signatureId);
-    // The actual embedded object is in embeddedResponse.body.embedded
     const signUrl = embeddedResponse.body.embedded?.signUrl;
 
     if (!signUrl) {
@@ -168,7 +152,6 @@ export const initiateSigningSession = onCall(async (request) => {
 
     logger.info(`Successfully generated Dropbox Sign embedded URL for contract ${contractId}.`);
 
-    // Optionally, store the Dropbox Sign request ID in Firestore for tracking
     await admin.firestore().collection('contracts').doc(contractId).set({
         dropboxSignRequestId: signatureRequestDetails.signatureRequestId,
         lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -178,11 +161,10 @@ export const initiateSigningSession = onCall(async (request) => {
 
   } catch (apiError: any) {
     let errorMessage = "Failed to initiate signing session with the e-signature provider.";
-    // The new SDK often wraps API errors in an object with a 'body' property containing the error details
     if (apiError.body && apiError.body.error && (apiError.body.error as ErrorResponseError).errorMsg) {
         errorMessage = `E-signature provider error: ${(apiError.body.error as ErrorResponseError).errorMsg}`;
         logger.error("Dropbox Sign API call failed:", (apiError.body.error as ErrorResponseError));
-    } else if (apiError.response && apiError.response.data && apiError.response.data.error && apiError.response.data.error.error_msg) { // Fallback for axios-like error structure
+    } else if (apiError.response && apiError.response.data && apiError.response.data.error && apiError.response.data.error.error_msg) { 
         errorMessage = `E-signature provider error: ${apiError.response.data.error.error_msg}`;
         logger.error("Dropbox Sign API call failed (axios-like error):", apiError.response.data);
     } else if (apiError.message) {
@@ -196,18 +178,12 @@ export const initiateSigningSession = onCall(async (request) => {
 });
 
 // --- Webhook for Dropbox Sign ---
-// This remains largely the same concept, ensure your webhook parsing matches Dropbox Sign's event structure.
-// /*
 // export const dropboxSignWebhook = functions.https.onRequest(async (req, res) => {
 //   logger.info("Dropbox Sign Webhook received event.");
-
-//   // IMPORTANT: Verify the event is from Dropbox Sign (see their documentation for webhook security)
-//   // This typically involves checking a hash of the event data.
-
+//   // IMPORTANT: Verify the event is from Dropbox Sign 
 //   if (req.body.event && req.body.event.event_type === 'signature_request_signed') {
-//     const sigRequest = req.body.signature_request; // Adjust path if SDK event structure differs
+//     const sigRequest = req.body.signature_request;
 //     const contractId = sigRequest.metadata.contractId;
-
 //     if (contractId) {
 //       logger.info(`Webhook: Contract ${contractId} signed. Updating status in Firestore.`);
 //       try {
@@ -228,8 +204,6 @@ export const initiateSigningSession = onCall(async (request) => {
 //   } else {
 //     logger.info("Webhook: Received non-signing event or unhandled event type:", req.body.event?.event_type);
 //   }
-
-//   res.status(200).send("Hello API Event Received"); // Dropbox Sign expects this response
+//   res.status(200).send("Hello API Event Received"); 
 // });
-// */
     
