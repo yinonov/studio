@@ -94,7 +94,7 @@ export const initiateSigningSession = onCall(async (request) => {
       signerEmail = contractData.parties[0].email;
     } else {
       // Fallback to initiator's email if no party email is found
-      signerEmail = request.auth.token.email; 
+      signerEmail = request.auth.token.email;
       if(!signerEmail) {
         // This case should be rare if user is authenticated, but good to handle
         throw new HttpsError('invalid-argument', 'Signer email is not available for the contract or the initiator.');
@@ -108,12 +108,14 @@ export const initiateSigningSession = onCall(async (request) => {
     throw new HttpsError('internal', `Failed to fetch contract details: ${error.message}`);
   }
 
-  // For MVP, use a placeholder document. In production, you'd generate/fetch the actual contract.
+  // For MVP, use a placeholder document.
+  // In production, you would generate/fetch the actual contract PDF and host it,
+  // or use Dropbox Sign's file upload mechanisms (e.g., data URI).
   const placeholderDocumentUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
   const signatureRequestData: SignatureRequestCreateEmbeddedRequest = {
     clientId: dropboxSignClientId,
-    title: contractTitle,
+    title: contractTitle, // This title is for the overall signature request
     subject: `Please sign: ${contractTitle}`,
     message: `Please review and sign the document: ${contractTitle}. Initiated by user ${userId}.`,
     signers: [
@@ -123,8 +125,10 @@ export const initiateSigningSession = onCall(async (request) => {
       },
       // Add more signers here if needed
     ],
-    files: [{ name: `${contractTitle}.pdf`, fileUrl: placeholderDocumentUrl }],
-    // fileUrls: [placeholderDocumentUrl], // Alternative for files if SDK prefers
+    // Correct structure for HttpFile: only fileUrl is expected.
+    // The 'name' of the file for display is often derived from the URL by Dropbox Sign
+    // or handled by the overall 'title' of the signature request.
+    files: [{ fileUrl: placeholderDocumentUrl }],
     metadata: {
       contractId: contractId,
       userId: userId,
@@ -135,6 +139,7 @@ export const initiateSigningSession = onCall(async (request) => {
   try {
     logger.info("Sending signature request to Dropbox Sign with data:", JSON.stringify({
         ...signatureRequestData,
+        // Ensure signers is not undefined before mapping (TypeScript check)
         signers: signatureRequestData.signers!.map(s => ({...s, emailAddress: "[REDACTED]"}) )
     }));
 
@@ -221,7 +226,7 @@ export const initiateSigningSession = onCall(async (request) => {
 //             logger.info(`Webhook: Unhandled event type: ${event.event_type}`);
 //             return; // Exit if not an event type we process
 //         }
-        
+
 //         if (Object.keys(statusUpdate).length > 0) {
 //           await admin.firestore().collection('contracts').doc(contractId).update({
 //             ...statusUpdate,
@@ -241,7 +246,3 @@ export const initiateSigningSession = onCall(async (request) => {
 //     logger.warn("Webhook: Received event with no event_type or event object missing.");
 //   }
 // });
-    
-    
-
-    
