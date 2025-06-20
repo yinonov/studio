@@ -1,3 +1,4 @@
+
 import * as functions from "firebase-functions";
 import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
@@ -109,7 +110,7 @@ export const initiateSigningSession = onCall(async (request) => {
     } else {
       // Fallback to initiator's email if no party email is found
       signerEmail = request.auth.token.email;
-      if (!signerEmail) {
+      if(!signerEmail) {
         // This case should be rare if user is authenticated, but good to handle
         throw new HttpsError(
           "invalid-argument",
@@ -148,8 +149,7 @@ export const initiateSigningSession = onCall(async (request) => {
       },
       // Add more signers here if needed
     ],
-    // Correct way to specify files by URL
-    fileUrls: [placeholderDocumentUrl],
+    fileUrls: [placeholderDocumentUrl], // Correct way to specify files by URL
     metadata: {
       contractId: contractId,
       userId: userId,
