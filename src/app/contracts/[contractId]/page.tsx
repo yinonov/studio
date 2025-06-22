@@ -221,38 +221,39 @@ export default function ContractViewPage() {
     };
 
     const handleSendForSignature = async () => {
-        if (!contractId || !isOwner || (contract.status !== 'draft' && contract.status !== 'pending')) return;
+        if (!contractId || !isOwner) return;
         setIsProcessing(true);
         setError('');
         setShowESignIntegrationMessage(false);
+
+        console.log('[DEBUG] Calling "initiateSigningSession" function with contractId:', contractId);
+        toast({
+            title: "בדיקת תצורה (שלב 1)",
+            description: "שולח בקשה לפונקציית השרת כדי לקרוא את הגדרות ה-API...",
+            variant: "default",
+        });
+
         try {
-            // Always set to pending, regardless of current status (draft or already pending)
-            // This ensures that if a signing URL was previously generated and perhaps expired,
-            // or if the user wants to re-initiate, the status reflects this intent.
-            await updateContractData(contractId, { status: 'pending' });
-            // setContract(prev => prev ? { ...prev, status: 'pending' } : null); // Optimistic update for status
-            
             const initiateSigningSessionFn = httpsCallable(functions, 'initiateSigningSession');
             const result: any = await initiateSigningSessionFn({ contractId });
             
-            if (result.data.signingUrl) {
-                await updateContractData(contractId, { signingUrl: result.data.signingUrl, status: 'pending' });
-                setContract(prev => prev ? { ...prev, signingUrl: result.data.signingUrl, status: 'pending' } : null);
-                
-                if (result.data.signingUrl.includes(PLACEHOLDER_SIGNING_URL_SUBSTRING)) {
-                    setShowESignIntegrationMessage(true);
-                    toast({ title: "הכנה לחתימה", description: "החוזה מוכן לשילוב עם ספק חתימות. יש להשלים את ההטמעה בפונקציית השרת.", variant: "default" });
-                } else {
-                    toast({ title: "מוכן לחתימה!", description: "ממשק החתימה יטען כעת."});
-                }
-            } else {
-                throw new Error(result.data.error || "לא התקבלה כתובת URL לחתימה מהשרת.");
-            }
+            console.log('[DEBUG] Result from initiateSigningSession:', result.data);
+
+            const { apiKey, clientId, message } = result.data;
+            toast({
+                title: "תוצאת בדיקת התצורה",
+                description: `הפונקציה חזרה: ${message}. מפתח API נמצא: ${!!(apiKey && apiKey !== 'Not Found')}. מזהה לקוח נמצא: ${!!(clientId && clientId !== 'Not Found')}. בדוק את קונסול הדפדפן לפרטים.`,
+                duration: 9000,
+            });
+
+            // For now, just show the message and don't proceed with signing flow.
+            // In the next step, we will use these values.
+
         } catch (err: any) {
-            const actualErrorMessage = err.message || (err.details && typeof err.details === 'object' ? JSON.stringify(err.details) : String(err.details)) || "No specific error message from function.";
-            setError(`התנעת תהליך החתימה נכשלה. ${actualErrorMessage}. ודא שפונקציית השרת \`initiateSigningSession\` פרוסה ועובדת כראוי, ובדוק את הלוגים של הפונקציה ב-Firebase Console.`);
-            toast({ title: "שגיאה בשליחה לחתימה", description: err.message || "Function call failed", variant: "destructive"});
-            console.error("Error calling initiateSigningSession function:", err);
+            const errorMessage = err.message || "Function call failed";
+            setError(`התנעת תהליך החתימה נכשלה. ${errorMessage}. ודא שפונקציית השרת \`initiateSigningSession\` פרוסה ועובדת כראוי, ובדוק את הלוגים של הפונקציה ב-Firebase Console.`);
+            toast({ title: "שגיאה בקריאה לפונקציה", description: errorMessage, variant: "destructive"});
+            console.error("[DEBUG] Error calling initiateSigningSession function:", err);
         } finally {
             setIsProcessing(false);
         }

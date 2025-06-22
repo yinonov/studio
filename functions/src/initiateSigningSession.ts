@@ -1,59 +1,50 @@
-import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
+import * as functions from 'firebase-functions/v2';
+import * as logger from 'firebase-functions/logger';
 
-admin.initializeApp();
+/**
+ * [DEBUG STEP 1]
+ * A mock function to test configuration access and deployment.
+ * It reads the Dropbox Sign API key and Client ID from Firebase environment
+ * configuration and returns them to the client.
+ */
+export const initiateSigningSession = functions.https.onCall(
+  { region: 'us-central1' },
+  (request) => {
+    logger.info('[DEBUG] initiateSigningSession called.', { auth: request.auth, data: request.data });
 
-const db = admin.firestore();
-
-export const initiateSigningSession = functions.https.onCall(async (data, context) => {
-  // Authentication check (optional but recommended for sensitive operations)
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      'unauthenticated',
-      'The function must be called while authenticated.'
-    );
-  }
-
-  const contractId = data.contractId;
-
-  if (!contractId || typeof contractId !== 'string') {
-    throw new functions.https.HttpsError(
-      'invalid-argument',
-      'The function must be called with a valid contractId in the request body.'
-    );
-  }
-
-  try {
-    const contractRef = db.collection('contracts').doc(contractId);
-    const contractDoc = await contractRef.get();
-
-    if (!contractDoc.exists) {
-      throw new functions.https.HttpsError('not-found', `Contract with ID ${contractId} not found.`);
+    if (!request.auth) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'The function must be called while authenticated.'
+      );
     }
 
-    // Update contract status to 'sentForSigning'
-    await contractRef.update({
-      status: 'sentForSigning',
-      sentForSigningAt: admin.firestore.FieldValue.serverTimestamp(),
-      // Placeholder for signing URL generation if needed later
-      // signingUrl: 'placeholder_signing_url'
-    });
+    try {
+      const apiKey = functions.config().dropbox_sign?.apikey;
+      const clientId = functions.config().dropbox_sign?.clientid;
 
-    functions.logger.info(`Signing session initiated for contract: ${contractId}`, { contractId, userId: context.auth.uid });
+      logger.info('[DEBUG] Reading Firebase functions config...', {
+        apiKeyFound: !!apiKey,
+        clientIdFound: !!clientId,
+      });
 
-    return { success: true, message: `Signing session initiated for contract ${contractId}.` };
+      if (!apiKey || !clientId) {
+        logger.error('[DEBUG] Dropbox Sign API Key or Client ID is not configured in Firebase environment.');
+        // Still return what we found so the client can see what's missing.
+      }
 
-  } catch (error) {
-    functions.logger.error('Error initiating signing session:', error);
-
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
+      return {
+        message: 'Debug step 1 successful: Configuration read.',
+        apiKey: apiKey || 'Not Found',
+        clientId: clientId || 'Not Found',
+      };
+    } catch (error: any) {
+      logger.error('[DEBUG] Error reading functions.config()', error);
+      throw new functions.https.HttpsError(
+        'internal',
+        'An error occurred while reading configuration.',
+        error.message
+      );
     }
-
-    throw new functions.https.HttpsError(
-      'internal',
-      'An error occurred while initiating the signing session.',
-      error
-    );
   }
-});
+);
