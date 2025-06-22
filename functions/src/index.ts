@@ -1,6 +1,11 @@
+
 import * as functions from "firebase-functions";
 import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { setGlobalOptions } from "firebase-functions/v2";
+
+// Set the region for all functions in this file
+setGlobalOptions({ region: "us-central1" });
 
 /**
  * MOCK IMPLEMENTATION: Initiates a mock signing session.
