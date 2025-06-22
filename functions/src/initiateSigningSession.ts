@@ -1,49 +1,69 @@
-import * as functions from 'firebase-functions/v2';
-import * as logger from 'firebase-functions/logger';
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import * as logger from "firebase-functions/logger";
 
 /**
  * [DEBUG STEP 1]
  * A mock function to test configuration access and deployment.
- * It reads the Dropbox Sign API key and Client ID from Firebase environment
- * configuration and returns them to the client.
+ * It reads the Dropbox Sign API key and Client ID from environment variables
+ * and returns their presence to the client.
  */
-export const initiateSigningSession = functions.https.onCall(
-  { region: 'us-central1' },
+export const initiateSigningSession = onCall(
+  { region: "us-central1" },
   (request) => {
-    logger.info('[DEBUG] initiateSigningSession called.', { auth: request.auth, data: request.data });
+    logger.info("[DEBUG] initiateSigningSession called.", {
+      auth: request.auth,
+      data: request.data,
+    });
 
     if (!request.auth) {
-      throw new functions.https.HttpsError(
-        'unauthenticated',
-        'The function must be called while authenticated.'
+      throw new HttpsError(
+        "unauthenticated",
+        "The function must be called while authenticated."
       );
     }
 
     try {
-      const apiKey = functions.config().dropbox_sign?.apikey;
-      const clientId = functions.config().dropbox_sign?.clientid;
+      const apiKey = process.env.DROPBOX_SIGN_API_KEY;
+      const clientId = process.env.DROPBOX_SIGN_CLIENT_ID;
 
-      logger.info('[DEBUG] Reading Firebase functions config...', {
+      logger.info("[DEBUG] Reading environment variables...", {
         apiKeyFound: !!apiKey,
         clientIdFound: !!clientId,
       });
 
       if (!apiKey || !clientId) {
-        logger.error('[DEBUG] Dropbox Sign API Key or Client ID is not configured in Firebase environment.');
-        // Still return what we found so the client can see what's missing.
+        logger.error(
+          "[DEBUG] Dropbox Sign API Key or Client ID is not configured in environment variables."
+        );
+        // Do not return secrets to the client.
+        return {
+          message:
+            "Configuration missing: Please check server logs for details.",
+          configStatus: {
+            apiKeyFound: !!apiKey,
+            clientIdFound: !!clientId,
+          },
+        };
       }
 
+      // Do not return secrets to the client.
       return {
-        message: 'Debug step 1 successful: Configuration read.',
-        apiKey: apiKey || 'Not Found',
-        clientId: clientId || 'Not Found',
+        message: "Configuration read successfully.",
+        configStatus: {
+          apiKeyFound: true,
+          clientIdFound: true,
+        },
       };
-    } catch (error: any) {
-      logger.error('[DEBUG] Error reading functions.config()', error);
-      throw new functions.https.HttpsError(
-        'internal',
-        'An error occurred while reading configuration.',
-        error.message
+    } catch (error: unknown) {
+      logger.error("[DEBUG] Error reading environment variables", error);
+      let errorMessage = "Unknown error";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      throw new HttpsError(
+        "internal",
+        "An error occurred while reading configuration.",
+        errorMessage
       );
     }
   }
