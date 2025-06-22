@@ -48,9 +48,6 @@ function interpolateWithDefaults(text: string, data: Record<string, string>): st
   });
 }
 
-const PLACEHOLDER_SIGNING_URL_SUBSTRING = "REQUIRES_IMPLEMENTATION";
-
-
 export default function ContractViewPage() {
     const { currentUser, isFirebaseLoading } = useAuth();
     const router = useRouter();
@@ -64,7 +61,6 @@ export default function ContractViewPage() {
     const [error, setError] = useState<string | null>(null);
     const [shareIdentifier, setShareIdentifier] = useState('');
     const [isProcessing, setIsProcessing] = useState(false); // General processing state
-    const [showESignIntegrationMessage, setShowESignIntegrationMessage] = useState(false);
 
     const isOwner = contract && currentUser && contract.ownerId === currentUser.uid;
 
@@ -95,7 +91,6 @@ export default function ContractViewPage() {
         const loadContract = async () => {
             setIsLoadingContract(true);
             setError(null);
-            setShowESignIntegrationMessage(false);
             try {
                 const fetchedContract = await fetchContractById(contractId);
                 if (!fetchedContract) {
@@ -103,9 +98,6 @@ export default function ContractViewPage() {
                     setContract(null);
                 } else {
                     setContract(fetchedContract);
-                    if (fetchedContract.signingUrl?.includes(PLACEHOLDER_SIGNING_URL_SUBSTRING)) {
-                        setShowESignIntegrationMessage(true);
-                    }
                     if (fetchedContract.templateId) {
                         const fetchedTemplate = await fetchTemplateById(fetchedContract.templateId);
                         setTemplate(fetchedTemplate);
@@ -224,12 +216,10 @@ export default function ContractViewPage() {
         if (!contractId || !isOwner) return;
         setIsProcessing(true);
         setError('');
-        setShowESignIntegrationMessage(false);
 
-        console.log('[DEBUG] Calling "initiateSigningSession" function with contractId:', contractId);
         toast({
-            title: "בדיקת תצורה (שלב 1)",
-            description: "שולח בקשה לפונקציית השרת כדי לקרוא את הגדרות ה-API...",
+            title: "מכין בקשת חתימה...",
+            description: "אנא המתן, המערכת יוצרת סביבת חתימה מאובטחת.",
             variant: "default",
         });
 
@@ -237,23 +227,26 @@ export default function ContractViewPage() {
             const initiateSigningSessionFn = httpsCallable(functions, 'initiateSigningSession');
             const result: any = await initiateSigningSessionFn({ contractId });
             
-            console.log('[DEBUG] Result from initiateSigningSession:', result.data);
+            console.log('Result from initiateSigningSession:', result.data);
 
-            const { apiKey, clientId, message } = result.data;
-            toast({
-                title: "תוצאת בדיקת התצורה",
-                description: `הפונקציה חזרה: ${message}. מפתח API נמצא: ${!!(apiKey && apiKey !== 'Not Found')}. מזהה לקוח נמצא: ${!!(clientId && clientId !== 'Not Found')}. בדוק את קונסול הדפדפן לפרטים.`,
-                duration: 9000,
-            });
+            const newSigningUrl = result.data.signingUrl;
 
-            // For now, just show the message and don't proceed with signing flow.
-            // In the next step, we will use these values.
+            if (newSigningUrl) {
+                setContract(prev => prev ? { ...prev, signingUrl: newSigningUrl, status: 'pending' } : null);
+                toast({
+                    title: "הצלחה",
+                    description: "ממשק החתימה מוכן. אנא המתן לטעינתו.",
+                });
+            } else {
+                throw new Error("Function did not return a signing URL.");
+            }
 
         } catch (err: any) {
-            const errorMessage = err.message || "Function call failed";
-            setError(`התנעת תהליך החתימה נכשלה. ${errorMessage}. ודא שפונקציית השרת \`initiateSigningSession\` פרוסה ועובדת כראוי, ובדוק את הלוגים של הפונקציה ב-Firebase Console.`);
+            const errorMessage = err.details?.message || err.message || "Function call failed";
+            const errorToDisplay = `התנעת תהליך החתימה נכשלה. ${errorMessage}. ודא שפונקציית השרת \`initiateSigningSession\` פרוסה ועובדת כראוי, ובדוק את הלוגים של הפונקציה ב-Firebase Console.`;
+            setError(errorToDisplay);
             toast({ title: "שגיאה בקריאה לפונקציה", description: errorMessage, variant: "destructive"});
-            console.error("[DEBUG] Error calling initiateSigningSession function:", err);
+            console.error("Error calling initiateSigningSession function:", err);
         } finally {
             setIsProcessing(false);
         }
@@ -346,22 +339,7 @@ export default function ContractViewPage() {
                     <div className="lg:col-span-2">
                         {error && <p className="text-destructive mb-4 text-sm">{error}</p>}
                         
-                        {showESignIntegrationMessage && contract.status === 'pending' && (
-                            <div className="mt-0 p-4 border border-dashed border-yellow-500 bg-yellow-50 rounded-lg text-yellow-700">
-                                <div className="flex items-center">
-                                    <AlertTriangle className="h-6 w-6 mr-3 text-yellow-600" />
-                                    <div>
-                                        <h4 className="font-bold text-lg">הטמעת ספק חתימות נדרשת</h4>
-                                        <p className="text-sm">
-                                            החוזה מוכן לשליחה לחתימה. השלב הבא הוא להטמיע ספק חתימות דיגיטליות (כגון DocuSign, Dropbox Sign) בפונקציית השרת <code>initiateSigningSession</code>.
-                                            כרגע, הפונקציה מחזירה URL זמני. לאחר ההטמעה, לחיצה על "הכן מחדש לחתימה" תפעיל את תהליך החתימה האמיתי.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {contract.status === 'pending' && contract.signingUrl && !showESignIntegrationMessage ? (
+                        {contract.status === 'pending' && contract.signingUrl ? (
                              <div className="mt-0">
                                 <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">ממשק חתימה</h3>
                                 <iframe 
@@ -371,7 +349,7 @@ export default function ContractViewPage() {
                                     allow="camera;microphone" // Common permissions for e-sign providers
                                 ></iframe>
                              </div>
-                        ) : !showESignIntegrationMessage && ( // Only show preview if not showing the integration message or the iframe
+                        ) : (
                             <>
                                 <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">תצוגה מקדימה של המסמך</h3>
                                 <ScrollArea className="h-[500px] md:h-[600px] border rounded-lg bg-muted/50 p-4 shadow-inner">
