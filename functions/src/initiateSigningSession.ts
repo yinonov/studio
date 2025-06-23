@@ -67,6 +67,11 @@ export const initiateSigningSession = onCall(
           order: index,
         })
       );
+      
+      const partiesWithStatus = contractData.parties.map((party: any) => ({
+        ...party,
+        status: "pending",
+      }));
 
       // 3. Prepare the request data, conditionally for development/production
       const isDevelopment = process.env.FUNCTIONS_EMULATOR === "true";
@@ -88,8 +93,9 @@ export const initiateSigningSession = onCall(
         fileUrls: [
           "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
         ], // Using a placeholder PDF
-        testMode: isDevelopment, // Use test mode only in development
+        testMode: isDevelopment,
         signingOptions: signingOptions,
+        skipDomainVerification: isDevelopment,
       };
       logger.info("Prepared signature request data for Dropbox Sign API.", {
         isDevelopment,
@@ -116,10 +122,6 @@ export const initiateSigningSession = onCall(
       if (!signingUrl) {
         throw new Error("Failed to get embedded signing URL.");
       }
-
-      // Append the client_id to the signing URL to ensure it works in the iframe
-      const separator = signingUrl.includes("?") ? "&" : "?";
-      const finalSigningUrl = `${signingUrl}${separator}client_id=${dropboxSignClientId}`;
 
       logger.info("Successfully generated and modified embedded sign URL.", {
         contractId,

@@ -48,9 +48,9 @@ export default function DashboardPage() {
 
     const getStatusVariant = (status?: string): "default" | "secondary" | "destructive" | "outline" | "accent" => {
         switch (status) {
-            case "completed": return "accent"; // Green for completed
-            case "pending": return "outline"; // Yellow text on outline - check globals.css for text-yellow-800 if needed
-            case "draft": return "secondary"; // Gray for draft
+            case "completed": return "accent";
+            case "pending": return "outline";
+            case "draft": return "secondary";
             default: return "secondary";
         }
     };
@@ -66,7 +66,7 @@ export default function DashboardPage() {
     
     const getStatusTextClass = (status?: string): string => {
          switch (status) {
-            case "pending": return "text-yellow-800"; // From design spec
+            case "pending": return "text-yellow-800";
             default: return "";
         }
     }

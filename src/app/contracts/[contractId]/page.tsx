@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -109,12 +109,9 @@ export default function ContractViewPage() {
   const [isLoadingContract, setIsLoadingContract] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shareIdentifier, setShareIdentifier] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false); // General processing state
+  const [isProcessing, setIsProcessing] = useState(false);
   const hellosignModalRef = useRef<HTMLDivElement | null>(null);
   const [isHelloSignLoading, setIsHelloSignLoading] = useState(false);
-
-  // Remove auto-opening of signing UI from useEffect
-  // Add state to track if signing UI should be shown
   const [showSigningUI, setShowSigningUI] = useState(false);
 
   const isOwner =
@@ -123,19 +120,16 @@ export default function ContractViewPage() {
   const hasAccess = useCallback(() => {
     if (!currentUser || !contract) return false;
     if (isOwner) return true;
-    return contract.sharedWith?.some(
+    return (
+      contract.sharedWith?.some(
         (identifier) =>
           (currentUser.email &&
             identifier.toLowerCase() === currentUser.email.toLowerCase()) ||
           (currentUser.phoneNumber && identifier === currentUser.phoneNumber)
-      )
-    ) {
-      return true;
-    }
-    return false;
-  };
+      ) || false
+    );
+  }, [currentUser, contract, isOwner]);
 
-  // A contract is signable if it has at least one party with a name and an email.
   const isSignable =
     contract?.parties &&
     contract.parties.length > 0 &&
@@ -180,7 +174,6 @@ export default function ContractViewPage() {
     loadContract();
   }, [currentUser, isFirebaseLoading, router, contractId]);
 
-  // 1. Type safety for env var in handleOpenSigning
   const handleOpenSigning = () => {
     const clientId = process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID;
     if (!clientId) {
@@ -189,9 +182,7 @@ export default function ContractViewPage() {
         description: "אירעה שגיאה בטעינת ממשק החתימה. אנא פנה לתמיכה הטכנית.",
         variant: "destructive",
       });
-      // For developers, log the technical error
       if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
         console.error("Missing Dropbox Sign clientId. Set NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID in your environment.");
       }
       return;
@@ -206,7 +197,22 @@ export default function ContractViewPage() {
             clientId,
             skipDomainVerification: true,
             container: hellosignModalRef.current as HTMLDivElement,
+            uxVersion: 2,
           });
+          client.on('finish', () => {
+             toast({ title: 'החתימה הושלמה!', description: 'הסטטוס יעודכן בקרוב.' });
+             setShowSigningUI(false);
+             handleRefreshStatus(); 
+          });
+           client.on('cancel', () => {
+             setShowSigningUI(false);
+          });
+           client.on('error', (data) => {
+            console.error('HelloSign Error:', data);
+            toast({ title: 'שגיאת חתימה', description: 'אירעה שגיאה בתהליך החתימה.', variant: 'destructive' });
+            setShowSigningUI(false);
+          });
+
         } catch (err) {
           toast({
             title: "שגיאה",
@@ -219,7 +225,6 @@ export default function ContractViewPage() {
     }, 0);
   };
 
-  // Clean up signing UI when modal closes
   useEffect(() => {
     if (!showSigningUI && hellosignModalRef.current) {
       hellosignModalRef.current.innerHTML = "";
@@ -241,10 +246,10 @@ export default function ContractViewPage() {
 
   const getStatusVariant = (
     status?: string
-  ): "default" | "secondary" | "destructive" | "outline" => {
+  ): "default" | "secondary" | "destructive" | "outline" | "accent" => {
     switch (status) {
       case "completed":
-        return "default"; // fallback to default, as 'accent' is not supported by Badge
+        return "accent"; 
       case "pending":
         return "outline";
       case "draft":
@@ -262,6 +267,17 @@ export default function ContractViewPage() {
         return "";
     }
   };
+  
+    const getPartyStatusIcon = (status?: 'pending' | 'signed') => {
+        switch (status) {
+            case 'signed':
+                return <CheckCircle className="w-4 h-4 text-accent" />;
+            case 'pending':
+                return <Hourglass className="w-4 h-4 text-yellow-600" />;
+            default:
+                return null;
+        }
+    };
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return "N/A";
@@ -391,23 +407,17 @@ export default function ContractViewPage() {
         "initiateSigningSession"
       );
       const result: any = await initiateSigningSessionFn({ contractId });
+      
+      // Update local state based on the function's result
+      // The function now updates the DB, so we re-fetch or trust the local state can be updated
+      const updatedContract = await fetchContractById(contractId);
+      setContract(updatedContract);
+      
+      toast({
+        title: "הצלחה!",
+        description: "החוזה נשלח לחתימה. חתום כעת או רענן את הסטטוס מאוחר יותר.",
+      });
 
-      const newSigningUrl = result.data.signingUrl;
-
-      if (newSigningUrl) {
-        // Update local state to immediately show the iframe
-        setContract((prev) =>
-          prev
-            ? { ...prev, signingUrl: newSigningUrl, status: "pending" }
-            : null
-        );
-        toast({
-          title: "הצלחה!",
-          description: "ממשק החתימה מוכן. אנא המתן לטעינתו.",
-        });
-      } else {
-        throw new Error("Function did not return a signing URL.");
-      }
     } catch (err: any) {
       const errorMessage =
         err.details?.message || err.message || "Function call failed";
@@ -524,16 +534,6 @@ export default function ContractViewPage() {
 
   return (
     <section className="space-y-8">
-      <Script 
-        src="https://cdn.hellosign.com/public/js/embedded.js"
-        strategy="afterInteractive"
-        onLoad={() => setIsSigningClientLoading(false)}
-        onError={(e) => {
-            console.error("Failed to load Dropbox Sign script", e);
-            setError("לא ניתן לטעון את רכיב החתימה.");
-            setIsSigningClientLoading(false);
-        }}
-      />
       <Button
         onClick={() => router.push("/dashboard")}
         variant="ghost"
@@ -585,7 +585,6 @@ export default function ContractViewPage() {
                     size="sm"
                     onClick={handleSendForSignature}
                     disabled={isProcessing || !isSignable}
-                    className="w-full"
                   >
                     {isProcessing ? (
                       <Loader2 className="ml-2 h-4 w-4 animate-spin" />
@@ -595,21 +594,11 @@ export default function ContractViewPage() {
                     שלח לחתימה
                   </Button>
                 )}
-                {isOwner && contract.status === "pending" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSendForSignature}
-                    disabled={isProcessing || !isSignable}
-                    className="w-full"
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="ml-2 h-4 w-4" />
-                    )}
-                    הכן מחדש לחתימה
-                  </Button>
+                {contract.status === "pending" && (
+                   <Button variant="outline" size="sm" onClick={handleRefreshStatus} disabled={isProcessing}>
+                       {isProcessing ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="ml-2 h-4 w-4" />}
+                       רענן סטטוס
+                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={handleCopyLink}>
                   <Copy className="ml-2 h-4 w-4" />
@@ -659,7 +648,6 @@ export default function ContractViewPage() {
         <CardContent className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             {error && <p className="text-destructive mb-4 text-sm">{error}</p>}
-            {/* Always show contract preview */}
             <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">
               תצוגה מקדימה של המסמך
             </h3>
@@ -719,32 +707,31 @@ export default function ContractViewPage() {
                   )}
               </div>
             </ScrollArea>
-
-            {/* Show Sign Now button and embedded signing only if contract is pending and signingUrl exists */}
-            {contract.status === "pending" && contract.signingUrl && (
+            
+            {contract.status === "pending" && contract.parties?.some(p => p.email.toLowerCase() === currentUser.email?.toLowerCase() && p.status === 'pending') && (
               <>
                 <Dialog open={showSigningUI} onOpenChange={setShowSigningUI}>
-                  <DialogContent className="max-w-3xl w-full p-0 overflow-hidden">
-                    <DialogHeader>
+                  <DialogContent className="max-w-4xl w-full p-0 overflow-hidden h-[90vh]">
+                    <DialogHeader className="p-4 border-b">
                       <DialogTitle>חתימה על החוזה</DialogTitle>
+                       <DialogClose asChild>
+                          <Button variant="ghost" size="icon" className="absolute top-3 left-3">
+                            <X className="w-5 h-5"/>
+                          </Button>
+                        </DialogClose>
                     </DialogHeader>
                     <div
-                      className="w-full min-h-[600px] border-t"
+                      className="w-full h-full"
                       ref={hellosignModalRef}
                     />
-                    <DialogClose asChild>
-                      <Button variant="outline" className="mt-4">
-                        סגור
-                      </Button>
-                    </DialogClose>
                   </DialogContent>
                 </Dialog>
                 {!showSigningUI && (
                   <Button
-                    variant="default"
+                    variant="accent"
                     onClick={handleOpenSigning}
-                    className="mb-4 mt-8"
-                    disabled={isHelloSignLoading}
+                    className="mb-4 mt-8 w-full md:w-auto"
+                    disabled={isHelloSignLoading || isProcessing}
                   >
                     {isHelloSignLoading ? (
                       <Loader2 className="ml-2 h-4 w-4 animate-spin" />
@@ -767,17 +754,25 @@ export default function ContractViewPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-sm text-muted-foreground">
+                <ul className="space-y-3 text-sm text-muted-foreground">
                   {contract.parties && contract.parties.length > 0 ? (
                     contract.parties.map((party, i) => (
                       <li
                         key={i}
-                        className="flex justify-between items-center p-2 bg-muted/30 rounded-md"
+                        className="flex justify-between items-center p-2.5 bg-muted/30 rounded-lg"
                       >
-                        <span className="font-medium text-foreground">
-                          {party.name}
-                        </span>
-                        <span className="text-xs">{party.email}</span>
+                        <div className="flex flex-col items-start">
+                           <span className="font-medium text-foreground">
+                            {party.name}
+                          </span>
+                          <span className="text-xs">{party.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                         {getPartyStatusIcon(party.status)}
+                          <Badge variant={party.status === 'signed' ? 'accent' : 'secondary'} className="text-xs">
+                             {party.status === 'signed' ? 'נחתם' : 'ממתין'}
+                          </Badge>
+                        </div>
                       </li>
                     ))
                   ) : (
