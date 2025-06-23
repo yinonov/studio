@@ -170,12 +170,6 @@ export default function ContractViewPage() {
     loadContract();
   }, [currentUser, isFirebaseLoading, router, contractId]);
 
-  useEffect(() => {
-    if (contract && currentUser && !isLoadingContract && !hasAccess()) {
-      setError("אין לך הרשאה לצפות בחוזה זה.");
-    }
-  }, [contract, currentUser, isLoadingContract]);
-
   const getStatusText = (status?: string): string => {
     switch (status) {
       case "completed":

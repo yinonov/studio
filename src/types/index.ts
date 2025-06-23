@@ -37,7 +37,7 @@ export interface Template {
   title: string; // Was name
   category: string;
   description: string;
-  icon?: LucideIcon | React.ReactElement; // Allow for JSX elements for icons
+  icon?: LucideIcon;
   fields?: { id: string; label: string; type: string; placeholder?: string; required?: boolean }[]; // From old structure, might be part of template doc
   baseClauses?: string[]; // From old structure
 }
