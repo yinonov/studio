@@ -32,6 +32,7 @@ import {
   Send,
   Hourglass,
   RefreshCcw,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";

@@ -9,7 +9,6 @@ import {
   signOut as firebaseSignOut, 
   GoogleAuthProvider, 
   signInWithPopup,
-  PhoneAuthProvider,
   signInWithPhoneNumber,
   RecaptchaVerifier,
   type ConfirmationResult,
