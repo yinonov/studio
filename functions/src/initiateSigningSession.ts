@@ -37,8 +37,8 @@ export const initiateSigningSession = onCall(
     }
 
     // Use process.env for environment variables
-    const dropboxSignApiKey = process.env.DROPBOX_SIGN_APIKEY;
-    const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENTID;
+    const dropboxSignApiKey = process.env.DROPBOX_SIGN_API_KEY;
+    const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENT_ID;
 
     if (!dropboxSignApiKey || !dropboxSignClientId) {
       logger.error(
