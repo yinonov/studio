@@ -54,6 +54,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 
 interface AuditLogItem {
   action: string;
@@ -120,6 +127,9 @@ export default function ContractViewPage() {
     }
     return false;
   };
+  
+  // A contract is signable if it has at least one party with a name and an email.
+  const isSignable = contract?.parties && contract.parties.length > 0 && contract.parties.every(p => p.name && p.email);
 
   useEffect(() => {
     if (isFirebaseLoading) return;
@@ -272,7 +282,7 @@ export default function ContractViewPage() {
   };
 
   const handleSendForSignature = async () => {
-    if (!contractId || !isOwner) return;
+    if (!contractId || !isOwner || !isSignable) return;
     setIsProcessing(true);
     setError("");
 
@@ -444,21 +454,35 @@ export default function ContractViewPage() {
                 {isOwner &&
                   (contract.status === "draft" ||
                     contract.status === "pending") && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={handleSendForSignature}
-                      disabled={isProcessing}
-                    >
-                      {isProcessing ? (
-                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="ml-2 h-4 w-4" />
-                      )}
-                      {contract.status === "draft"
-                        ? "שלח לחתימה"
-                        : "הכן מחדש לחתימה"}
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                           <div className="inline-block"> {/* Wrapper for disabled button */}
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={handleSendForSignature}
+                              disabled={isProcessing || !isSignable}
+                              className="w-full"
+                            >
+                              {isProcessing ? (
+                                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Send className="ml-2 h-4 w-4" />
+                              )}
+                              {contract.status === "draft"
+                                ? "שלח לחתימה"
+                                : "הכן מחדש לחתימה"}
+                            </Button>
+                           </div>
+                        </TooltipTrigger>
+                        {!isSignable && (
+                          <TooltipContent>
+                            <p>יש להגדיר לפחות צד אחד עם שם ואימייל תקינים.</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
                 <Button variant="outline" size="sm" onClick={handleCopyLink}>
                   <Copy className="ml-2 h-4 w-4" />

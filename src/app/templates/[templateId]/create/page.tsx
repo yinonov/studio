@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchTemplateById, type Template } from '@/firebase/templateServices';
@@ -65,19 +65,19 @@ export default function ContractCreationPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isPageLoading, setIsPageLoading] = useState(true);
     const [error, setError] = useState('');
-    const isInitialLoad = useRef(true);
     
-    const debouncedSaveContract = useCallback(
-        debounce(async (cid: string | null, data: Record<string, string>, currentTemplate: Template | null) => {
-            if (!cid || Object.keys(data).length === 0 || !currentTemplate) return;
+    // useRef to hold the debounced function to ensure it's stable across renders
+    const debouncedSaveRef = useRef(
+        debounce(async (cid: string, data: Record<string, string>, currentTemplate: Template) => {
+            if (!cid || Object.keys(data).length === 0) return;
             setIsSaving(true);
             try {
                 const parties = [
                     { name: data.party1Name || '', email: data.party1Email || ''},
-                    { name: data.party2Name || '', email: data.party2Name ? (data.party2Email || '') : ''} 
-                ].filter(p => p.name); 
+                    { name: data.party2Name || '', email: data.party2Email || ''} 
+                ].filter(p => p.name && p.email); // Only include parties with both name and email
                 
-                const contractTitle = data.contractTitle || currentTemplate?.title || 'חוזה ללא כותרת';
+                const contractTitle = data.contractTitle || currentTemplate.title || 'חוזה ללא כותרת';
 
                 await updateContractData(cid, { 
                     formData: data, 
@@ -91,8 +91,9 @@ export default function ContractCreationPage() {
             } finally {
                 setIsSaving(false);
             }
-        }, 1500), 
-    [toast]);
+        }, 1500)
+    );
+
 
     useEffect(() => {
         if (isFirebaseLoading) return;
@@ -167,22 +168,17 @@ export default function ContractCreationPage() {
             }
         };
         loadTemplateAndDraft();
-    }, [currentUser, isFirebaseLoading, router, templateId, toast]);
-
-    useEffect(() => {
-        // Prevent auto-saving on the initial load. The first save is handled by createDraftContract.
-        if (isInitialLoad.current) {
-            isInitialLoad.current = false;
-            return;
-        }
-
-        if (contractId && Object.keys(formData).length > 0 && template) { 
-            debouncedSaveContract(contractId, formData, template);
-        }
-    }, [formData, contractId, template, debouncedSaveContract]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUser, isFirebaseLoading, router, templateId]); // Toast and router are stable
 
     const handleDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        const { name, value } = e.target;
+        const newFormData = { ...formData, [name]: value };
+        setFormData(newFormData);
+
+        if (contractId && template) {
+            debouncedSaveRef.current(contractId, newFormData, template);
+        }
     };
 
     const nextStep = () => {
@@ -208,14 +204,14 @@ export default function ContractCreationPage() {
             return;
         }
 
-        debouncedSaveContract.cancel(); // Cancel any pending auto-save before final save
+        debouncedSaveRef.current.cancel(); // Cancel any pending auto-save before final save
         
         setIsSaving(true); setError('');
         try {
             const parties = [
                 { name: formData.party1Name || '', email: formData.party1Email || ''},
-                { name: formData.party2Name || '', email: formData.party2Name ? (formData.party2Email || '') : ''}
-            ].filter(p => p.name);
+                { name: formData.party2Name || '', email: formData.party2Email || ''}
+            ].filter(p => p.name && p.email); // Only include parties with both name and email
             
             const contractTitle = formData.contractTitle || template.title || 'חוזה ללא כותרת';
 
