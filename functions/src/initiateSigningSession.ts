@@ -80,7 +80,7 @@ export const initiateSigningSession = onCall(
         );
       }
       const signers: SubSignatureRequestSigner[] = contractData.parties.map(
-        (party: any, index: number) => ({
+        (party: { name: string; email: string }, index: number) => ({
           name: party.name,
           emailAddress: party.email,
           order: index,

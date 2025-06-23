@@ -136,29 +136,6 @@ export default function ContractViewPage() {
     contract.parties.length > 0 &&
     contract.parties.every((p) => p.name && p.email);
 
-  // Open HelloSign modal
-  const openHelloSignModal = async () => {
-    if (!contract?.signingUrl) return;
-    setIsHelloSignLoading(true);
-    try {
-      // No need to load script manually when using npm package import
-      const client = new HelloSign();
-      client.open(contract.signingUrl, {
-        clientId:
-          process.env.NEXT_PUBLIC_HELLOSIGN_CLIENT_ID || "Your API client ID",
-        skipDomainVerification: true,
-      });
-    } catch (e) {
-      toast({
-        title: "שגיאה",
-        description: "טעינת ממשק החתימה נכשלה.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsHelloSignLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (isFirebaseLoading) return;
     if (!currentUser) {
@@ -197,6 +174,29 @@ export default function ContractViewPage() {
     };
     loadContract();
   }, [currentUser, isFirebaseLoading, router, contractId]);
+
+  useEffect(() => {
+    if (
+      contract?.status === "pending" &&
+      contract.signingUrl &&
+      hellosignModalRef.current
+    ) {
+      setIsHelloSignLoading(true);
+      const client = new HelloSign();
+      client.open(contract.signingUrl, {
+        clientId: process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID!,
+        skipDomainVerification: true,
+        container: hellosignModalRef.current as HTMLDivElement,
+      });
+      setIsHelloSignLoading(false);
+    }
+    // Optionally, clean up the iframe on unmount
+    return () => {
+      if (hellosignModalRef.current) {
+        hellosignModalRef.current.innerHTML = "";
+      }
+    };
+  }, [contract?.status, contract?.signingUrl]);
 
   const getStatusText = (status?: string): string => {
     switch (status) {
@@ -616,20 +616,11 @@ export default function ContractViewPage() {
                 <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">
                   ממשק חתימה
                 </h3>
-                <Button
-                  onClick={openHelloSignModal}
-                  disabled={isHelloSignLoading}
-                  className="mb-4"
-                >
-                  {isHelloSignLoading ? (
-                    <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="ml-2 h-4 w-4" />
-                  )}
-                  פתח חלון חתימה
-                </Button>
-                {/* Modal container for HelloSign (optional, can be omitted for default modal) */}
-                <div ref={hellosignModalRef} />
+                {/* The container for HelloSign embedded iframe */}
+                <div
+                  ref={hellosignModalRef}
+                  className="w-full min-h-[600px] border rounded-lg"
+                />
               </div>
             ) : (
               <>
