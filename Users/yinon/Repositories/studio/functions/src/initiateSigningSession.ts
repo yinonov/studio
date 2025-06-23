@@ -36,9 +36,8 @@ export const initiateSigningSession = onCall(
       );
     }
 
-    // Use process.env for environment variables
-    const dropboxSignApiKey = process.env.DROPBOX_SIGN_APIKEY;
-    const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENTID;
+    const dropboxSignApiKey = process.env.DROPBOX_SIGN_API_KEY;
+    const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENT_ID;
 
     if (!dropboxSignApiKey || !dropboxSignClientId) {
       logger.error(
@@ -88,7 +87,7 @@ export const initiateSigningSession = onCall(
       );
       logger.info("Prepared signers:", { signers });
 
-      // 3. Prepare the request data, conditionally for development/production
+      // 3. Prepare the request data
       const isDevelopment = process.env.FUNCTIONS_EMULATOR === 'true';
       
       const signingOptions: SubSigningOptions = {
@@ -108,9 +107,8 @@ export const initiateSigningSession = onCall(
         fileUrls: [
           "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
         ], // Using a placeholder PDF
-        testMode: isDevelopment, // Use test mode only in development
+        testMode: isDevelopment,
         signingOptions: signingOptions,
-        skipDomainVerification: isDevelopment, // Correct location for this property
       };
       logger.info("Prepared signature request data for Dropbox Sign API.", { isDevelopment });
 
@@ -146,25 +144,21 @@ export const initiateSigningSession = onCall(
       if (!signingUrl) {
         throw new Error("Failed to get embedded signing URL.");
       }
-      
-      // Append the client_id to the signing URL to ensure it works in the iframe
-      const separator = signingUrl.includes('?') ? '&' : '?';
-      const finalSigningUrl = `${signingUrl}${separator}client_id=${dropboxSignClientId}`;
 
-      logger.info("Successfully generated and modified embedded sign URL.", { contractId });
+      logger.info("Successfully generated embedded sign URL.", { contractId });
 
-      // 6. Update the contract in Firestore with the signing URL and status
+      // 6. Update the contract in Firestore with pending status
       await contractRef.update({
-        signingUrl: finalSigningUrl,
         status: "pending",
         lastUpdatedAt: FieldValue.serverTimestamp(),
       });
       logger.info(
-        "Updated contract in Firestore with signing URL and pending status.",
+        "Updated contract in Firestore with pending status.",
         { contractId }
       );
-
-      return { signingUrl: finalSigningUrl };
+      
+      // 7. Return URL and Client ID to the client for it to handle the embedded experience
+      return { signingUrl, clientId: dropboxSignClientId };
     } catch (error: any) {
       logger.error("Error during Dropbox Sign process:", {
         contractId,
