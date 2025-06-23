@@ -1,4 +1,3 @@
-
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp, getApps } from "firebase-admin/app";
@@ -8,6 +7,7 @@ import {
   EmbeddedApi,
   SubSignatureRequestSigner,
   SubSigningOptions,
+  type SignatureRequestCreateEmbeddedRequest,
 } from "@dropbox/sign";
 
 if (getApps().length === 0) {
@@ -61,32 +61,39 @@ export const initiateSigningSession = onCall(
         throw new HttpsError("failed-precondition", "Contract has no parties/signers defined.");
       }
       const signers: SubSignatureRequestSigner[] = contractData.parties.map(
-        (party: any, index: number) => ({
+        (party: { name: string; email: string }, index: number) => ({
           name: party.name,
           emailAddress: party.email,
           order: index,
         })
       );
 
+      // 3. Prepare the request data, conditionally for development/production
       const isDevelopment = process.env.FUNCTIONS_EMULATOR === "true";
 
-      const signatureRequestData = {
+      const signingOptions: SubSigningOptions = {
+        draw: true,
+        type: true,
+        upload: true,
+        phone: false,
+        defaultType: SubSigningOptions.DefaultTypeEnum.Draw,
+      };
+
+      const signatureRequestData: SignatureRequestCreateEmbeddedRequest = {
         clientId: dropboxSignClientId,
         title: contractData.title || "Contract for Signature",
         subject: `Signature Request: ${contractData.title || "Contract"}`,
         message: "Please review and sign the document.",
         signers,
-        fileUrls: ["https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"],
-        testMode: isDevelopment,
-        signingOptions: {
-          draw: true,
-          type: true,
-          upload: true,
-          phone: false,
-          defaultType: SubSigningOptions.DefaultTypeEnum.Draw,
-        },
-        skipDomainVerification: isDevelopment,
+        fileUrls: [
+          "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        ], // Using a placeholder PDF
+        testMode: isDevelopment, // Use test mode only in development
+        signingOptions: signingOptions,
       };
+      logger.info("Prepared signature request data for Dropbox Sign API.", {
+        isDevelopment,
+      });
 
       const response = await signatureRequestApi.signatureRequestCreateEmbedded(signatureRequestData);
       const signatureRequest = response.body.signatureRequest;
@@ -110,15 +117,12 @@ export const initiateSigningSession = onCall(
         throw new Error("Failed to get embedded signing URL.");
       }
 
-      const partiesWithStatus = contractData.parties.map((party: any) => {
-        const signature = signatureRequest.signatures?.find(
-          (sig) => sig.signerEmailAddress === party.email
-        );
-        return {
-          ...party,
-          status: "pending",
-          signatureId: signature?.signatureId || null,
-        };
+      // Append the client_id to the signing URL to ensure it works in the iframe
+      const separator = signingUrl.includes("?") ? "&" : "?";
+      const finalSigningUrl = `${signingUrl}${separator}client_id=${dropboxSignClientId}`;
+
+      logger.info("Successfully generated and modified embedded sign URL.", {
+        contractId,
       });
 
       await contractRef.update({
