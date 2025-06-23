@@ -1,11 +1,14 @@
+
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
 import * as admin from 'firebase-admin';
 import { SignatureRequestApi, EmbeddedApi, SubSignatureRequestSigner } from '@dropbox/sign';
 import { config as functionsConfig } from 'firebase-functions';
 
-// Initialize Firebase Admin SDK
-admin.initializeApp();
+// Initialize Firebase Admin SDK only if it hasn't been already
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
 const db = admin.firestore();
 
 export const initiateSigningSession = onCall({ region: 'us-central1' }, async (request) => {
@@ -33,7 +36,7 @@ export const initiateSigningSession = onCall({ region: 'us-central1' }, async (r
     logger.error("Dropbox Sign API key or Client ID is not configured in Firebase environment.");
     throw new HttpsError(
       'failed-precondition',
-      'The Dropbox Sign integration is not configured on the server.'
+      'The Dropbox Sign integration is not configured on the server. Please check function configuration.'
     );
   }
 
@@ -68,11 +71,10 @@ export const initiateSigningSession = onCall({ region: 'us-central1' }, async (r
       subject: `Signature Request: ${contractData.title || 'Contract'}`,
       message: 'Please review and sign the document.',
       signers,
-      fileUrls: ['https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'],
+      fileUrls: ['https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'], // Using a placeholder PDF
       testMode: true,
     };
     logger.info("Prepared signature request data for Dropbox Sign API.");
-
 
     // 4. Call Dropbox Sign to create the signature request
     const signatureRequestApi = new SignatureRequestApi();
@@ -84,9 +86,10 @@ export const initiateSigningSession = onCall({ region: 'us-central1' }, async (r
     if (!signatureRequest || !signatureRequest.signatures) {
         throw new Error("Invalid response from Dropbox Sign: Missing signature request or signatures.");
     }
-
     logger.info("Successfully created embedded signature request.", { signatureRequestId: signatureRequest.signatureRequestId });
     
+    // 5. Get the signature ID for the first signer to generate the embedded URL
+    // In a multi-signer flow, you'd generate a URL for each signer as it becomes their turn.
     const firstSignatureId = signatureRequest.signatures[0]?.signatureId;
     if (!firstSignatureId) {
       throw new Error('Could not get signature ID for the first signer.');
@@ -102,7 +105,6 @@ export const initiateSigningSession = onCall({ region: 'us-central1' }, async (r
     if (!signingUrl) {
       throw new Error('Failed to get embedded signing URL.');
     }
-
     logger.info("Successfully generated embedded sign URL.", { contractId });
 
     // 6. Update the contract in Firestore with the signing URL and status

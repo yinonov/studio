@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -30,9 +31,8 @@ import {
   Phone,
   Mail,
   Send,
-  AlertTriangle,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -49,8 +49,6 @@ interface AuditLogItem {
   date: string;
   icon: React.ReactElement;
 }
-
-// generateStaticParams MUST NOT be here as this is a Client Component
 
 function interpolateWithDefaults(
   text: string,
@@ -85,12 +83,12 @@ export default function ContractViewPage() {
     typeof params.contractId === "string" ? params.contractId : null;
   const { toast } = useToast();
 
-    const [contract, setContract] = useState<StoredContractData | null>(null);
-    const [template, setTemplate] = useState<Template | null>(null);
-    const [isLoadingContract, setIsLoadingContract] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [shareIdentifier, setShareIdentifier] = useState('');
-    const [isProcessing, setIsProcessing] = useState(false); // General processing state
+  const [contract, setContract] = useState<StoredContractData | null>(null);
+  const [template, setTemplate] = useState<Template | null>(null);
+  const [isLoadingContract, setIsLoadingContract] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [shareIdentifier, setShareIdentifier] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false); // General processing state
 
   const isOwner =
     contract && currentUser && contract.ownerId === currentUser.uid;
@@ -126,7 +124,6 @@ export default function ContractViewPage() {
     const loadContract = async () => {
       setIsLoadingContract(true);
       setError(null);
-      setShowESignIntegrationMessage(false);
       try {
         const fetchedContract = await fetchContractById(contractId);
         if (!fetchedContract) {
@@ -134,13 +131,6 @@ export default function ContractViewPage() {
           setContract(null);
         } else {
           setContract(fetchedContract);
-          if (
-            fetchedContract.signingUrl?.includes(
-              PLACEHOLDER_SIGNING_URL_SUBSTRING
-            )
-          ) {
-            setShowESignIntegrationMessage(true);
-          }
           if (fetchedContract.templateId) {
             const fetchedTemplate = await fetchTemplateById(
               fetchedContract.templateId
@@ -164,31 +154,6 @@ export default function ContractViewPage() {
     }
   }, [contract, currentUser, isLoadingContract]);
 
-        const loadContract = async () => {
-            setIsLoadingContract(true);
-            setError(null);
-            try {
-                const fetchedContract = await fetchContractById(contractId);
-                if (!fetchedContract) {
-                    setError("החוזה לא נמצא.");
-                    setContract(null);
-                } else {
-                    setContract(fetchedContract);
-                    if (fetchedContract.templateId) {
-                        const fetchedTemplate = await fetchTemplateById(fetchedContract.templateId);
-                        setTemplate(fetchedTemplate);
-                    }
-                }
-            } catch (err: any) {
-                console.error("Error fetching contract:", err);
-                setError("שגיאה בטעינת החוזה.");
-            } finally {
-                setIsLoadingContract(false);
-            }
-        };
-        loadContract();
-    }, [currentUser, isFirebaseLoading, router, contractId]);
-
   const getStatusText = (status?: string): string => {
     switch (status) {
       case "completed":
@@ -199,6 +164,15 @@ export default function ContractViewPage() {
         return "טיוטה";
       default:
         return status || "לא ידוע";
+    }
+  };
+  
+  const getStatusVariant = (status?: string): "default" | "secondary" | "destructive" | "outline" | "accent" => {
+    switch (status) {
+        case "completed": return "accent";
+        case "pending": return "outline";
+        case "draft": return "secondary";
+        default: return "secondary";
     }
   };
 
@@ -238,149 +212,50 @@ export default function ContractViewPage() {
       });
       return;
     }
-
-    const formatDate = (timestamp: any) => {
-        if (!timestamp) return 'N/A';
-        try {
-            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-            return format(date, 'd בMMMM yyyy, HH:mm', { locale: he });
-        } catch (e) {
-            return 'תאריך לא תקין';
-        }
-    };
-
-    const handleShareContract = async () => {
-        if (!contract || !shareIdentifier.trim() || !isOwner) return;
-
-        const normalizedIdentifier = shareIdentifier.trim().toLowerCase();
-        if ((currentUser?.email && normalizedIdentifier === currentUser.email.toLowerCase()) || 
-            (currentUser?.phoneNumber && normalizedIdentifier === currentUser.phoneNumber)) {
-            toast({ title: "שגיאה", description: "לא ניתן לשתף חוזה עם עצמך.", variant: "destructive" });
+    
+    setIsProcessing(true);
+    try {
+        const currentSharedWith = contract.sharedWith?.map(s => s.toLowerCase()) || [];
+        if (currentSharedWith.includes(normalizedIdentifier)) {
+            toast({ title: "מידע", description: "החוזה כבר משותף עם משתמש זה.", variant: "default" });
+            setShareIdentifier('');
+            setIsProcessing(false);
             return;
         }
-        
-        setIsProcessing(true);
-        try {
-            const currentSharedWith = contract.sharedWith?.map(s => s.toLowerCase()) || [];
-            if (currentSharedWith.includes(normalizedIdentifier)) {
-                toast({ title: "מידע", description: "החוזה כבר משותף עם משתמש זה.", variant: "default" });
-                setShareIdentifier('');
-                setIsProcessing(false);
-                return;
-            }
-            const updatedSharedWith = [...(contract.sharedWith || []), shareIdentifier.trim()]; 
-            await updateContractData(contract.id, { sharedWith: updatedSharedWith });
-            setContract(prev => prev ? { ...prev, sharedWith: updatedSharedWith } : null);
-            toast({ title: "הצלחה", description: `החוזה שותף עם ${shareIdentifier.trim()}.` });
-            setShareIdentifier('');
-        } catch (err) {
-            console.error("Error sharing contract:", err);
-            toast({ title: "שגיאה", description: "שיתוף החוזה נכשל.", variant: "destructive" });
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const handleRemoveShare = async (identifierToRemove: string) => {
-        if (!contract || !isOwner) return;
-        setIsProcessing(true);
-        try {
-            const updatedSharedWith = contract.sharedWith?.filter(u => u.toLowerCase() !== identifierToRemove.toLowerCase()) || [];
-            await updateContractData(contract.id, { sharedWith: updatedSharedWith });
-            setContract(prev => prev ? { ...prev, sharedWith: updatedSharedWith } : null);
-            toast({ title: "הצלחה", description: `השיתוף עם ${identifierToRemove} הוסר.`});
-        } catch (err) {
-            console.error("Error removing share:", err);
-            toast({ title: "שגיאה", description: "הסרת השיתוף נכשלה.", variant: "destructive" });
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-    
-    const handleCopyLink = () => {
-        if (typeof window !== 'undefined') {
-            navigator.clipboard.writeText(window.location.href)
-                .then(() => toast({ title: "הצלחה", description: "קישור לחוזה הועתק ללוח." }))
-                .catch(() => toast({ title: "שגיאה", description: "לא ניתן היה להעתיק את הקישור.", variant: "destructive" }));
-        }
-    };
-
-    const handleSendForSignature = async () => {
-        if (!contractId || !isOwner) return;
-        setIsProcessing(true);
-        setError('');
-
-        toast({
-            title: "מכין בקשת חתימה...",
-            description: "אנא המתן, המערכת יוצרת סביבת חתימה מאובטחת.",
-            variant: "default",
-        });
-        setShareIdentifier("");
-        setIsProcessing(false);
-        return;
-      }
-      const updatedSharedWith = [
-        ...(contract.sharedWith || []),
-        shareIdentifier.trim(),
-      ];
-      await updateContractData(contract.id, { sharedWith: updatedSharedWith });
-      setContract((prev) =>
-        prev ? { ...prev, sharedWith: updatedSharedWith } : null
-      );
-      toast({
-        title: "הצלחה",
-        description: `החוזה שותף עם ${shareIdentifier.trim()}.`,
-      });
-      setShareIdentifier("");
+        const updatedSharedWith = [...(contract.sharedWith || []), shareIdentifier.trim()]; 
+        await updateContractData(contract.id, { sharedWith: updatedSharedWith });
+        setContract(prev => prev ? { ...prev, sharedWith: updatedSharedWith } : null);
+        toast({ title: "הצלחה", description: `החוזה שותף עם ${shareIdentifier.trim()}.` });
+        setShareIdentifier('');
     } catch (err) {
-      console.error("Error sharing contract:", err);
-      toast({
-        title: "שגיאה",
-        description: "שיתוף החוזה נכשל.",
-        variant: "destructive",
-      });
+        console.error("Error sharing contract:", err);
+        toast({ title: "שגיאה", description: "שיתוף החוזה נכשל.", variant: "destructive" });
     } finally {
-      setIsProcessing(false);
+        setIsProcessing(false);
     }
   };
 
-        try {
-            const initiateSigningSessionFn = httpsCallable(functions, 'initiateSigningSession');
-            const result: any = await initiateSigningSessionFn({ contractId });
-            
-            console.log('Result from initiateSigningSession:', result.data);
+  const handleRemoveShare = async (identifierToRemove: string) => {
+    if (!contract || !isOwner) return;
+    setIsProcessing(true);
+    try {
+        const updatedSharedWith = contract.sharedWith?.filter(u => u.toLowerCase() !== identifierToRemove.toLowerCase()) || [];
+        await updateContractData(contract.id, { sharedWith: updatedSharedWith });
+        setContract(prev => prev ? { ...prev, sharedWith: updatedSharedWith } : null);
+        toast({ title: "הצלחה", description: `השיתוף עם ${identifierToRemove} הוסר.`});
+    } catch (err) {
+        console.error("Error removing share:", err);
+        toast({ title: "שגיאה", description: "הסרת השיתוף נכשלה.", variant: "destructive" });
+    } finally {
+        setIsProcessing(false);
+    }
+  };
 
-            const newSigningUrl = result.data.signingUrl;
-
-            if (newSigningUrl) {
-                setContract(prev => prev ? { ...prev, signingUrl: newSigningUrl, status: 'pending' } : null);
-                toast({
-                    title: "הצלחה",
-                    description: "ממשק החתימה מוכן. אנא המתן לטעינתו.",
-                });
-            } else {
-                throw new Error("Function did not return a signing URL.");
-            }
-
-        } catch (err: any) {
-            const errorMessage = err.details?.message || err.message || "Function call failed";
-            const errorToDisplay = `התנעת תהליך החתימה נכשלה. ${errorMessage}. ודא שפונקציית השרת \`initiateSigningSession\` פרוסה ועובדת כראוי, ובדוק את הלוגים של הפונקציה ב-Firebase Console.`;
-            setError(errorToDisplay);
-            toast({ title: "שגיאה בקריאה לפונקציה", description: errorMessage, variant: "destructive"});
-            console.error("Error calling initiateSigningSession function:", err);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-
-    if (isLoadingContract || isFirebaseLoading) {
-        return (
-            <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
-                <Loader2 className="w-12 h-12 animate-spin text-primary" />
-                <p className="ml-3 text-muted-foreground">טוען פרטי חוזה...</p>
-            </div>
-        );
+  const handleCopyLink = () => {
+    if (typeof window !== 'undefined') {
+        navigator.clipboard.writeText(window.location.href)
+            .then(() => toast({ title: "הצלחה", description: "קישור לחוזה הועתק ללוח." }))
+            .catch(() => toast({ title: "שגיאה", description: "לא ניתן היה להעתיק את הקישור.", variant: "destructive" }));
     }
   };
 
@@ -388,245 +263,37 @@ export default function ContractViewPage() {
     if (!contractId || !isOwner) return;
     setIsProcessing(true);
     setError("");
-    setShowESignIntegrationMessage(false);
 
-
-    return (
-        <section className="space-y-8">
-            <Button onClick={() => router.push('/dashboard')} variant="ghost" className="flex items-center text-gray-600 hover:text-accent-foreground font-semibold mb-2 sm:mb-4">
-                <ChevronRight className="w-5 h-5 ml-1" />
-                חזרה ללוח הבקרה
-            </Button>
-
-            <Card className="rounded-2xl shadow-lg overflow-hidden">
-                <CardHeader className="bg-card border-b p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                        <div className="text-right sm:text-right">
-                            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">{contract.title || 'חוזה ללא כותרת'}</h1>
-                            <CardDescription className="mt-1 text-xs sm:text-sm text-muted-foreground">
-                                נוצר ב: {formatDate(contract.createdAt)} | עדכון אחרון: {formatDate(contract.lastUpdatedAt)}
-                            </CardDescription>
-                        </div>
-                        <div className="flex flex-col items-start sm:items-end gap-2 w-full sm:w-auto">
-                             <Badge variant={getStatusVariant(contract.status)} className={`text-sm px-3 py-1 self-start sm:self-auto ${getStatusTextClass(contract.status)}`}>
-                                {getStatusText(contract.status)}
-                            </Badge>
-                            <div className="flex gap-2 mt-2 sm:mt-0 flex-wrap justify-start sm:justify-end">
-                                <Button variant="secondary" size="sm" disabled>
-                                    <Download className="ml-2 h-4 w-4"/>הורד PDF (בקרוב)
-                                </Button>
-                                {isOwner && contract.status === 'draft' && (
-                                   <Button variant="outline" size="sm" onClick={() => router.push(`/templates/${contract.templateId}/create?contractId=${contract.id}`)}>
-                                       <Edit className="ml-2 h-4 w-4"/>ערוך טיוטה
-                                   </Button>
-                                )}
-                                 {isOwner && (contract.status === 'draft' || contract.status === 'pending') && (
-                                    <Button 
-                                        variant="default" 
-                                        size="sm" 
-                                        onClick={handleSendForSignature}
-                                        disabled={isProcessing}
-                                    >
-                                        {isProcessing ? <Loader2 className="ml-2 h-4 w-4 animate-spin"/> : <Send className="ml-2 h-4 w-4"/>}
-                                        {contract.status === 'draft' ? 'שלח לחתימה' : 'הכן מחדש לחתימה'}
-                                    </Button>
-                                )}
-                                <Button variant="outline" size="sm" onClick={handleCopyLink}>
-                                    <Copy className="ml-2 h-4 w-4"/>העתק קישור
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </CardHeader>
-
-                <CardContent className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2">
-                        {error && <p className="text-destructive mb-4 text-sm">{error}</p>}
-                        
-                        {contract.status === 'pending' && contract.signingUrl ? (
-                             <div className="mt-0">
-                                <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">ממשק חתימה</h3>
-                                <iframe 
-                                    src={contract.signingUrl} 
-                                    title="חתימת חוזה" 
-                                    className="w-full h-[60vh] sm:h-[70vh] border rounded-lg shadow-inner"
-                                    allow="camera;microphone" // Common permissions for e-sign providers
-                                ></iframe>
-                             </div>
-                        ) : (
-                            <>
-                                <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">תצוגה מקדימה של המסמך</h3>
-                                <ScrollArea className="h-[500px] md:h-[600px] border rounded-lg bg-muted/50 p-4 shadow-inner">
-                                    <div className="prose prose-sm max-w-none text-right leading-relaxed text-foreground/80">
-                                        <h4 className="text-center font-bold text-lg mb-4 text-foreground">{contract.title}</h4>
-                                        {template?.baseClauses && template.baseClauses.length > 0 ? (
-                                          template.baseClauses.map((clause, index) => (
-                                            <p 
-                                              key={index} 
-                                              className="mb-3" 
-                                              dangerouslySetInnerHTML={{ __html: interpolateWithDefaults(clause, contract.formData || {}).replace(/\n/g, '<br />') }} 
-                                            />
-                                          ))
-                                        ) : (
-                                           Object.entries(contract.formData || {}).map(([key, value]) => {
-                                                if (key.startsWith('party') || !value) return null;
-                                                const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                                                return <p key={key}><strong>{label}:</strong> {String(value)}</p>;
-                                            }) 
-                                        )}
-                                        
-                                        {contract.customClauses && contract.customClauses.length > 0 && (
-                                            <>
-                                                <h5 className="font-semibold mt-4 text-foreground">סעיפים מותאמים אישית:</h5>
-                                                {contract.customClauses.map((clause, idx) => (
-                                                    <p key={idx} className="text-xs mt-1 whitespace-pre-wrap">{clause.legalWording}</p>
-                                                ))}
-                                            </>
-                                        )}
-                                        {(!template?.baseClauses || template.baseClauses.length === 0) && Object.keys(contract.formData || {}).length === 0 && (
-                                           <p className="text-center text-muted-foreground mt-6">[ אין תוכן להצגה בחוזה זה ]</p>
-                                        )}
-                                    </div>
-                                </ScrollArea>
-                            </>
-                        )}
-                    </div>
-
-                    <div className="lg:col-span-1 space-y-6">
-                        <Card className="rounded-2xl shadow-md">
-                            <CardHeader>
-                                <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
-                                    <span>צדדים בחוזה</span> <User className="w-5 h-5 text-muted-foreground" />
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <ul className="space-y-2 text-sm text-muted-foreground">
-                                    {contract.parties && contract.parties.length > 0 ? contract.parties.map((party, i) => (
-                                        <li key={i} className="flex justify-between items-center p-2 bg-muted/30 rounded-md">
-                                            <span className="font-medium text-foreground">{party.name}</span>
-                                            <span className="text-xs">{party.email}</span>
-                                        </li>
-                                    )) : <li className="text-gray-500">לא צוינו צדדים.</li>}
-                                </ul>
-                            </CardContent>
-                        </Card>
-                        
-                        <Card className="rounded-2xl shadow-md">
-                            <CardHeader>
-                                <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
-                                    <span>היסטוריית פעילות</span> <FileText className="w-5 h-5 text-muted-foreground" />
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <ul className="space-y-3">
-                                    {auditLog.map((log, index) => (
-                                        <li key={index} className="flex items-start flex-row-reverse gap-3 text-sm">
-                                            <div className="bg-muted p-2 rounded-full mt-0.5">{log.icon}</div>
-                                            <div className="text-right">
-                                                <p className="font-medium text-foreground">{log.action}</p>
-                                                <p className="text-xs text-muted-foreground">על ידי {log.user} ב-{log.date}</p>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </CardContent>
-                        </Card>
-
-                        {isOwner && (
-                            <Card className="rounded-2xl shadow-md">
-                                <CardHeader>
-                                    <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
-                                        <span>שיתוף החוזה</span> <Share2 className="w-5 h-5 text-muted-foreground" />
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="share-identifier" className="text-foreground/80">שתף עם (אימייל או טלפון):</Label>
-                                        <div className="flex gap-2">
-                                            <Input 
-                                                id="share-identifier" 
-                                                type="text"
-                                                value={shareIdentifier}
-                                                onChange={(e) => setShareIdentifier(e.target.value)}
-                                                placeholder="you@example.com או 05X-XXX-XXXX"
-                                                className="flex-grow"
-                                                disabled={isProcessing}
-                                            />
-                                            <Button onClick={handleShareContract} disabled={isProcessing || !shareIdentifier.trim()} variant="secondary">
-                                                {isProcessing ? <Loader2 className="animate-spin"/> : <Share2 />}
-                                                שתף
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h4 className="text-sm font-medium text-foreground/80 mb-2">משותף עם:</h4>
-                                        {(!contract.sharedWith || contract.sharedWith.length === 0) && <p className="text-xs text-muted-foreground">החוזה אינו משותף עם משתמשים אחרים עדיין.</p>}
-                                        <ul className="space-y-1 text-sm">
-                                            {contract.sharedWith?.map(identifier => (
-                                                <li key={identifier} className="flex items-center justify-between p-1.5 bg-muted/30 rounded-md">
-                                                    <span className="text-muted-foreground flex items-center">
-                                                        {identifier.includes('@') ? <Mail className="w-3 h-3 ml-2 text-gray-500"/> : <Phone className="w-3 h-3 ml-2 text-gray-500"/>}
-                                                        {identifier}
-                                                    </span>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveShare(identifier)} disabled={isProcessing}>
-                                                        <Trash2 className="w-3 h-3 text-destructive"/>
-                                                    </Button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-        </section>
-    );
     toast({
-      title: "בדיקת תצורה (שלב 1)",
-      description: "שולח בקשה לפונקציית השרת כדי לקרוא את הגדרות ה-API...",
-      variant: "default",
+        title: "מכין בקשת חתימה...",
+        description: "אנא המתן, המערכת יוצרת סביבת חתימה מאובטחת.",
     });
 
     try {
-      const initiateSigningSessionFn = httpsCallable(
-        functions,
-        "initiateSigningSession"
-      );
-      const result: any = await initiateSigningSessionFn({ contractId });
+        const initiateSigningSessionFn = httpsCallable(functions, 'initiateSigningSession');
+        const result: any = await initiateSigningSessionFn({ contractId });
+        
+        const newSigningUrl = result.data.signingUrl;
 
-      console.log("[DEBUG] Result from initiateSigningSession:", result.data);
+        if (newSigningUrl) {
+            // Update local state to immediately show the iframe
+            setContract(prev => prev ? { ...prev, signingUrl: newSigningUrl, status: 'pending' } : null);
+            toast({
+                title: "הצלחה!",
+                description: "ממשק החתימה מוכן. אנא המתן לטעינתו.",
+            });
+        } else {
+            throw new Error("Function did not return a signing URL.");
+        }
 
-      const { apiKey, clientId, message } = result.data;
-      toast({
-        title: "תוצאת בדיקת התצורה",
-        description: `הפונקציה חזרה: ${message}. מפתח API נמצא: ${!!(
-          apiKey && apiKey !== "Not Found"
-        )}. מזהה לקוח נמצא: ${!!(
-          clientId && clientId !== "Not Found"
-        )}. בדוק את קונסול הדפדפן לפרטים.`,
-        duration: 9000,
-      });
-
-      // For now, just show the message and don't proceed with signing flow.
-      // In the next step, we will use these values.
     } catch (err: any) {
-      const errorMessage = err.message || "Function call failed";
-      setError(
-        `התנעת תהליך החתימה נכשלה. ${errorMessage}. ודא שפונקציית השרת \`initiateSigningSession\` פרוסה ועובדת כראוי, ובדוק את הלוגים של הפונקציה ב-Firebase Console.`
-      );
-      toast({
-        title: "שגיאה בקריאה לפונקציה",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      console.error(
-        "[DEBUG] Error calling initiateSigningSession function:",
-        err
-      );
+        const errorMessage = err.details?.message || err.message || "Function call failed";
+        const errorToDisplay = `התנעת תהליך החתימה נכשלה. ${errorMessage}. ודא שפונקציית השרת \`initiateSigningSession\` פרוסה ועובדת כראוי, ובדוק את הלוגים של הפונקציה ב-Firebase Console.`;
+        setError(errorToDisplay);
+        toast({ title: "שגיאה בקריאה לפונקציה", description: errorMessage, variant: "destructive"});
+        console.error("Error calling initiateSigningSession function:", err);
     } finally {
-      setIsProcessing(false);
+        setIsProcessing(false);
     }
   };
 
@@ -771,107 +438,53 @@ export default function ContractViewPage() {
         <CardContent className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             {error && <p className="text-destructive mb-4 text-sm">{error}</p>}
-
-            {showESignIntegrationMessage && contract.status === "pending" && (
-              <div className="mt-0 p-4 border border-dashed border-yellow-500 bg-yellow-50 rounded-lg text-yellow-700">
-                <div className="flex items-center">
-                  <AlertTriangle className="h-6 w-6 mr-3 text-yellow-600" />
-                  <div>
-                    <h4 className="font-bold text-lg">
-                      הטמעת ספק חתימות נדרשת
-                    </h4>
-                    <p className="text-sm">
-                      החוזה מוכן לשליחה לחתימה. השלב הבא הוא להטמיע ספק חתימות
-                      דיגיטליות (כגון DocuSign, Dropbox Sign) בפונקציית השרת{" "}
-                      <code>initiateSigningSession</code>. כרגע, הפונקציה מחזירה
-                      URL זמני. לאחר ההטמעה, לחיצה על "הכן מחדש לחתימה" תפעיל את
-                      תהליך החתימה האמיתי.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {contract.status === "pending" &&
-            contract.signingUrl &&
-            !showESignIntegrationMessage ? (
-              <div className="mt-0">
-                <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">
-                  ממשק חתימה
-                </h3>
-                <iframe
-                  src={contract.signingUrl}
-                  title="חתימת חוזה"
-                  className="w-full h-[60vh] sm:h-[70vh] border rounded-lg shadow-inner"
-                  allow="camera;microphone" // Common permissions for e-sign providers
-                ></iframe>
-              </div>
+            
+            {contract.status === 'pending' && contract.signingUrl ? (
+                 <div className="mt-0">
+                    <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">ממשק חתימה</h3>
+                    <iframe 
+                        src={contract.signingUrl} 
+                        title="חתימת חוזה" 
+                        className="w-full h-[60vh] sm:h-[70vh] border rounded-lg shadow-inner"
+                        allow="camera;microphone"
+                    ></iframe>
+                 </div>
             ) : (
-              !showESignIntegrationMessage && ( // Only show preview if not showing the integration message or the iframe
                 <>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">
-                    תצוגה מקדימה של המסמך
-                  </h3>
-                  <ScrollArea className="h-[500px] md:h-[600px] border rounded-lg bg-muted/50 p-4 shadow-inner">
-                    <div className="prose prose-sm max-w-none text-right leading-relaxed text-foreground/80">
-                      <h4 className="text-center font-bold text-lg mb-4 text-foreground">
-                        {contract.title}
-                      </h4>
-                      {template?.baseClauses && template.baseClauses.length > 0
-                        ? template.baseClauses.map((clause, index) => (
-                            <p
-                              key={index}
-                              className="mb-3"
-                              dangerouslySetInnerHTML={{
-                                __html: interpolateWithDefaults(
-                                  clause,
-                                  contract.formData || {}
-                                ).replace(/\n/g, "<br />"),
-                              }}
-                            />
-                          ))
-                        : Object.entries(contract.formData || {}).map(
-                            ([key, value]) => {
-                              if (key.startsWith("party") || !value)
-                                return null;
-                              const label = key
-                                .replace(/([A-Z])/g, " $1")
-                                .replace(/^./, (str) => str.toUpperCase());
-                              return (
-                                <p key={key}>
-                                  <strong>{label}:</strong> {String(value)}
-                                </p>
-                              );
-                            }
-                          )}
-
-                      {contract.customClauses &&
-                        contract.customClauses.length > 0 && (
-                          <>
-                            <h5 className="font-semibold mt-4 text-foreground">
-                              סעיפים מותאמים אישית:
-                            </h5>
-                            {contract.customClauses.map((clause, idx) => (
-                              <p
-                                key={idx}
-                                className="text-xs mt-1 whitespace-pre-wrap"
-                              >
-                                {clause.legalWording}
-                              </p>
-                            ))}
-                          </>
-                        )}
-                      {(!template?.baseClauses ||
-                        template.baseClauses.length === 0) &&
-                        Object.keys(contract.formData || {}).length === 0 && (
-                          <p className="text-center text-muted-foreground mt-6">
-                            [ אין תוכן להצגה בחוזה זה ]
-                          </p>
-                        )}
-                    </div>
-                  </ScrollArea>
+                    <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">תצוגה מקדימה של המסמך</h3>
+                    <ScrollArea className="h-[500px] md:h-[600px] border rounded-lg bg-muted/50 p-4 shadow-inner">
+                        <div className="prose prose-sm max-w-none text-right leading-relaxed text-foreground/80">
+                            <h4 className="text-center font-bold text-lg mb-4 text-foreground">{contract.title}</h4>
+                            {template?.baseClauses && template.baseClauses.length > 0 ? (
+                              template.baseClauses.map((clause, index) => (
+                                <p 
+                                  key={index} 
+                                  className="mb-3" 
+                                  dangerouslySetInnerHTML={{ __html: interpolateWithDefaults(clause, contract.formData || {}).replace(/\n/g, '<br />') }} 
+                                />
+                              ))
+                            ) : (
+                               Object.entries(contract.formData || {}).map(([key, value]) => {
+                                    if (key.startsWith('party') || !value) return null;
+                                    const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                                    return <p key={key}><strong>{label}:</strong> {String(value)}</p>;
+                                }) 
+                            )}
+                            
+                            {contract.customClauses && contract.customClauses.length > 0 && (
+                                <>
+                                    <h5 className="font-semibold mt-4 text-foreground">סעיפים מותאמים אישית:</h5>
+                                    {contract.customClauses.map((clause, idx) => (
+                                        <p key={idx} className="text-xs mt-1 whitespace-pre-wrap">{clause.legalWording}</p>
+                                    ))}
+                                </>
+                            )}
+                            {(!template?.baseClauses || template.baseClauses.length === 0) && Object.keys(contract.formData || {}).length === 0 && (
+                               <p className="text-center text-muted-foreground mt-6">[ אין תוכן להצגה בחוזה זה ]</p>
+                            )}
+                        </div>
+                    </ScrollArea>
                 </>
-              )
             )}
           </div>
 
@@ -879,141 +492,87 @@ export default function ContractViewPage() {
             <Card className="rounded-2xl shadow-md">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
-                  <span>צדדים בחוזה</span>{" "}
-                  <User className="w-5 h-5 text-muted-foreground" />
+                  <span>צדדים בחוזה</span> <User className="w-5 h-5 text-muted-foreground" />
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  {contract.parties && contract.parties.length > 0 ? (
-                    contract.parties.map((party, i) => (
-                      <li
-                        key={i}
-                        className="flex justify-between items-center p-2 bg-muted/30 rounded-md"
-                      >
-                        <span className="font-medium text-foreground">
-                          {party.name}
-                        </span>
-                        <span className="text-xs">{party.email}</span>
+                  {contract.parties && contract.parties.length > 0 ? contract.parties.map((party, i) => (
+                      <li key={i} className="flex justify-between items-center p-2 bg-muted/30 rounded-md">
+                          <span className="font-medium text-foreground">{party.name}</span>
+                          <span className="text-xs">{party.email}</span>
                       </li>
-                    ))
-                  ) : (
-                    <li className="text-gray-500">לא צוינו צדדים.</li>
-                  )}
+                  )) : <li className="text-gray-500">לא צוינו צדדים.</li>}
                 </ul>
               </CardContent>
             </Card>
-
+            
             <Card className="rounded-2xl shadow-md">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
-                  <span>היסטוריית פעילות</span>{" "}
-                  <FileText className="w-5 h-5 text-muted-foreground" />
+                  <span>היסטוריית פעילות</span> <FileText className="w-5 h-5 text-muted-foreground" />
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3">
                   {auditLog.map((log, index) => (
-                    <li
-                      key={index}
-                      className="flex items-start flex-row-reverse gap-3 text-sm"
-                    >
-                      <div className="bg-muted p-2 rounded-full mt-0.5">
-                        {log.icon}
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-foreground">
-                          {log.action}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          על ידי {log.user} ב-{log.date}
-                        </p>
-                      </div>
-                    </li>
+                      <li key={index} className="flex items-start flex-row-reverse gap-3 text-sm">
+                          <div className="bg-muted p-2 rounded-full mt-0.5">{log.icon}</div>
+                          <div className="text-right">
+                              <p className="font-medium text-foreground">{log.action}</p>
+                              <p className="text-xs text-muted-foreground">על ידי {log.user} ב-{log.date}</p>
+                          </div>
+                      </li>
                   ))}
                 </ul>
               </CardContent>
             </Card>
 
             {isOwner && (
-              <Card className="rounded-2xl shadow-md">
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
-                    <span>שיתוף החוזה</span>{" "}
-                    <Share2 className="w-5 h-5 text-muted-foreground" />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="share-identifier"
-                      className="text-foreground/80"
-                    >
-                      שתף עם (אימייל או טלפון):
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="share-identifier"
-                        type="text"
-                        value={shareIdentifier}
-                        onChange={(e) => setShareIdentifier(e.target.value)}
-                        placeholder="you@example.com או 05X-XXX-XXXX"
-                        className="flex-grow"
-                        disabled={isProcessing}
-                      />
-                      <Button
-                        onClick={handleShareContract}
-                        disabled={isProcessing || !shareIdentifier.trim()}
-                        variant="secondary"
-                      >
-                        {isProcessing ? (
-                          <Loader2 className="animate-spin" />
-                        ) : (
-                          <Share2 />
-                        )}
-                        שתף
-                      </Button>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium text-foreground/80 mb-2">
-                      משותף עם:
-                    </h4>
-                    {(!contract.sharedWith ||
-                      contract.sharedWith.length === 0) && (
-                      <p className="text-xs text-muted-foreground">
-                        החוזה אינו משותף עם משתמשים אחרים עדיין.
-                      </p>
-                    )}
-                    <ul className="space-y-1 text-sm">
-                      {contract.sharedWith?.map((identifier) => (
-                        <li
-                          key={identifier}
-                          className="flex items-center justify-between p-1.5 bg-muted/30 rounded-md"
-                        >
-                          <span className="text-muted-foreground flex items-center">
-                            {identifier.includes("@") ? (
-                              <Mail className="w-3 h-3 ml-2 text-gray-500" />
-                            ) : (
-                              <Phone className="w-3 h-3 ml-2 text-gray-500" />
-                            )}
-                            {identifier}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => handleRemoveShare(identifier)}
-                            disabled={isProcessing}
-                          >
-                            <Trash2 className="w-3 h-3 text-destructive" />
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
+                <Card className="rounded-2xl shadow-md">
+                    <CardHeader>
+                        <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
+                            <span>שיתוף החוזה</span> <Share2 className="w-5 h-5 text-muted-foreground" />
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="share-identifier" className="text-foreground/80">שתף עם (אימייל או טלפון):</Label>
+                            <div className="flex gap-2">
+                                <Input 
+                                    id="share-identifier" 
+                                    type="text"
+                                    value={shareIdentifier}
+                                    onChange={(e) => setShareIdentifier(e.target.value)}
+                                    placeholder="you@example.com או 05X-XXX-XXXX"
+                                    className="flex-grow"
+                                    disabled={isProcessing}
+                                />
+                                <Button onClick={handleShareContract} disabled={isProcessing || !shareIdentifier.trim()} variant="secondary">
+                                    {isProcessing ? <Loader2 className="animate-spin"/> : <Share2 />}
+                                    שתף
+                                </Button>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-medium text-foreground/80 mb-2">משותף עם:</h4>
+                            {(!contract.sharedWith || contract.sharedWith.length === 0) && <p className="text-xs text-muted-foreground">החוזה אינו משותף עם משתמשים אחרים עדיין.</p>}
+                            <ul className="space-y-1 text-sm">
+                                {contract.sharedWith?.map(identifier => (
+                                    <li key={identifier} className="flex items-center justify-between p-1.5 bg-muted/30 rounded-md">
+                                        <span className="text-muted-foreground flex items-center">
+                                            {identifier.includes('@') ? <Mail className="w-3 h-3 ml-2 text-gray-500"/> : <Phone className="w-3 h-3 ml-2 text-gray-500"/>}
+                                            {identifier}
+                                        </span>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveShare(identifier)} disabled={isProcessing}>
+                                            <Trash2 className="w-3 h-3 text-destructive"/>
+                                        </Button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </CardContent>
+                </Card>
             )}
           </div>
         </CardContent>
