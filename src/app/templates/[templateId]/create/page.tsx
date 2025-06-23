@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchTemplateById, type Template } from '@/firebase/templateServices';
@@ -65,6 +65,7 @@ export default function ContractCreationPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isPageLoading, setIsPageLoading] = useState(true);
     const [error, setError] = useState('');
+    const isInitialLoad = useRef(true);
     
     const debouncedSaveContract = useCallback(
         debounce(async (cid: string | null, data: Record<string, string>, currentTemplate: Template | null) => {
@@ -122,6 +123,7 @@ export default function ContractCreationPage() {
                 
                 const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams('');
                 const existingContractId = queryParams.get('contractId');
+                
                 let initialData: Record<string, string> = {};
                 (fetchedTemplate.fields || []).forEach(field => {
                     if (field.id && fetchedTemplate.defaultValues && fetchedTemplate.defaultValues[field.id]) {
@@ -146,12 +148,12 @@ export default function ContractCreationPage() {
                          toast({ title: "שגיאת הרשאה", description: "אינך מורשה לערוך טיוטה זו.", variant: "destructive"});
                     } else {
                          toast({ title: "שגיאה", description: "טיוטה קיימת לא נמצאה.", variant: "destructive"});
-                         const newContractId = await createDraftContract(currentUser.uid, fetchedTemplate);
+                         const newContractId = await createDraftContract(currentUser.uid, fetchedTemplate, initialData);
                          setContractId(newContractId);
                          setFormData(initialData);
                     }
                 } else {
-                    const newContractId = await createDraftContract(currentUser.uid, fetchedTemplate);
+                    const newContractId = await createDraftContract(currentUser.uid, fetchedTemplate, initialData);
                     setContractId(newContractId);
                     setFormData(initialData);
                 }
@@ -168,6 +170,12 @@ export default function ContractCreationPage() {
     }, [currentUser, isFirebaseLoading, router, templateId, toast]);
 
     useEffect(() => {
+        // Prevent auto-saving on the initial load. The first save is handled by createDraftContract.
+        if (isInitialLoad.current) {
+            isInitialLoad.current = false;
+            return;
+        }
+
         if (contractId && Object.keys(formData).length > 0 && template) { 
             debouncedSaveContract(contractId, formData, template);
         }

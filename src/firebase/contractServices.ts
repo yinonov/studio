@@ -14,7 +14,7 @@ import {
     deleteDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { StoredContractData } from '@/types';
+import type { StoredContractData, Template } from '@/types';
 
 export const fetchContractsForUser = (
     userId: string, 
@@ -43,19 +43,30 @@ export const fetchContractsForUser = (
 };
 
 
-export const createDraftContract = async (userId: string, template: { id: string; title: string }): Promise<string | null> => {
+export const createDraftContract = async (
+    userId: string, 
+    template: Pick<Template, 'id' | 'title'>, 
+    initialData: Record<string, any>
+): Promise<string | null> => {
     if (!userId || !template) {
         console.error("User ID and template are required to create a draft contract.");
         return null;
     }
     try {
+        const parties = [
+            { name: initialData.party1Name || '', email: initialData.party1Email || ''},
+            { name: initialData.party2Name || '', email: initialData.party2Name ? (initialData.party2Email || '') : ''} 
+        ].filter(p => p.name);
+
+        const contractTitle = initialData.contractTitle || template.title || 'חוזה ללא כותרת';
+
         const docRef = await addDoc(collection(db, "contracts"), {
             ownerId: userId,
             templateId: template.id,
-            title: template.title,
+            title: contractTitle,
             status: "draft",
-            formData: {},
-            parties: [],
+            formData: initialData,
+            parties: parties,
             createdAt: serverTimestamp() as Timestamp,
             lastUpdatedAt: serverTimestamp() as Timestamp,
         });
