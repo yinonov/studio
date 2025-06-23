@@ -1,3 +1,4 @@
+
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp, getApps } from "firebase-admin/app";
@@ -6,6 +7,7 @@ import {
   SignatureRequestApi,
   EmbeddedApi,
   SubSignatureRequestSigner,
+  SubSigningOptions,
 } from "@dropbox/sign";
 
 // Initialize Firebase Admin SDK only if it hasn't been already
@@ -34,9 +36,9 @@ export const initiateSigningSession = onCall(
       );
     }
 
-    // Use process.env for environment variables set via secrets or .env file for functions
-    const dropboxSignApiKey = process.env.DROPBOX_SIGN_API_KEY;
-    const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENT_ID;
+    // Use process.env for environment variables
+    const dropboxSignApiKey = process.env.DROPBOX_SIGN_APIKEY;
+    const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENTID;
 
     if (!dropboxSignApiKey || !dropboxSignClientId) {
       logger.error(
@@ -86,7 +88,19 @@ export const initiateSigningSession = onCall(
       );
       logger.info("Prepared signers:", { signers });
 
-      // 3. Prepare the request data
+      // 3. Prepare the request data, conditionally for development/production
+      const isDevelopment = process.env.NODE_ENV !== 'production';
+      
+      const signingOptions: SubSigningOptions = {
+        draw: true,
+        type: true,
+        upload: true,
+        phone: false,
+        defaultType: "draw",
+        // Skip domain verification only in development (e.g., for localhost)
+        skipDomainVerification: isDevelopment,
+      };
+
       const signatureRequestData = {
         clientId: dropboxSignClientId,
         title: contractData.title || "Contract for Signature",
@@ -96,9 +110,10 @@ export const initiateSigningSession = onCall(
         fileUrls: [
           "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
         ], // Using a placeholder PDF
-        testMode: true,
+        testMode: isDevelopment, // Use test mode only in development
+        signingOptions: signingOptions,
       };
-      logger.info("Prepared signature request data for Dropbox Sign API.");
+      logger.info("Prepared signature request data for Dropbox Sign API.", { isDevelopment });
 
       // 4. Call Dropbox Sign to create the signature request
       const response = await signatureRequestApi.signatureRequestCreateEmbedded(
@@ -132,11 +147,16 @@ export const initiateSigningSession = onCall(
       if (!signingUrl) {
         throw new Error("Failed to get embedded signing URL.");
       }
-      logger.info("Successfully generated embedded sign URL.", { contractId });
+      
+      // Append the client_id to the signing URL to ensure it works in the iframe
+      const separator = signingUrl.includes('?') ? '&' : '?';
+      const finalSigningUrl = `${signingUrl}${separator}client_id=${dropboxSignClientId}`;
+
+      logger.info("Successfully generated and modified embedded sign URL.", { contractId });
 
       // 6. Update the contract in Firestore with the signing URL and status
       await contractRef.update({
-        signingUrl: signingUrl,
+        signingUrl: finalSigningUrl,
         status: "pending",
         lastUpdatedAt: FieldValue.serverTimestamp(),
       });
@@ -145,7 +165,7 @@ export const initiateSigningSession = onCall(
         { contractId }
       );
 
-      return { signingUrl };
+      return { signingUrl: finalSigningUrl };
     } catch (error: any) {
       logger.error("Error during Dropbox Sign process:", {
         contractId,
