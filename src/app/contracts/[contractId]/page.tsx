@@ -7,9 +7,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchContractById,
   updateContractData,
+  deleteContractById,
 } from "@/firebase/contractServices";
 import type { StoredContractData } from "@/types";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -32,7 +33,7 @@ import {
   Mail,
   Send,
 } from "lucide-react";
-import { Badge, badgeVariants } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -42,6 +43,17 @@ import { useToast } from "@/hooks/use-toast";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import { fetchTemplateById, type Template } from "@/firebase/templateServices";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface AuditLogItem {
   action: string;
@@ -297,6 +309,28 @@ export default function ContractViewPage() {
     }
   };
 
+  const handleDeleteContract = async () => {
+    if (!contractId || !isOwner) return;
+    setIsProcessing(true);
+    try {
+      await deleteContractById(contractId);
+      toast({
+        title: "הצלחה",
+        description: "החוזה נמחק בהצלחה.",
+      });
+      router.push("/dashboard");
+    } catch (err) {
+      console.error("Error deleting contract:", err);
+      toast({
+        title: "שגיאה",
+        description: "מחיקת החוזה נכשלה.",
+        variant: "destructive",
+      });
+      setIsProcessing(false);
+    }
+    // No need to set isProcessing to false on success, as we are navigating away.
+  };
+
   if (isLoadingContract || isFirebaseLoading) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -430,6 +464,33 @@ export default function ContractViewPage() {
                   <Copy className="ml-2 h-4 w-4" />
                   העתק קישור
                 </Button>
+                {isOwner && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" disabled={isProcessing}>
+                        <Trash2 className="ml-2 h-4 w-4" />
+                        מחק
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>האם למחוק את החוזה?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          פעולה זו תמחק את החוזה ואת כל הנתונים המשויכים אליו לצמיתות. לא ניתן לבטל פעולה זו.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>ביטול</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDeleteContract}
+                          className={buttonVariants({ variant: "destructive" })}
+                        >
+                          {isProcessing ? <Loader2 className="animate-spin" /> : "כן, מחק"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             </div>
           </div>

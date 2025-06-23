@@ -10,7 +10,8 @@ import {
     addDoc, 
     serverTimestamp, 
     type Timestamp,
-    getDoc
+    getDoc,
+    deleteDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { StoredContractData } from '@/types';
@@ -95,5 +96,19 @@ export const fetchContractById = async (contractId: string): Promise<StoredContr
     } catch (error) {
         console.error("Error fetching contract by ID:", error);
         throw error;
+    }
+};
+
+export const deleteContractById = async (contractId: string): Promise<void> => {
+    if (!contractId) {
+        console.error("Contract ID is required to delete a contract.");
+        throw new Error("Contract ID is required.");
+    }
+    const contractRef = doc(db, "contracts", contractId);
+    try {
+        await deleteDoc(contractRef);
+    } catch (error) {
+        console.error(`Error deleting contract ${contractId}:`, error);
+        throw error; // Re-throw to be handled by the caller
     }
 };
