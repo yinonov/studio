@@ -10,7 +10,6 @@ import {
   SubSigningOptions,
 } from "@dropbox/sign";
 
-// Initialize Firebase Admin SDK only if it hasn't been already
 if (getApps().length === 0) {
   initializeApp();
 }
@@ -22,30 +21,22 @@ export const initiateSigningSession = onCall(
     logger.info("initiateSigningSession called with data: ", request.data);
 
     if (!request.auth) {
-      throw new HttpsError(
-        "unauthenticated",
-        "The function must be called while authenticated."
-      );
+      throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
 
     const { contractId } = request.data;
     if (!contractId || typeof contractId !== "string") {
-      throw new HttpsError(
-        "invalid-argument",
-        "The function must be called with a valid 'contractId'."
-      );
+      throw new HttpsError("invalid-argument", "The function must be called with a valid 'contractId'.");
     }
 
     const dropboxSignApiKey = process.env.DROPBOX_SIGN_API_KEY;
     const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENT_ID;
 
     if (!dropboxSignApiKey || !dropboxSignClientId) {
-      logger.error(
-        "Dropbox Sign API key or Client ID is not configured in Firebase environment."
-      );
+      logger.error("Dropbox Sign API key or Client ID is not configured.");
       throw new HttpsError(
         "failed-precondition",
-        "The Dropbox Sign integration is not configured on the server. Please check function configuration."
+        "The Dropbox Sign integration is not configured on the server."
       );
     }
 
@@ -56,7 +47,6 @@ export const initiateSigningSession = onCall(
     embeddedApi.username = dropboxSignApiKey;
 
     try {
-      // 1. Fetch contract data from Firestore
       const contractRef = db.collection("contracts").doc(contractId);
       const contractDoc = await contractRef.get();
       if (!contractDoc.exists) {
@@ -66,17 +56,9 @@ export const initiateSigningSession = onCall(
       if (!contractData) {
         throw new HttpsError("internal", "Contract data is empty.");
       }
-      logger.info("Successfully fetched contract data:", {
-        contractId,
-        title: contractData.title,
-      });
 
-      // 2. Prepare the signers
       if (!contractData.parties || contractData.parties.length === 0) {
-        throw new HttpsError(
-          "failed-precondition",
-          "Contract has no parties/signers defined."
-        );
+        throw new HttpsError("failed-precondition", "Contract has no parties/signers defined.");
       }
       const signers: SubSignatureRequestSigner[] = contractData.parties.map(
         (party: any, index: number) => ({
@@ -85,18 +67,8 @@ export const initiateSigningSession = onCall(
           order: index,
         })
       );
-      logger.info("Prepared signers:", { signers });
 
-      // 3. Prepare the request data
-      const isDevelopment = process.env.FUNCTIONS_EMULATOR === 'true';
-      
-      const signingOptions: SubSigningOptions = {
-        draw: true,
-        type: true,
-        upload: true,
-        phone: false,
-        defaultType: SubSigningOptions.DefaultTypeEnum.Draw,
-      };
+      const isDevelopment = process.env.FUNCTIONS_EMULATOR === "true";
 
       const signatureRequestData = {
         clientId: dropboxSignClientId,
@@ -104,60 +76,59 @@ export const initiateSigningSession = onCall(
         subject: `Signature Request: ${contractData.title || "Contract"}`,
         message: "Please review and sign the document.",
         signers,
-        fileUrls: [
-          "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        ], // Using a placeholder PDF
+        fileUrls: ["https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"],
         testMode: isDevelopment,
-        signingOptions: signingOptions,
+        signingOptions: {
+          draw: true,
+          type: true,
+          upload: true,
+          phone: false,
+          defaultType: SubSigningOptions.DefaultTypeEnum.Draw,
+        },
+        skipDomainVerification: isDevelopment,
       };
-      logger.info("Prepared signature request data for Dropbox Sign API.", { isDevelopment });
 
-      // 4. Call Dropbox Sign to create the signature request
-      const response = await signatureRequestApi.signatureRequestCreateEmbedded(
-        signatureRequestData
-      );
+      const response = await signatureRequestApi.signatureRequestCreateEmbedded(signatureRequestData);
       const signatureRequest = response.body.signatureRequest;
 
-      if (!signatureRequest || !signatureRequest.signatures) {
-        throw new Error(
-          "Invalid response from Dropbox Sign: Missing signature request or signatures."
-        );
+      if (!signatureRequest || !signatureRequest.signatures || !signatureRequest.signatureRequestId) {
+        throw new Error("Invalid response from Dropbox Sign: Missing signature request details.");
       }
       logger.info("Successfully created embedded signature request.", {
         signatureRequestId: signatureRequest.signatureRequestId,
       });
 
-      // 5. Get the signature ID for the first signer to generate the embedded URL
       const firstSignatureId = signatureRequest.signatures[0]?.signatureId;
       if (!firstSignatureId) {
         throw new Error("Could not get signature ID for the first signer.");
       }
-      logger.info("Retrieved signature ID for the first signer:", {
-        firstSignatureId,
-      });
 
-      const embeddedResponse = await embeddedApi.embeddedSignUrl(
-        firstSignatureId
-      );
+      const embeddedResponse = await embeddedApi.embeddedSignUrl(firstSignatureId);
       const signingUrl = embeddedResponse.body.embedded?.signUrl;
 
       if (!signingUrl) {
         throw new Error("Failed to get embedded signing URL.");
       }
 
-      logger.info("Successfully generated embedded sign URL.", { contractId });
+      const partiesWithStatus = contractData.parties.map((party: any) => {
+        const signature = signatureRequest.signatures?.find(
+          (sig) => sig.signerEmailAddress === party.email
+        );
+        return {
+          ...party,
+          status: "pending",
+          signatureId: signature?.signatureId || null,
+        };
+      });
 
-      // 6. Update the contract in Firestore with pending status
       await contractRef.update({
         status: "pending",
         lastUpdatedAt: FieldValue.serverTimestamp(),
+        signatureRequestId: signatureRequest.signatureRequestId,
+        parties: partiesWithStatus,
       });
-      logger.info(
-        "Updated contract in Firestore with pending status.",
-        { contractId }
-      );
-      
-      // 7. Return URL and Client ID to the client for it to handle the embedded experience
+      logger.info("Updated contract in Firestore with pending status and signature details.", { contractId });
+
       return { signingUrl, clientId: dropboxSignClientId };
     } catch (error: any) {
       logger.error("Error during Dropbox Sign process:", {

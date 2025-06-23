@@ -18,26 +18,27 @@ export interface CustomClause {
 }
 
 export interface StoredContractData {
-  id: string; // Unique contract ID from Firestore
-  ownerId: string; // User UID of the owner
+  id: string; 
+  ownerId: string;
   templateId: string;
-  title?: string; // Was templateName
+  title: string;
   formData: Record<string, any>;
-  customClauses?: CustomClause[]; // Make optional if not always present
-  parties?: { name: string; email: string }[];
-  status?: 'draft' | 'pending' | 'completed' | string; // Allow for other statuses
-  createdAt: Timestamp | Date | string; // Firestore timestamp, Date object or ISO string
-  lastUpdatedAt?: Timestamp | Date | string;
+  customClauses?: CustomClause[];
+  parties?: { name: string; email: string; status: 'pending' | 'signed'; signatureId?: string }[];
+  status: 'draft' | 'pending' | 'completed' | string;
+  createdAt: Timestamp | Date | string;
+  lastUpdatedAt: Timestamp | Date | string;
   sharedWith?: string[];
-  signingUrl?: string; // If you store this
+  signatureRequestId?: string;
 }
 
 export interface Template {
   id: string;
-  title: string; // Was name
+  title: string;
   category: string;
   description: string;
   icon?: LucideIcon;
-  fields?: { id: string; label: string; type: string; placeholder?: string; required?: boolean }[]; // From old structure, might be part of template doc
-  baseClauses?: string[]; // From old structure
+  fields?: { id:string; label: string; type: string; placeholder?: string; required?: boolean }[];
+  defaultValues?: Record<string, string>;
+  baseClauses?: string[];
 }
