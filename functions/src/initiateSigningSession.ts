@@ -31,9 +31,9 @@ export const initiateSigningSession = onCall(
       );
     }
 
-    // Use process.env for environment variables set via secrets or .env file for functions
-    const dropboxSignApiKey = process.env.DROPBOX_SIGN_API_KEY;
-    const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENT_ID;
+    // Correctly read environment variables provided by Firebase Functions config
+    const dropboxSignApiKey = process.env.DROPBOX_SIGN_APIKEY;
+    const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENTID;
 
     if (!dropboxSignApiKey || !dropboxSignClientId) {
       logger.error("Dropbox Sign API key or Client ID is not configured in Firebase environment.");
