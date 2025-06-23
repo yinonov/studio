@@ -1,3 +1,1 @@
-import { initiateSigningSession } from "./initiateSigningSession";
-
-export { initiateSigningSession };
+export { initiateSigningSession } from "./initiateSigningSession";
