@@ -88,14 +88,17 @@ export const initiateSigningSession = onCall(
       );
       logger.info("Prepared signers:", { signers });
 
-      // 3. Prepare the request data
+      // 3. Prepare the request data, conditionally for development/production
+      const isDevelopment = process.env.NODE_ENV !== 'production';
+      
       const signingOptions: SubSigningOptions = {
         draw: true,
         type: true,
         upload: true,
         phone: false,
         defaultType: "draw",
-        skipDomainVerification: true, // This allows testing on localhost
+        // Skip domain verification only in development (e.g., for localhost)
+        skipDomainVerification: isDevelopment,
       };
 
       const signatureRequestData = {
@@ -107,10 +110,10 @@ export const initiateSigningSession = onCall(
         fileUrls: [
           "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
         ], // Using a placeholder PDF
-        testMode: true,
+        testMode: isDevelopment, // Use test mode only in development
         signingOptions: signingOptions,
       };
-      logger.info("Prepared signature request data for Dropbox Sign API.");
+      logger.info("Prepared signature request data for Dropbox Sign API.", { isDevelopment });
 
       // 4. Call Dropbox Sign to create the signature request
       const response = await signatureRequestApi.signatureRequestCreateEmbedded(
