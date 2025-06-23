@@ -1,14 +1,15 @@
 
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
-import * as admin from 'firebase-admin';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { SignatureRequestApi, EmbeddedApi, SubSignatureRequestSigner } from '@dropbox/sign';
 
 // Initialize Firebase Admin SDK only if it hasn't been already
-if (admin.apps.length === 0) {
-  admin.initializeApp();
+if (getApps().length === 0) {
+  initializeApp();
 }
-const db = admin.firestore();
+const db = getFirestore();
 
 export const initiateSigningSession = onCall(
   { region: "us-central1" },
@@ -30,6 +31,7 @@ export const initiateSigningSession = onCall(
       );
     }
 
+    // Use process.env for environment variables set via secrets or .env file for functions
     const dropboxSignApiKey = process.env.DROPBOX_SIGN_API_KEY;
     const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENT_ID;
 
@@ -40,6 +42,12 @@ export const initiateSigningSession = onCall(
         'The Dropbox Sign integration is not configured on the server. Please check function configuration.'
       );
     }
+
+    const signatureRequestApi = new SignatureRequestApi();
+    signatureRequestApi.username = dropboxSignApiKey;
+    
+    const embeddedApi = new EmbeddedApi();
+    embeddedApi.username = dropboxSignApiKey;
 
     try {
       // 1. Fetch contract data from Firestore
@@ -78,9 +86,6 @@ export const initiateSigningSession = onCall(
       logger.info("Prepared signature request data for Dropbox Sign API.");
 
       // 4. Call Dropbox Sign to create the signature request
-      const signatureRequestApi = new SignatureRequestApi();
-      signatureRequestApi.username = dropboxSignApiKey;
-
       const response = await signatureRequestApi.signatureRequestCreateEmbedded(signatureRequestData);
       const signatureRequest = response.body.signatureRequest;
       
@@ -90,15 +95,11 @@ export const initiateSigningSession = onCall(
       logger.info("Successfully created embedded signature request.", { signatureRequestId: signatureRequest.signatureRequestId });
       
       // 5. Get the signature ID for the first signer to generate the embedded URL
-      // In a multi-signer flow, you'd generate a URL for each signer as it becomes their turn.
       const firstSignatureId = signatureRequest.signatures[0]?.signatureId;
       if (!firstSignatureId) {
         throw new Error('Could not get signature ID for the first signer.');
       }
       logger.info("Retrieved signature ID for the first signer:", { firstSignatureId });
-
-      const embeddedApi = new EmbeddedApi();
-      embeddedApi.username = dropboxSignApiKey;
 
       const embeddedResponse = await embeddedApi.embeddedSignUrl(firstSignatureId);
       const signingUrl = embeddedResponse.body.embedded?.signUrl;
@@ -112,18 +113,16 @@ export const initiateSigningSession = onCall(
       await contractRef.update({
           signingUrl: signingUrl,
           status: 'pending',
-          lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastUpdatedAt: FieldValue.serverTimestamp(),
       });
       logger.info("Updated contract in Firestore with signing URL and pending status.", { contractId });
 
       return { signingUrl };
     } catch (error: any) {
-      // Log the detailed error from the Dropbox Sign API if available
       logger.error("Error during Dropbox Sign process:", { 
           contractId, 
           error: error.response ? error.response.body : error.message 
       });
-      // Throw a generic error back to the client for security
       throw new HttpsError(
         'internal',
         "An unexpected error occurred while initiating the signing session.",
