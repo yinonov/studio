@@ -23,13 +23,12 @@ export interface StoredContractData {
   title: string;
   formData: Record<string, any>;
   customClauses?: CustomClause[];
-  parties?: { name: string; email: string; status: 'pending' | 'signed' }[];
+  parties?: { name: string; email: string; status: 'pending' | 'signed'; signatureId?: string; }[];
   status: 'draft' | 'pending' | 'completed' | string;
   createdAt: Timestamp | Date | string;
   lastUpdatedAt: Timestamp | Date | string;
   sharedWith?: string[];
   signatureRequestId?: string;
-  signingUrl?: string; // Optional URL for the embedded signing
 }
 
 export interface Template {

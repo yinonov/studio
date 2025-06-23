@@ -4,7 +4,6 @@ import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import {
   SignatureRequestApi,
-  EmbeddedApi,
   SubSignatureRequestSigner,
   SubSigningOptions,
   type SignatureRequestCreateEmbeddedRequest,
@@ -43,9 +42,6 @@ export const initiateSigningSession = onCall(
     const signatureRequestApi = new SignatureRequestApi();
     signatureRequestApi.username = dropboxSignApiKey;
 
-    const embeddedApi = new EmbeddedApi();
-    embeddedApi.username = dropboxSignApiKey;
-
     try {
       const contractRef = db.collection("contracts").doc(contractId);
       const contractDoc = await contractRef.get();
@@ -68,12 +64,6 @@ export const initiateSigningSession = onCall(
         })
       );
       
-      const partiesWithStatus = contractData.parties.map((party: any) => ({
-        ...party,
-        status: "pending",
-      }));
-
-      // 3. Prepare the request data, conditionally for development/production
       const isDevelopment = process.env.FUNCTIONS_EMULATOR === "true";
 
       const signingOptions: SubSigningOptions = {
@@ -92,10 +82,9 @@ export const initiateSigningSession = onCall(
         signers,
         fileUrls: [
           "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        ], // Using a placeholder PDF
+        ],
         testMode: isDevelopment,
         signingOptions: signingOptions,
-        skipDomainVerification: isDevelopment,
       };
       logger.info("Prepared signature request data for Dropbox Sign API.", {
         isDevelopment,
@@ -110,32 +99,29 @@ export const initiateSigningSession = onCall(
       logger.info("Successfully created embedded signature request.", {
         signatureRequestId: signatureRequest.signatureRequestId,
       });
-
-      const firstSignatureId = signatureRequest.signatures[0]?.signatureId;
-      if (!firstSignatureId) {
-        throw new Error("Could not get signature ID for the first signer.");
-      }
-
-      const embeddedResponse = await embeddedApi.embeddedSignUrl(firstSignatureId);
-      const signingUrl = embeddedResponse.body.embedded?.signUrl;
-
-      if (!signingUrl) {
-        throw new Error("Failed to get embedded signing URL.");
-      }
-
-      logger.info("Successfully generated and modified embedded sign URL.", {
-        contractId,
+      
+      const signatureIdMap = new Map<string, string>();
+      signatureRequest.signatures.forEach(sig => {
+        if (sig.signerEmailAddress && sig.signatureId) {
+          signatureIdMap.set(sig.signerEmailAddress.toLowerCase(), sig.signatureId);
+        }
       });
+      
+      const partiesWithDetails = contractData.parties.map((party: any) => ({
+          ...party,
+          status: "pending",
+          signatureId: signatureIdMap.get(party.email.toLowerCase()) || null,
+      }));
 
       await contractRef.update({
         status: "pending",
         lastUpdatedAt: FieldValue.serverTimestamp(),
         signatureRequestId: signatureRequest.signatureRequestId,
-        parties: partiesWithStatus,
+        parties: partiesWithDetails,
       });
       logger.info("Updated contract in Firestore with pending status and signature details.", { contractId });
 
-      return { signingUrl, clientId: dropboxSignClientId };
+      return { success: true };
     } catch (error: any) {
       logger.error("Error during Dropbox Sign process:", {
         contractId,

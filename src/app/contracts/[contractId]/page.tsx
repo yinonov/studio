@@ -112,7 +112,7 @@ export default function ContractViewPage() {
   const [shareIdentifier, setShareIdentifier] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const hellosignModalRef = useRef<HTMLDivElement | null>(null);
-  const [isHelloSignLoading, setIsHelloSignLoading] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
   const [showSigningUI, setShowSigningUI] = useState(false);
 
   const isOwner =
@@ -175,56 +175,56 @@ export default function ContractViewPage() {
     loadContract();
   }, [currentUser, isFirebaseLoading, router, contractId]);
 
-  const handleOpenSigning = () => {
-    const clientId = process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID;
-    if (!clientId) {
-      toast({
-        title: "שגיאה",
-        description: "אירעה שגיאה בטעינת ממשק החתימה. אנא פנה לתמיכה הטכנית.",
-        variant: "destructive",
-      });
-      if (process.env.NODE_ENV === "development") {
-        console.error("Missing Dropbox Sign clientId. Set NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID in your environment.");
-      }
-      return;
-    }
-    setShowSigningUI(true);
-    setIsHelloSignLoading(true);
-    setTimeout(() => {
-      if (contract?.signingUrl && hellosignModalRef.current) {
-        try {
-          const client = new HelloSign();
-          client.open(contract.signingUrl, {
-            clientId,
-            skipDomainVerification: true,
-            container: hellosignModalRef.current as HTMLDivElement,
-            uxVersion: 2,
-          });
-          client.on('finish', () => {
-             toast({ title: 'החתימה הושלמה!', description: 'הסטטוס יעודכן בקרוב.' });
-             setShowSigningUI(false);
-             handleRefreshStatus(); 
-          });
-           client.on('cancel', () => {
-             setShowSigningUI(false);
-          });
-           client.on('error', (data) => {
-            console.error('HelloSign Error:', data);
-            toast({ title: 'שגיאת חתימה', description: 'אירעה שגיאה בתהליך החתימה.', variant: 'destructive' });
-            setShowSigningUI(false);
-          });
+  const handleSignNow = async () => {
+    if (!contractId) return;
+    setIsSigning(true);
+    toast({ title: "מכין סביבת חתימה...", description: "אנא המתן." });
+    try {
+        const getUrlFn = httpsCallable(functions, 'getEmbeddedSignUrlForCurrentUser');
+        const result: any = await getUrlFn({ contractId });
 
-        } catch (err) {
-          toast({
-            title: "שגיאה",
-            description: "טעינת ממשק החתימה נכשלה.",
-            variant: "destructive",
-          });
+        const { signUrl, clientId } = result.data;
+
+        if (!signUrl || !clientId) {
+            throw new Error("Required signing information not received from server.");
         }
-      }
-      setIsHelloSignLoading(false);
-    }, 0);
+        
+        setShowSigningUI(true); 
+        
+        setTimeout(() => {
+            if (hellosignModalRef.current) {
+                const client = new HelloSign();
+                client.open(signUrl, {
+                    clientId,
+                    skipDomainVerification: process.env.NODE_ENV === 'development',
+                    container: hellosignModalRef.current as HTMLDivElement,
+                    uxVersion: 2,
+                });
+                client.on('finish', () => {
+                    toast({ title: 'החתימה הושלמה!', description: 'הסטטוס יעודכן בקרוב.' });
+                    setShowSigningUI(false);
+                    handleRefreshStatus(); 
+                });
+                client.on('cancel', () => {
+                    setShowSigningUI(false);
+                });
+                client.on('error', (data) => {
+                    console.error('HelloSign Error:', data);
+                    toast({ title: 'שגיאת חתימה', description: 'אירעה שגיאה בתהליך החתימה.', variant: 'destructive' });
+                    setShowSigningUI(false);
+                });
+            }
+        }, 0);
+
+    } catch (err: any) {
+        console.error("Error initiating signing flow:", err);
+        const errorMessage = err.details?.message || err.message || "Function call failed";
+        toast({ title: 'שגיאה', description: `לא ניתן להתחיל בתהליך החתימה: ${errorMessage}`, variant: 'destructive' });
+    } finally {
+        setIsSigning(false);
+    }
   };
+
 
   useEffect(() => {
     if (!showSigningUI && hellosignModalRef.current) {
@@ -407,16 +407,14 @@ export default function ContractViewPage() {
         functions,
         "initiateSigningSession"
       );
-      const result: any = await initiateSigningSessionFn({ contractId });
+      await initiateSigningSessionFn({ contractId });
       
-      // Update local state based on the function's result
-      // The function now updates the DB, so we re-fetch or trust the local state can be updated
       const updatedContract = await fetchContractById(contractId);
       setContract(updatedContract);
       
       toast({
         title: "הצלחה!",
-        description: "החוזה נשלח לחתימה. חתום כעת או רענן את הסטטוס מאוחר יותר.",
+        description: "החוזה נשלח לחתימה. כל הצדדים יכולים כעת לחתום.",
       });
 
     } catch (err: any) {
@@ -730,11 +728,11 @@ export default function ContractViewPage() {
                 {!showSigningUI && (
                   <Button
                     variant="accent"
-                    onClick={handleOpenSigning}
+                    onClick={handleSignNow}
                     className="mb-4 mt-8 w-full md:w-auto"
-                    disabled={isHelloSignLoading || isProcessing}
+                    disabled={isSigning || isProcessing}
                   >
-                    {isHelloSignLoading ? (
+                    {isSigning ? (
                       <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Send className="ml-2 h-4 w-4" />
