@@ -7,6 +7,7 @@ import {
   SignatureRequestApi,
   EmbeddedApi,
   SubSignatureRequestSigner,
+  SubSigningOptions,
 } from "@dropbox/sign";
 
 // Initialize Firebase Admin SDK only if it hasn't been already
@@ -88,6 +89,15 @@ export const initiateSigningSession = onCall(
       logger.info("Prepared signers:", { signers });
 
       // 3. Prepare the request data
+      const signingOptions: SubSigningOptions = {
+        draw: true,
+        type: true,
+        upload: true,
+        phone: false,
+        defaultType: "draw",
+        skipDomainVerification: true, // This allows testing on localhost
+      };
+
       const signatureRequestData = {
         clientId: dropboxSignClientId,
         title: contractData.title || "Contract for Signature",
@@ -98,6 +108,7 @@ export const initiateSigningSession = onCall(
           "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
         ], // Using a placeholder PDF
         testMode: true,
+        signingOptions: signingOptions,
       };
       logger.info("Prepared signature request data for Dropbox Sign API.");
 
