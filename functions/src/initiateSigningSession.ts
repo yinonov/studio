@@ -96,7 +96,7 @@ export const initiateSigningSession = onCall(
         type: true,
         upload: true,
         phone: false,
-        defaultType: "draw",
+        defaultType: SubSigningOptions.DefaultTypeEnum.Draw,
         // Skip domain verification only in development (e.g., for localhost)
         skipDomainVerification: isDevelopment,
       };
