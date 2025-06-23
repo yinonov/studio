@@ -89,7 +89,7 @@ export const initiateSigningSession = onCall(
       logger.info("Prepared signers:", { signers });
 
       // 3. Prepare the request data, conditionally for development/production
-      const isDevelopment = process.env.NODE_ENV !== 'production';
+      const isDevelopment = process.env.FUNCTIONS_EMULATOR === 'true';
       
       const signingOptions: SubSigningOptions = {
         draw: true,
