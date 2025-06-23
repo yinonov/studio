@@ -3,7 +3,6 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
 import * as admin from 'firebase-admin';
 import { SignatureRequestApi, EmbeddedApi, SubSignatureRequestSigner } from '@dropbox/sign';
-import { config as functionsConfig } from 'firebase-functions';
 
 // Initialize Firebase Admin SDK only if it hasn't been already
 if (admin.apps.length === 0) {
@@ -31,8 +30,8 @@ export const initiateSigningSession = onCall(
       );
     }
 
-    const dropboxSignApiKey = functionsConfig().dropbox_sign?.apikey;
-    const dropboxSignClientId = functionsConfig().dropbox_sign?.clientid;
+    const dropboxSignApiKey = process.env.DROPBOX_SIGN_API_KEY;
+    const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENT_ID;
 
     if (!dropboxSignApiKey || !dropboxSignClientId) {
       logger.error("Dropbox Sign API key or Client ID is not configured in Firebase environment.");
