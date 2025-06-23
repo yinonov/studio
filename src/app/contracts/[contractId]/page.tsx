@@ -54,14 +54,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import HelloSign from "hellosign-embedded";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 interface AuditLogItem {
   action: string;
@@ -180,18 +180,40 @@ export default function ContractViewPage() {
     loadContract();
   }, [currentUser, isFirebaseLoading, router, contractId]);
 
-  // Handler to open signing UI
+  // 1. Type safety for env var in handleOpenSigning
   const handleOpenSigning = () => {
+    const clientId = process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID;
+    if (!clientId) {
+      toast({
+        title: "שגיאה",
+        description: "אירעה שגיאה בטעינת ממשק החתימה. אנא פנה לתמיכה הטכנית.",
+        variant: "destructive",
+      });
+      // For developers, log the technical error
+      if (process.env.NODE_ENV === "development") {
+        // eslint-disable-next-line no-console
+        console.error("Missing Dropbox Sign clientId. Set NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID in your environment.");
+      }
+      return;
+    }
     setShowSigningUI(true);
     setIsHelloSignLoading(true);
     setTimeout(() => {
       if (contract?.signingUrl && hellosignModalRef.current) {
-        const client = new HelloSign();
-        client.open(contract.signingUrl, {
-          clientId: process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID!,
-          skipDomainVerification: true,
-          container: hellosignModalRef.current as HTMLDivElement,
-        });
+        try {
+          const client = new HelloSign();
+          client.open(contract.signingUrl, {
+            clientId,
+            skipDomainVerification: true,
+            container: hellosignModalRef.current as HTMLDivElement,
+          });
+        } catch (err) {
+          toast({
+            title: "שגיאה",
+            description: "טעינת ממשק החתימה נכשלה.",
+            variant: "destructive",
+          });
+        }
       }
       setIsHelloSignLoading(false);
     }, 0);
@@ -683,15 +705,20 @@ export default function ContractViewPage() {
                     <DialogHeader>
                       <DialogTitle>חתימה על החוזה</DialogTitle>
                     </DialogHeader>
-                    <div className="w-full min-h-[600px] border-t" ref={hellosignModalRef} />
+                    <div
+                      className="w-full min-h-[600px] border-t"
+                      ref={hellosignModalRef}
+                    />
                     <DialogClose asChild>
-                      <Button variant="outline" className="mt-4">סגור</Button>
+                      <Button variant="outline" className="mt-4">
+                        סגור
+                      </Button>
                     </DialogClose>
                   </DialogContent>
                 </Dialog>
                 {!showSigningUI && (
                   <Button
-                    variant="accent"
+                    variant="default"
                     onClick={handleOpenSigning}
                     className="mb-4 mt-8"
                     disabled={isHelloSignLoading}
