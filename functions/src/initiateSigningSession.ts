@@ -97,8 +97,6 @@ export const initiateSigningSession = onCall(
         upload: true,
         phone: false,
         defaultType: SubSigningOptions.DefaultTypeEnum.Draw,
-        // Skip domain verification only in development (e.g., for localhost)
-        skipDomainVerification: isDevelopment,
       };
 
       const signatureRequestData = {
@@ -112,6 +110,7 @@ export const initiateSigningSession = onCall(
         ], // Using a placeholder PDF
         testMode: isDevelopment, // Use test mode only in development
         signingOptions: signingOptions,
+        skipDomainVerification: isDevelopment, // Correct location for this property
       };
       logger.info("Prepared signature request data for Dropbox Sign API.", { isDevelopment });
 
