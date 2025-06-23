@@ -1,4 +1,3 @@
-
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp, getApps } from "firebase-admin/app";
@@ -8,6 +7,7 @@ import {
   EmbeddedApi,
   SubSignatureRequestSigner,
   SubSigningOptions,
+  type SignatureRequestCreateEmbeddedRequest,
 } from "@dropbox/sign";
 
 // Initialize Firebase Admin SDK only if it hasn't been already
@@ -89,8 +89,8 @@ export const initiateSigningSession = onCall(
       logger.info("Prepared signers:", { signers });
 
       // 3. Prepare the request data, conditionally for development/production
-      const isDevelopment = process.env.FUNCTIONS_EMULATOR === 'true';
-      
+      const isDevelopment = process.env.FUNCTIONS_EMULATOR === "true";
+
       const signingOptions: SubSigningOptions = {
         draw: true,
         type: true,
@@ -99,7 +99,7 @@ export const initiateSigningSession = onCall(
         defaultType: SubSigningOptions.DefaultTypeEnum.Draw,
       };
 
-      const signatureRequestData = {
+      const signatureRequestData: SignatureRequestCreateEmbeddedRequest = {
         clientId: dropboxSignClientId,
         title: contractData.title || "Contract for Signature",
         subject: `Signature Request: ${contractData.title || "Contract"}`,
@@ -110,9 +110,10 @@ export const initiateSigningSession = onCall(
         ], // Using a placeholder PDF
         testMode: isDevelopment, // Use test mode only in development
         signingOptions: signingOptions,
-        skipDomainVerification: isDevelopment, // Correct location for this property
       };
-      logger.info("Prepared signature request data for Dropbox Sign API.", { isDevelopment });
+      logger.info("Prepared signature request data for Dropbox Sign API.", {
+        isDevelopment,
+      });
 
       // 4. Call Dropbox Sign to create the signature request
       const response = await signatureRequestApi.signatureRequestCreateEmbedded(
@@ -146,12 +147,14 @@ export const initiateSigningSession = onCall(
       if (!signingUrl) {
         throw new Error("Failed to get embedded signing URL.");
       }
-      
+
       // Append the client_id to the signing URL to ensure it works in the iframe
-      const separator = signingUrl.includes('?') ? '&' : '?';
+      const separator = signingUrl.includes("?") ? "&" : "?";
       const finalSigningUrl = `${signingUrl}${separator}client_id=${dropboxSignClientId}`;
 
-      logger.info("Successfully generated and modified embedded sign URL.", { contractId });
+      logger.info("Successfully generated and modified embedded sign URL.", {
+        contractId,
+      });
 
       // 6. Update the contract in Firestore with the signing URL and status
       await contractRef.update({
