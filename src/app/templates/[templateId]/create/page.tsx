@@ -14,11 +14,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Progress } from "@/components/ui/progress";
 import ContractLivePreview from '@/components/contract/ContractLivePreview';
 
-// generateStaticParams MUST NOT be here as this is a Client Component
+// A debounced function that can be cancelled.
+interface DebouncedFunction<F extends (...args: any[]) => any> {
+    (...args: Parameters<F>): void;
+    cancel(): void;
+}
 
-function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (...args: Parameters<F>) => void {
+function debounce<F extends (...args: any[]) => any>(func: F, wait: number): DebouncedFunction<F> {
     let timeout: ReturnType<typeof setTimeout> | null = null;
-    return function executedFunction(...args: Parameters<F>) {
+    
+    const debouncedFunction = (...args: Parameters<F>) => {
         const later = () => {
             timeout = null;
             func(...args);
@@ -28,7 +33,17 @@ function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (..
         }
         timeout = setTimeout(later, wait);
     };
+
+    debouncedFunction.cancel = () => {
+        if (timeout !== null) {
+            clearTimeout(timeout);
+            timeout = null;
+        }
+    };
+    
+    return debouncedFunction;
 }
+
 
 const STEPS_CONFIG = [
     { name: 'צדדים וכותרת', fields: ['contractTitle', 'party1Name', 'party1Email', 'party2Name', 'party2Email'] },
@@ -184,6 +199,9 @@ export default function ContractCreationPage() {
             toast({ title: "שגיאה", description: "מזהה חוזה או תבנית לא קיימים.", variant: "destructive" });
             return;
         }
+
+        debouncedSaveContract.cancel(); // Cancel any pending auto-save before final save
+        
         setIsSaving(true); setError('');
         try {
             const parties = [
@@ -410,5 +428,3 @@ export default function ContractCreationPage() {
         </section>
     );
 }
-
-    
