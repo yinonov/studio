@@ -61,6 +61,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import HelloSign from "hellosign-embedded";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 
 interface AuditLogItem {
   action: string;
@@ -110,6 +111,10 @@ export default function ContractViewPage() {
   const [isProcessing, setIsProcessing] = useState(false); // General processing state
   const hellosignModalRef = useRef<HTMLDivElement | null>(null);
   const [isHelloSignLoading, setIsHelloSignLoading] = useState(false);
+
+  // Remove auto-opening of signing UI from useEffect
+  // Add state to track if signing UI should be shown
+  const [showSigningUI, setShowSigningUI] = useState(false);
 
   const isOwner =
     contract && currentUser && contract.ownerId === currentUser.uid;
@@ -175,28 +180,29 @@ export default function ContractViewPage() {
     loadContract();
   }, [currentUser, isFirebaseLoading, router, contractId]);
 
-  useEffect(() => {
-    if (
-      contract?.status === "pending" &&
-      contract.signingUrl &&
-      hellosignModalRef.current
-    ) {
-      setIsHelloSignLoading(true);
-      const client = new HelloSign();
-      client.open(contract.signingUrl, {
-        clientId: process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID!,
-        skipDomainVerification: true,
-        container: hellosignModalRef.current as HTMLDivElement,
-      });
-      setIsHelloSignLoading(false);
-    }
-    // Optionally, clean up the iframe on unmount
-    return () => {
-      if (hellosignModalRef.current) {
-        hellosignModalRef.current.innerHTML = "";
+  // Handler to open signing UI
+  const handleOpenSigning = () => {
+    setShowSigningUI(true);
+    setIsHelloSignLoading(true);
+    setTimeout(() => {
+      if (contract?.signingUrl && hellosignModalRef.current) {
+        const client = new HelloSign();
+        client.open(contract.signingUrl, {
+          clientId: process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID!,
+          skipDomainVerification: true,
+          container: hellosignModalRef.current as HTMLDivElement,
+        });
       }
-    };
-  }, [contract?.status, contract?.signingUrl]);
+      setIsHelloSignLoading(false);
+    }, 0);
+  };
+
+  // Clean up signing UI when modal closes
+  useEffect(() => {
+    if (!showSigningUI && hellosignModalRef.current) {
+      hellosignModalRef.current.innerHTML = "";
+    }
+  }, [showSigningUI]);
 
   const getStatusText = (status?: string): string => {
     switch (status) {
@@ -528,41 +534,38 @@ export default function ContractViewPage() {
                     ערוך טיוטה
                   </Button>
                 )}
-                {isOwner &&
-                  (contract.status === "draft" ||
-                    contract.status === "pending") && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="inline-block">
-                            {" "}
-                            {/* Wrapper for disabled button */}
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={handleSendForSignature}
-                              disabled={isProcessing || !isSignable}
-                              className="w-full"
-                            >
-                              {isProcessing ? (
-                                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <Send className="ml-2 h-4 w-4" />
-                              )}
-                              {contract.status === "draft"
-                                ? "שלח לחתימה"
-                                : "הכן מחדש לחתימה"}
-                            </Button>
-                          </div>
-                        </TooltipTrigger>
-                        {!isSignable && (
-                          <TooltipContent>
-                            <p>יש להגדיר לפחות צד אחד עם שם ואימייל תקינים.</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
+                {isOwner && contract.status === "draft" && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleSendForSignature}
+                    disabled={isProcessing || !isSignable}
+                    className="w-full"
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="ml-2 h-4 w-4" />
+                    )}
+                    שלח לחתימה
+                  </Button>
+                )}
+                {isOwner && contract.status === "pending" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSendForSignature}
+                    disabled={isProcessing || !isSignable}
+                    className="w-full"
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="ml-2 h-4 w-4" />
+                    )}
+                    הכן מחדש לחתימה
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={handleCopyLink}>
                   <Copy className="ml-2 h-4 w-4" />
                   העתק קישור
@@ -611,79 +614,96 @@ export default function ContractViewPage() {
         <CardContent className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             {error && <p className="text-destructive mb-4 text-sm">{error}</p>}
-            {contract.status === "pending" && contract.signingUrl ? (
-              <div className="mt-0">
-                <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">
-                  ממשק חתימה
-                </h3>
-                {/* The container for HelloSign embedded iframe */}
-                <div
-                  ref={hellosignModalRef}
-                  className="w-full min-h-[600px] border rounded-lg"
-                />
-              </div>
-            ) : (
-              <>
-                <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">
-                  תצוגה מקדימה של המסמך
-                </h3>
-                <ScrollArea className="h-[500px] md:h-[600px] border rounded-lg bg-muted/50 p-4 shadow-inner">
-                  <div className="prose prose-sm max-w-none text-right leading-relaxed text-foreground/80">
-                    <h4 className="text-center font-bold text-lg mb-4 text-foreground">
-                      {contract.title}
-                    </h4>
-                    {template?.baseClauses && template.baseClauses.length > 0
-                      ? template.baseClauses.map((clause, index) => (
-                          <p
-                            key={index}
-                            className="mb-3"
-                            dangerouslySetInnerHTML={{
-                              __html: interpolateWithDefaults(
-                                clause,
-                                contract.formData || {}
-                              ).replace(/\n/g, "<br />"),
-                            }}
-                          />
-                        ))
-                      : Object.entries(contract.formData || {}).map(
-                          ([key, value]) => {
-                            if (key.startsWith("party") || !value) return null;
-                            const label = key
-                              .replace(/([A-Z])/g, " $1")
-                              .replace(/^./, (str) => str.toUpperCase());
-                            return (
-                              <p key={key}>
-                                <strong>{label}:</strong> {String(value)}
-                              </p>
-                            );
-                          }
-                        )}
-
-                    {contract.customClauses &&
-                      contract.customClauses.length > 0 && (
-                        <>
-                          <h5 className="font-semibold mt-4 text-foreground">
-                            סעיפים מותאמים אישית:
-                          </h5>
-                          {contract.customClauses.map((clause, idx) => (
-                            <p
-                              key={idx}
-                              className="text-xs mt-1 whitespace-pre-wrap"
-                            >
-                              {clause.legalWording}
-                            </p>
-                          ))}
-                        </>
-                      )}
-                    {(!template?.baseClauses ||
-                      template.baseClauses.length === 0) &&
-                      Object.keys(contract.formData || {}).length === 0 && (
-                        <p className="text-center text-muted-foreground mt-6">
-                          [ אין תוכן להצגה בחוזה זה ]
+            {/* Always show contract preview */}
+            <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">
+              תצוגה מקדימה של המסמך
+            </h3>
+            <ScrollArea className="h-[500px] md:h-[600px] border rounded-lg bg-muted/50 p-4 shadow-inner">
+              <div className="prose prose-sm max-w-none text-right leading-relaxed text-foreground/80">
+                <h4 className="text-center font-bold text-lg mb-4 text-foreground">
+                  {contract.title}
+                </h4>
+                {template?.baseClauses && template.baseClauses.length > 0
+                  ? template.baseClauses.map((clause, index) => (
+                      <p
+                        key={index}
+                        className="mb-3"
+                        dangerouslySetInnerHTML={{
+                          __html: interpolateWithDefaults(
+                            clause,
+                            contract.formData || {}
+                          ).replace(/\n/g, "<br />"),
+                        }}
+                      />
+                    ))
+                  : Object.entries(contract.formData || {}).map(
+                      ([key, value]) => {
+                        if (key.startsWith("party") || !value) return null;
+                        const label = key
+                          .replace(/([A-Z])/g, " $1")
+                          .replace(/^./, (str) => str.toUpperCase());
+                        return (
+                          <p key={key}>
+                            <strong>{label}:</strong> {String(value)}
+                          </p>
+                        );
+                      }
+                    )}
+                {contract.customClauses &&
+                  contract.customClauses.length > 0 && (
+                    <>
+                      <h5 className="font-semibold mt-4 text-foreground">
+                        סעיפים מותאמים אישית:
+                      </h5>
+                      {contract.customClauses.map((clause, idx) => (
+                        <p
+                          key={idx}
+                          className="text-xs mt-1 whitespace-pre-wrap"
+                        >
+                          {clause.legalWording}
                         </p>
-                      )}
-                  </div>
-                </ScrollArea>
+                      ))}
+                    </>
+                  )}
+                {(!template?.baseClauses ||
+                  template.baseClauses.length === 0) &&
+                  Object.keys(contract.formData || {}).length === 0 && (
+                    <p className="text-center text-muted-foreground mt-6">
+                      [ אין תוכן להצגה בחוזה זה ]
+                    </p>
+                  )}
+              </div>
+            </ScrollArea>
+
+            {/* Show Sign Now button and embedded signing only if contract is pending and signingUrl exists */}
+            {contract.status === "pending" && contract.signingUrl && (
+              <>
+                <Dialog open={showSigningUI} onOpenChange={setShowSigningUI}>
+                  <DialogContent className="max-w-3xl w-full p-0 overflow-hidden">
+                    <DialogHeader>
+                      <DialogTitle>חתימה על החוזה</DialogTitle>
+                    </DialogHeader>
+                    <div className="w-full min-h-[600px] border-t" ref={hellosignModalRef} />
+                    <DialogClose asChild>
+                      <Button variant="outline" className="mt-4">סגור</Button>
+                    </DialogClose>
+                  </DialogContent>
+                </Dialog>
+                {!showSigningUI && (
+                  <Button
+                    variant="accent"
+                    onClick={handleOpenSigning}
+                    className="mb-4 mt-8"
+                    disabled={isHelloSignLoading}
+                  >
+                    {isHelloSignLoading ? (
+                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="ml-2 h-4 w-4" />
+                    )}
+                    חתום עכשיו
+                  </Button>
+                )}
               </>
             )}
           </div>
