@@ -1,3 +1,4 @@
+
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp, getApps } from "firebase-admin/app";
@@ -39,6 +40,84 @@ function interpolateWithDefaults(
     }
     return defaultValue;
   });
+}
+
+function generateContractHtml(
+    title: string,
+    baseClauses: string[],
+    customClauses: { legalWording: string }[],
+    formData: Record<string, string>
+): string {
+    const interpolatedBaseClauses = baseClauses
+        .map(clause =>
+            interpolateWithDefaults(clause, formData).replace(/\n/g, "<br />")
+        )
+        .map(c => `<p>${c}</p>`)
+        .join("");
+
+    const interpolatedCustomClauses =
+        customClauses.length > 0
+            ? `<h2>סעיפים מותאמים אישית</h2>` +
+              customClauses
+                  .map(c => `<p>${c.legalWording.replace(/\n/g, "<br />")}</p>`)
+                  .join("")
+            : "";
+
+    // This HTML structure and CSS are designed to look clean and professional,
+    // and to be consistent with the in-app preview.
+    return `
+        <!DOCTYPE html>
+        <html lang="he" dir="rtl">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>${title}</title>
+            <style>
+                body {
+                    font-family: 'Arial', 'Helvetica', sans-serif;
+                    direction: rtl;
+                    line-height: 1.6;
+                    color: #333;
+                    background-color: #f4f4f4;
+                    margin: 0;
+                    padding: 20px;
+                }
+                .container {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    background: #fff;
+                    border: 1px solid #ddd;
+                    padding: 40px;
+                    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+                }
+                h1 {
+                    text-align: center;
+                    color: #111;
+                    font-size: 24px;
+                    margin-bottom: 30px;
+                }
+                h2 {
+                    font-size: 18px;
+                    border-bottom: 2px solid #eee;
+                    padding-bottom: 8px;
+                    margin-top: 25px;
+                    margin-bottom: 15px;
+                }
+                p {
+                    margin-bottom: 1em;
+                    text-align: justify;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>${title}</h1>
+                ${interpolatedBaseClauses}
+                ${interpolatedCustomClauses}
+            </div>
+        </body>
+        </html>
+    `;
 }
 
 export const initiateSigningSession = onCall(
@@ -91,32 +170,28 @@ export const initiateSigningSession = onCall(
       }
       const templateData = templateDoc.data();
 
-      // ** Generate contract content **
+      // ** Generate contract content as HTML **
       const contractTitle = contractData.title || templateData?.title || 'Contract';
       const baseClauses = templateData?.baseClauses || [];
       const customClauses = contractData.customClauses || [];
 
-      let contractContent = `${contractTitle}\n\n`;
-      baseClauses.forEach((clause: string) => {
-        contractContent += interpolateWithDefaults(clause, contractData.formData || {}) + "\n\n";
-      });
-      if (customClauses.length > 0) {
-        contractContent += "Custom Clauses:\n";
-        customClauses.forEach((clause: { legalWording: string; }) => {
-          contractContent += clause.legalWording + "\n\n";
-        });
-      }
+      const contractHtmlContent = generateContractHtml(
+          contractTitle,
+          baseClauses,
+          customClauses,
+          contractData.formData || {}
+      );
 
-      // ** Upload to Firebase Storage **
+      // ** Upload to Firebase Storage as an HTML file **
       const bucket = storage.bucket();
-      const filePath = `generated_contracts/${contractId}.txt`;
+      const filePath = `generated_contracts/${contractId}.html`;
       const file = bucket.file(filePath);
-      await file.save(Buffer.from(contractContent, 'utf8'), {
-        contentType: 'text/plain',
+      await file.save(Buffer.from(contractHtmlContent, 'utf8'), {
+        contentType: 'text/html',
       });
       await file.makePublic();
       const publicUrl = file.publicUrl();
-      logger.info(`Contract text file uploaded to: ${publicUrl}`);
+      logger.info(`Contract HTML file uploaded to: ${publicUrl}`);
 
 
       if (!contractData.parties || contractData.parties.length === 0) {
