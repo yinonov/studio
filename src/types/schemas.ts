@@ -18,7 +18,7 @@ export const CustomClauseSchema = z.object({
 export const PartySchema = z.object({
   name: z.string(),
   email: z.string().email(),
-  status: z.enum(["pending", "signed"]),
+  status: z.enum(["pending", "signed"]).optional(),
   signatureId: z.string().optional(),
 });
 

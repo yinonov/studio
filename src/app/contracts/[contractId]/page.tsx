@@ -529,10 +529,7 @@ export default function ContractViewPage() {
                           <span className="text-xs">{party.email}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge
-                            variant="secondary"
-                            className="text-xs"
-                          >
+                          <Badge variant="secondary" className="text-xs">
                             {party.name ? "הוזן" : "ממתין למילוי"}
                           </Badge>
                         </div>

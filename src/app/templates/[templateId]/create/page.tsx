@@ -4,7 +4,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchTemplateById, type Template } from '@/firebase/templateServices';
+import { fetchTemplateById } from '@/firebase/templateServices';
+import type { Template } from '@/types';
 import { createDraftContract, updateContractData, fetchContractById } from '@/firebase/contractServices';
 import FormInput from '@/components/shared/FormInput';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,9 @@ export default function ContractCreationPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isPageLoading, setIsPageLoading] = useState(true);
     const [error, setError] = useState('');
+    
+    // Add a ref to prevent duplicate contract creation
+    const hasCreatedContract = useRef(false);
     
     // useRef to hold the debounced function to ensure it's stable across renders
     const debouncedSaveRef = useRef(
@@ -149,14 +153,30 @@ export default function ContractCreationPage() {
                          toast({ title: "שגיאת הרשאה", description: "אינך מורשה לערוך טיוטה זו.", variant: "destructive"});
                     } else {
                          toast({ title: "שגיאה", description: "טיוטה קיימת לא נמצאה.", variant: "destructive"});
-                         const newContractId = await createDraftContract(currentUser.uid, fetchedTemplate, initialData);
-                         setContractId(newContractId);
-                         setFormData(initialData);
+                         // Only create if we haven't already created one
+                         if (!hasCreatedContract.current && !contractId) {
+                             hasCreatedContract.current = true;
+                             const newContractId = await createDraftContract(currentUser.uid, fetchedTemplate, initialData);
+                             setContractId(newContractId);
+                             setFormData(initialData);
+                             
+                             // Update URL to include the new contract ID
+                             const newUrl = `${window.location.pathname}?contractId=${newContractId}`;
+                             window.history.replaceState({}, '', newUrl);
+                         }
                     }
                 } else {
-                    const newContractId = await createDraftContract(currentUser.uid, fetchedTemplate, initialData);
-                    setContractId(newContractId);
-                    setFormData(initialData);
+                    // Only create a new contract if we haven't already created one
+                    if (!hasCreatedContract.current && !contractId) {
+                        hasCreatedContract.current = true;
+                        const newContractId = await createDraftContract(currentUser.uid, fetchedTemplate, initialData);
+                        setContractId(newContractId);
+                        setFormData(initialData);
+                        
+                        // Update URL to include the new contract ID without triggering navigation
+                        const newUrl = `${window.location.pathname}?contractId=${newContractId}`;
+                        window.history.replaceState({}, '', newUrl);
+                    }
                 }
 
             } catch (err: any) {
@@ -168,8 +188,13 @@ export default function ContractCreationPage() {
             }
         };
         loadTemplateAndDraft();
+        
+        // Cleanup function to reset the creation flag if dependencies change
+        return () => {
+            hasCreatedContract.current = false;
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentUser, isFirebaseLoading, router, templateId]); // Toast and router are stable
+    }, [currentUser?.uid, isFirebaseLoading, templateId]); // Only depend on stable values
 
     const handleDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -184,11 +209,11 @@ export default function ContractCreationPage() {
     const nextStep = () => {
         if (currentStep < STEPS_CONFIG.length && template) {
             const currentStepConfig = STEPS_CONFIG[currentStep - 1];
-            const missingRequired = template.fields?.filter(f =>
+            const missingRequired = template.fields?.filter((f: any) =>
                 f.required && currentStepConfig.fields.includes(f.id) && (!formData[f.id] || String(formData[f.id]).trim() === '')
             );
             if (missingRequired && missingRequired.length > 0) {
-                toast({ title: "שדות חובה חסרים", description: `אנא מלא: ${missingRequired.map(f=>f.label).join(', ')}`, variant: "destructive"});
+                toast({ title: "שדות חובה חסרים", description: `אנא מלא: ${missingRequired.map((f: any)=>f.label).join(', ')}`, variant: "destructive"});
                 return;
             }
             setCurrentStep(currentStep + 1);
@@ -254,14 +279,14 @@ export default function ContractCreationPage() {
             );
         }
 
-        const fieldsForCurrentStep = template.fields?.filter(field => field.id && currentStepConfig.fields.includes(field.id)) || [];
+        const fieldsForCurrentStep = template.fields?.filter((field: any) => field.id && currentStepConfig.fields.includes(field.id)) || [];
         
         if (currentStep === 1) {
             const partyFieldsConfig = [
                 { id: 'contractTitle', label: 'כותרת החוזה (פנימי)', type: 'text', placeholder: "לדוגמה: הסכם שכירות הרצל 1", required: true, group: "כותרת" },
                 { id: 'party1Name', label: "שם צד א'", type: 'text', placeholder: "ישראל ישראלי", required: true, group: "צד א'" },
                 { id: 'party1Email', label: "אימייל צד א'", type: 'email', placeholder: "israel@example.com", required: true, group: "צד א'" },
-                { id: 'party2Name', label: "שם צד ב'", type: 'text', placeholder: "שרה לוי", required: template.fields?.find(f=>f.id === 'party2Name')?.required || false, group: "צד ב'" },
+                { id: 'party2Name', label: "שם צד ב'", type: 'text', placeholder: "שרה לוי", required: template.fields?.find((f: any)=>f.id === 'party2Name')?.required || false, group: "צד ב'" },
                 { id: 'party2Email', label: "אימייל צד ב'", type: 'email', placeholder: "sarah@example.com", required: template.fields?.find(f=>f.id === 'party2Email')?.required || false, group: "צד ב'" },
             ];
             
@@ -269,7 +294,7 @@ export default function ContractCreationPage() {
             return (
                  <div className="space-y-6">
                     {partyFieldsConfig.map(field => {
-                        const templateFieldDefinition = template.fields?.find(f => f.id === field.id);
+                        const templateFieldDefinition = template.fields?.find((f: any) => f.id === field.id);
                         const isRequired = templateFieldDefinition?.required !== undefined ? templateFieldDefinition.required : field.required;
 
                         const showGroupHeader = field.group && field.group !== lastGroup;
@@ -296,7 +321,7 @@ export default function ContractCreationPage() {
 
         return (
             <div className="space-y-6">
-                {fieldsForCurrentStep.map(field => (
+                {fieldsForCurrentStep.map((field: any) => (
                      <FormInput 
                         key={field.id}
                         label={field.label} 
