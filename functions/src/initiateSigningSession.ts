@@ -2,6 +2,7 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 import {
   SignatureRequestApi,
   SubSignatureRequestSigner,
@@ -13,6 +14,32 @@ if (getApps().length === 0) {
   initializeApp();
 }
 const db = getFirestore();
+const storage = getStorage();
+
+// Helper function to interpolate contract data into clauses
+function interpolateWithDefaults(
+  text: string,
+  data: Record<string, string>
+): string {
+  if (typeof text !== "string") {
+    return "";
+  }
+  return text.replace(/\{\{(.+?)\}\}/g, (_match, captured) => {
+    const parts = captured.split("||");
+    const fieldName = parts[0].trim();
+    const defaultValue = parts.length > 1 ? parts[1].trim() : `[${fieldName}]`;
+    const valueFromData = data[fieldName];
+
+    if (
+      valueFromData !== undefined &&
+      valueFromData !== null &&
+      valueFromData !== ""
+    ) {
+      return String(valueFromData);
+    }
+    return defaultValue;
+  });
+}
 
 export const initiateSigningSession = onCall(
   { region: "us-central1" },
@@ -53,6 +80,45 @@ export const initiateSigningSession = onCall(
         throw new HttpsError("internal", "Contract data is empty.");
       }
 
+      if (!contractData.templateId) {
+        throw new HttpsError("failed-precondition", "Contract is missing a template ID.");
+      }
+      
+      const templateRef = db.collection("templates").doc(contractData.templateId);
+      const templateDoc = await templateRef.get();
+      if (!templateDoc.exists) {
+        throw new HttpsError("not-found", "Contract template not found.");
+      }
+      const templateData = templateDoc.data();
+
+      // ** Generate contract content **
+      const contractTitle = contractData.title || templateData?.title || 'Contract';
+      const baseClauses = templateData?.baseClauses || [];
+      const customClauses = contractData.customClauses || [];
+
+      let contractContent = `${contractTitle}\n\n`;
+      baseClauses.forEach((clause: string) => {
+        contractContent += interpolateWithDefaults(clause, contractData.formData || {}) + "\n\n";
+      });
+      if (customClauses.length > 0) {
+        contractContent += "Custom Clauses:\n";
+        customClauses.forEach((clause: { legalWording: string; }) => {
+          contractContent += clause.legalWording + "\n\n";
+        });
+      }
+
+      // ** Upload to Firebase Storage **
+      const bucket = storage.bucket();
+      const filePath = `generated_contracts/${contractId}.txt`;
+      const file = bucket.file(filePath);
+      await file.save(Buffer.from(contractContent, 'utf8'), {
+        contentType: 'text/plain',
+      });
+      await file.makePublic();
+      const publicUrl = file.publicUrl();
+      logger.info(`Contract text file uploaded to: ${publicUrl}`);
+
+
       if (!contractData.parties || contractData.parties.length === 0) {
         throw new HttpsError("failed-precondition", "Contract has no parties/signers defined.");
       }
@@ -80,9 +146,7 @@ export const initiateSigningSession = onCall(
         subject: `Signature Request: ${contractData.title || "Contract"}`,
         message: "Please review and sign the document.",
         signers,
-        fileUrls: [
-          "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        ],
+        fileUrls: [publicUrl],
         testMode: isDevelopment,
         signingOptions: signingOptions,
       };
@@ -118,6 +182,7 @@ export const initiateSigningSession = onCall(
         lastUpdatedAt: FieldValue.serverTimestamp(),
         signatureRequestId: signatureRequest.signatureRequestId,
         parties: partiesWithDetails,
+        contractFileUrl: publicUrl, // Save the file URL for reference
       });
       logger.info("Updated contract in Firestore with pending status and signature details.", { contractId });
 
