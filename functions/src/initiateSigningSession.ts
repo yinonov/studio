@@ -17,6 +17,102 @@ if (getApps().length === 0) {
 const db = getFirestore();
 const storage = getStorage();
 
+// --- START: Template Definitions Fallback ---
+// This data is included as a fallback for when templates are not found in Firestore.
+// This mirrors the logic on the client-side to ensure function robustness.
+
+interface TemplateField {
+  id: string;
+  label: string;
+  type: "text" | "number" | "date" | "textarea";
+  placeholder?: string;
+  required?: boolean;
+}
+
+interface Template {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  fields?: TemplateField[];
+  baseClauses?: string[];
+}
+
+const defaultRentalFields: TemplateField[] = [
+    { id: 'party1Name', label: "שם צד א' (משכיר)", type: 'text', placeholder: 'ישראל ישראלי', required: true },
+    { id: 'party1Email', label: "אימייל צד א'", type: 'email', placeholder: 'israel@example.com', required: true },
+    { id: 'party2Name', label: "שם צד ב' (שוכר)", type: 'text', placeholder: 'שרה לוי', required: true },
+    { id: 'party2Email', label: "אימייל צד ב'", type: 'email', placeholder: 'sarah@example.com', required: true },
+    { id: 'address', label: 'כתובת הנכס', type: 'text', placeholder: 'הרצל 1, תל אביב', required: true },
+    { id: 'rentAmount', label: 'סכום שכירות חודשי (₪)', type: 'number', placeholder: '5000', required: true },
+    { id: 'startDate', label: 'תאריך תחילת שכירות', type: 'date', required: true },
+    { id: 'additionalNotes', label: 'הערות נוספות', type: 'textarea', placeholder: 'פרטים נוספים או סעיפים מיוחדים...', required: false },
+];
+
+const defaultServiceFields: TemplateField[] = [
+    { id: 'party1Name', label: "שם נותן השירות", type: 'text', required: true },
+    { id: 'party1Email', label: "אימייל נותן השירות", type: 'email', required: true },
+    { id: 'party2Name', label: "שם מקבל השירות", type: 'text', required: true },
+    { id: 'party2Email', label: "אימייל מקבל השירות", type: 'email', required: true },
+    { id: 'serviceDescription', label: 'תיאור השירות', type: 'textarea', required: true },
+    { id: 'serviceFee', label: 'תמורה (₪)', type: 'number', required: true },
+];
+
+const defaultTemplates: Template[] = [
+    {
+      id: 'lease-residential',
+      title: "הסכם שכירות דירה",
+      category: "נדל\"ן",
+      description: "חוזה סטנדרטי למשכירים ושוכרים למגורים.",
+      fields: defaultRentalFields,
+      baseClauses: [
+          "שנערך ונחתם ב{{city||תל אביב}} ביום {{day}} לחודש {{month}} שנת {{year}}",
+          "בין: {{party1Name}} (ת.ז. __________) מצד אחד",
+          "לבין: {{party2Name}} (ת.ז. __________) מצד שני",
+          "הואיל והמשכיר הינו בעל הזכויות בנכס הנמצא בכתובת: {{address}} (להלן: \"המושכר\").",
+          "והואיל והשוכר מעוניין לשכור מאת המשכיר את המושכר לתקופה ובתנאים המפורטים להלן.",
+          "והואיל והצדדים מסכימים כי דמי השכירות החודשיים יעמדו על סך {{rentAmount}} ש\"ח.",
+          "והואיל ותקופת השכירות תחל ביום {{startDate}}."
+        ]
+    },
+    {
+      id: 'service-freelance',
+      title: "הסכם שירותי פרילנס",
+      category: "שירותים",
+      description: "חוזה לפרילנסרים המספקים שירותים ללקוחות.",
+      fields: defaultServiceFields,
+      baseClauses: [
+          "שנערך ונחתם ביום {{day}} לחודש {{month}} שנת {{year}}",
+          "בין: {{party1Name}} (להלן: \"נותן השירותים\")",
+          "לבין: {{party2Name}} (להלן: \"מקבל השירותים\")",
+          "הואיל ונותן השירותים עוסק במתן שירותי {{serviceDescription}}.",
+          "והואיל ומקבל השירותים מעוניין לקבל מנותן השירותים את השירותים כאמור.",
+          "הצדדים הסכימו כי התמורה עבור השירותים תעמוד על {{serviceFee}} ש\"ח."
+        ]
+    },
+    {
+      id: 'nda',
+      title: "הסכם סודיות (NDA)",
+      category: "עסקי",
+      description: "הסכם לשמירה על מידע רגיש בין צדדים.",
+      fields: [
+        { id: 'disclosingParty', label: 'צד מגלה מידע', type: 'text', required: true },
+        { id: 'receivingParty', label: 'צד מקבל מידע', type: 'text', required: true },
+        { id: 'effectiveDate', label: 'תאריך תחולה', type: 'date', required: true },
+        { id: 'confidentialInformationDescription', label: 'תיאור המידע הסודי', type: 'textarea', required: true },
+      ],
+       baseClauses: [
+          "שנערך ונחתם ביום {{effectiveDate}}",
+          "בין: {{disclosingParty}} (להלן: \"הצד המגלה\")",
+          "לבין: {{receivingParty}} (להלן: \"הצד המקבל\")",
+          "הואיל והצד המגלה מתכוון לגלות לצד המקבל מידע סודי (כהגדרתו להלן) למטרת {{purpose||בחינת שיתוף פעולה עסקי}}.",
+          "להלן תיאור המידע הסודי: {{confidentialInformationDescription}}"
+        ]
+    },
+];
+
+// --- END: Template Definitions Fallback ---
+
 // Helper function to interpolate contract data into clauses
 function interpolateWithDefaults(
   text: string,
@@ -171,14 +267,24 @@ export const initiateSigningSession = onCall(
       
       const templateRef = db.collection("templates").doc(contractData.templateId);
       const templateDoc = await templateRef.get();
-      if (!templateDoc.exists) {
+      
+      let templateData: Template | undefined;
+
+      if (templateDoc.exists()) {
+        templateData = templateDoc.data() as Template;
+      } else {
+        logger.warn(`Template ${contractData.templateId} not found in Firestore. Falling back to local definitions.`);
+        templateData = defaultTemplates.find(t => t.id === contractData.templateId);
+      }
+
+      if (!templateData) {
         throw new HttpsError("not-found", "Contract template not found.");
       }
-      const templateData = templateDoc.data();
+
 
       // ** Generate contract content as HTML **
-      const contractTitle = contractData.title || templateData?.title || 'Contract';
-      const baseClauses = templateData?.baseClauses || [];
+      const contractTitle = contractData.title || templateData.title || 'Contract';
+      const baseClauses = templateData.baseClauses || [];
       const customClauses = contractData.customClauses || [];
 
       const contractHtmlContent = generateContractHtml(
