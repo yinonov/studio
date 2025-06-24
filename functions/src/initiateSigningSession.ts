@@ -8,6 +8,8 @@ import {
   SubSigningOptions,
   type SignatureRequestCreateEmbeddedRequest,
 } from "@dropbox/sign";
+import { RequestDataSchema } from "../../src/types/schemas";
+import type { Party } from "../../src/types";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -20,13 +22,21 @@ export const initiateSigningSession = onCall(
     logger.info("initiateSigningSession called with data: ", request.data);
 
     if (!request.auth) {
-      throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
+      throw new HttpsError(
+        "unauthenticated",
+        "The function must be called while authenticated."
+      );
     }
 
-    const { contractId } = request.data;
-    if (!contractId || typeof contractId !== "string") {
-      throw new HttpsError("invalid-argument", "The function must be called with a valid 'contractId'.");
+    const validation = RequestDataSchema.safeParse(request.data);
+    if (!validation.success) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Invalid data provided.",
+        validation.error.issues
+      );
     }
+    const { contractId } = validation.data;
 
     const dropboxSignApiKey = process.env.DROPBOX_SIGN_API_KEY;
     const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENT_ID;
@@ -54,16 +64,19 @@ export const initiateSigningSession = onCall(
       }
 
       if (!contractData.parties || contractData.parties.length === 0) {
-        throw new HttpsError("failed-precondition", "Contract has no parties/signers defined.");
+        throw new HttpsError(
+          "failed-precondition",
+          "Contract has no parties/signers defined."
+        );
       }
       const signers: SubSignatureRequestSigner[] = contractData.parties.map(
-        (party: { name: string; email: string }, index: number) => ({
+        (party: Party, index: number) => ({
           name: party.name,
           emailAddress: party.email,
           order: index,
         })
       );
-      
+
       const isDevelopment = process.env.FUNCTIONS_EMULATOR === "true";
 
       const signingOptions: SubSigningOptions = {
@@ -90,27 +103,38 @@ export const initiateSigningSession = onCall(
         isDevelopment,
       });
 
-      const response = await signatureRequestApi.signatureRequestCreateEmbedded(signatureRequestData);
+      const response = await signatureRequestApi.signatureRequestCreateEmbedded(
+        signatureRequestData
+      );
       const signatureRequest = response.body.signatureRequest;
 
-      if (!signatureRequest || !signatureRequest.signatures || !signatureRequest.signatureRequestId) {
-        throw new Error("Invalid response from Dropbox Sign: Missing signature request details.");
+      if (
+        !signatureRequest ||
+        !signatureRequest.signatures ||
+        !signatureRequest.signatureRequestId
+      ) {
+        throw new Error(
+          "Invalid response from Dropbox Sign: Missing signature request details."
+        );
       }
       logger.info("Successfully created embedded signature request.", {
         signatureRequestId: signatureRequest.signatureRequestId,
       });
-      
+
       const signatureIdMap = new Map<string, string>();
-      signatureRequest.signatures.forEach(sig => {
+      signatureRequest.signatures.forEach((sig) => {
         if (sig.signerEmailAddress && sig.signatureId) {
-          signatureIdMap.set(sig.signerEmailAddress.toLowerCase(), sig.signatureId);
+          signatureIdMap.set(
+            sig.signerEmailAddress.toLowerCase(),
+            sig.signatureId
+          );
         }
       });
-      
-      const partiesWithDetails = contractData.parties.map((party: any) => ({
-          ...party,
-          status: "pending",
-          signatureId: signatureIdMap.get(party.email.toLowerCase()) || null,
+
+      const partiesWithDetails = contractData.parties.map((party: Party) => ({
+        ...party,
+        status: "pending",
+        signatureId: signatureIdMap.get(party.email.toLowerCase()) || null,
       }));
 
       await contractRef.update({
@@ -119,18 +143,22 @@ export const initiateSigningSession = onCall(
         signatureRequestId: signatureRequest.signatureRequestId,
         parties: partiesWithDetails,
       });
-      logger.info("Updated contract in Firestore with pending status and signature details.", { contractId });
+      logger.info(
+        "Updated contract in Firestore with pending status and signature details.",
+        { contractId }
+      );
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const e = error as { response?: { body: unknown }; message?: string };
       logger.error("Error during Dropbox Sign process:", {
         contractId,
-        error: error.response ? error.response.body : error.message,
+        error: e.response ? e.response.body : e.message,
       });
       throw new HttpsError(
         "internal",
         "An unexpected error occurred while initiating the signing session.",
-        error.message
+        e.message
       );
     }
   }
