@@ -652,7 +652,7 @@ export default function ContractViewPage() {
               תצוגה מקדימה של המסמך
             </h3>
             <ScrollArea className="h-[500px] md:h-[600px] border rounded-lg bg-muted/50 p-4 shadow-inner">
-              <div className="prose prose-sm max-w-none text-right leading-relaxed text-foreground/80">
+              <div className="prose prose-sm max-w-none text-right leading-relaxed text-gray-700">
                 <h4 className="text-center font-bold text-lg mb-4 text-foreground">
                   {contract.title}
                 </h4>
@@ -899,5 +899,3 @@ export default function ContractViewPage() {
     </section>
   );
 }
-
-    

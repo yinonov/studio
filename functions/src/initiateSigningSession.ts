@@ -63,8 +63,7 @@ function generateContractHtml(
                   .join("")
             : "";
 
-    // This HTML structure and CSS are designed to look clean and professional,
-    // and to be consistent with the in-app preview.
+    // These styles are designed to mimic the TailwindCSS 'prose-sm' class for visual consistency.
     return `
         <!DOCTYPE html>
         <html lang="he" dir="rtl">
@@ -72,40 +71,47 @@ function generateContractHtml(
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>${title}</title>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;800&display=swap" rel="stylesheet">
             <style>
                 body {
-                    font-family: 'Arial', 'Helvetica', sans-serif;
                     direction: rtl;
-                    line-height: 1.6;
-                    color: #333;
-                    background-color: #f4f4f4;
+                    font-family: 'Heebo', 'Arial', sans-serif;
+                    line-height: 1.75;
+                    background-color: #ffffff;
+                    color: #374151; /* Corresponds to prose text-gray-700 */
                     margin: 0;
-                    padding: 20px;
+                    padding: 0;
                 }
                 .container {
                     max-width: 800px;
-                    margin: 0 auto;
-                    background: #fff;
-                    border: 1px solid #ddd;
-                    padding: 40px;
-                    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+                    margin: 40px auto;
+                    padding: 20px 40px;
                 }
                 h1 {
+                    font-size: 1.875rem; /* ~30px, similar to prose-sm h1 */
+                    font-weight: 800;
+                    color: #111827; /* prose text-gray-900 */
+                    margin-bottom: 1.5em;
                     text-align: center;
-                    color: #111;
-                    font-size: 24px;
-                    margin-bottom: 30px;
                 }
                 h2 {
-                    font-size: 18px;
-                    border-bottom: 2px solid #eee;
-                    padding-bottom: 8px;
-                    margin-top: 25px;
-                    margin-bottom: 15px;
+                    font-size: 1.25rem; /* ~20px */
+                    font-weight: 700;
+                    color: #111827;
+                    margin-top: 2em;
+                    margin-bottom: 1em;
+                    border-bottom: 1px solid #e5e7eb; /* border-gray-200 */
+                    padding-bottom: 0.4em;
                 }
                 p {
-                    margin-bottom: 1em;
+                    margin-bottom: 1.25em; /* prose-sm paragraph margin */
                     text-align: justify;
+                }
+                strong {
+                    color: #111827;
+                    font-weight: 700;
                 }
             </style>
         </head>
