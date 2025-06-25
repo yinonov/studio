@@ -1,4 +1,3 @@
-
 {
   "compilerOptions": {
     "module": "commonjs",
@@ -10,12 +9,13 @@
     "target": "es2021",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/types": ["../src/types"],
+      "@/types/*": ["../src/types/*"]
+    }
   },
   "compileOnSave": true,
-  "include": [
-    "src"
-  ]
+  "include": ["src", "../src/types/**/*"]
 }
-
-    

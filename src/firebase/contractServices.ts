@@ -56,7 +56,7 @@ export const createDraftContract = async (
         const parties = [
             { name: initialData.party1Name || '', email: initialData.party1Email || ''},
             { name: initialData.party2Name || '', email: initialData.party2Name ? (initialData.party2Email || '') : ''} 
-        ].filter(p => p.name);
+        ].filter(p => p.name && p.email); // Only include parties with both name and email
 
         const contractTitle = initialData.contractTitle || template.title || 'חוזה ללא כותרת';
 

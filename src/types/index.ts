@@ -1,43 +1,21 @@
-import type { Timestamp } from 'firebase/firestore';
-import type { LucideIcon } from 'lucide-react';
+import { z } from "zod";
+import {
+  UserSchema,
+  CustomClauseSchema,
+  StoredContractDataSchema,
+  TemplateSchema,
+  PartySchema,
+} from "./schemas";
 
-export interface User {
-  uid: string; // Firebase UID
-  email: string | null;
-  phoneNumber?: string | null;
-  displayName?: string | null;
-  photoURL?: string | null;
-  subscriptionTier?: 'free' | 'premium'; // Example field
-  createdAt?: Timestamp;
-}
+// By inferring types from Zod schemas, we make schemas.ts the single source of truth.
+export type User = z.infer<typeof UserSchema>;
+export type CustomClause = z.infer<typeof CustomClauseSchema>;
+export type Party = z.infer<typeof PartySchema>;
+export type StoredContractData = z.infer<typeof StoredContractDataSchema>;
+export type Template = z.infer<typeof TemplateSchema>;
 
-export interface CustomClause {
-  description: string;
-  legalWording: string;
-}
-
-export interface StoredContractData {
-  id: string; 
-  ownerId: string;
-  templateId: string;
-  title: string;
-  formData: Record<string, any>;
-  customClauses?: CustomClause[];
-  parties?: { name: string; email: string; status: 'pending' | 'signed'; signatureId?: string; }[];
-  status: 'draft' | 'pending' | 'completed' | string;
-  createdAt: Timestamp | Date | string;
-  lastUpdatedAt: Timestamp | Date | string;
-  sharedWith?: string[];
-  signatureRequestId?: string;
-}
-
-export interface Template {
-  id: string;
-  title: string;
-  category: string;
-  description: string;
-  icon?: LucideIcon;
-  fields?: { id:string; label: string; type: string; placeholder?: string; required?: boolean }[];
-  defaultValues?: Record<string, string>;
-  baseClauses?: string[];
-}
+// Note: Some specific types like `Timestamp` or `LucideIcon` are represented as `any`
+// in the Zod schemas for simplicity during runtime validation.
+// For stricter type checking in your components, you can import them directly where needed, e.g.:
+// import type { Timestamp } from 'firebase/firestore';
+// import type { LucideIcon } from 'lucide-react';

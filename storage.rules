@@ -2,18 +2,6 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access to generated contracts.
-    // The file path includes a unique contractId, which provides obscurity but not true security.
-    // This path must match the one used in the `initiateSigningSession` function.
-    match /generated_contracts/{contractId}.txt {
-      allow read;
-      // Restrict write access to authenticated users (i.e., your backend function).
-      // This prevents unauthorized users from overwriting contract files.
-      allow write: if request.auth != null;
-    }
-
-    // By default, make all other paths private and only accessible to authenticated users.
-    // This rule is processed if the one above does not match.
     match /{allPaths=**} {
       allow read, write: if request.auth != null;
     }

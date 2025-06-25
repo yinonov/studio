@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -30,10 +29,6 @@ import {
   Copy,
   Phone,
   Mail,
-  Send,
-  Hourglass,
-  RefreshCcw,
-  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -42,8 +37,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { httpsCallable } from "firebase/functions";
-import { functions } from "@/lib/firebase";
 import { fetchTemplateById } from "@/firebase/templateServices";
 import type { Template } from "@/types";
 import {
@@ -57,14 +50,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import HelloSign from "hellosign-embedded";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
 
 interface AuditLogItem {
   action: string;
@@ -112,9 +97,6 @@ export default function ContractViewPage() {
   const [error, setError] = useState<string | null>(null);
   const [shareIdentifier, setShareIdentifier] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const hellosignModalRef = useRef<HTMLDivElement | null>(null);
-  const [isSigning, setIsSigning] = useState(false);
-  const [showSigningUI, setShowSigningUI] = useState(false);
 
   const isOwner =
     contract && currentUser && contract.ownerId === currentUser.uid;
@@ -131,11 +113,6 @@ export default function ContractViewPage() {
       ) || false
     );
   }, [currentUser, contract, isOwner]);
-
-  const isSignable =
-    contract?.parties &&
-    contract.parties.length > 0 &&
-    contract.parties.every((p) => p.name && p.email);
 
   useEffect(() => {
     if (isFirebaseLoading) return;
@@ -176,69 +153,8 @@ export default function ContractViewPage() {
     loadContract();
   }, [currentUser, isFirebaseLoading, router, contractId]);
 
-  const handleSignNow = async () => {
-    if (!contractId) return;
-    setIsSigning(true);
-    toast({ title: "מכין סביבת חתימה...", description: "אנא המתן." });
-    try {
-        const getUrlFn = httpsCallable(functions, 'getEmbeddedSignUrlForCurrentUser');
-        const result: any = await getUrlFn({ contractId });
-
-        const { signUrl, clientId } = result.data;
-
-        if (!signUrl || !clientId) {
-            throw new Error("Required signing information not received from server.");
-        }
-        
-        setShowSigningUI(true); 
-        
-        setTimeout(() => {
-            if (hellosignModalRef.current) {
-                const client = new HelloSign();
-                client.open(signUrl, {
-                    clientId,
-                    skipDomainVerification: process.env.NODE_ENV === 'development',
-                    container: hellosignModalRef.current as HTMLDivElement,
-                    uxVersion: 2,
-                });
-                client.on('finish', () => {
-                    toast({ title: 'החתימה הושלמה!', description: 'הסטטוס יעודכן בקרוב.' });
-                    setShowSigningUI(false);
-                    handleRefreshStatus(); 
-                });
-                client.on('cancel', () => {
-                    setShowSigningUI(false);
-                });
-                client.on('error', (data) => {
-                    console.error('HelloSign Error:', data);
-                    toast({ title: 'שגיאת חתימה', description: 'אירעה שגיאה בתהליך החתימה.', variant: 'destructive' });
-                    setShowSigningUI(false);
-                });
-            }
-        }, 0);
-
-    } catch (err: any) {
-        console.error("Error initiating signing flow:", err);
-        const errorMessage = err.details?.message || err.message || "Function call failed";
-        toast({ title: 'שגיאה', description: `לא ניתן להתחיל בתהליך החתימה: ${errorMessage}`, variant: 'destructive' });
-    } finally {
-        setIsSigning(false);
-    }
-  };
-
-
-  useEffect(() => {
-    if (!showSigningUI && hellosignModalRef.current) {
-      hellosignModalRef.current.innerHTML = "";
-    }
-  }, [showSigningUI]);
-
   const getStatusText = (status?: string): string => {
     switch (status) {
-      case "completed":
-        return "הושלם ונחתם";
-      case "pending":
-        return "ממתין לחתימה";
       case "draft":
         return "טיוטה";
       default:
@@ -250,36 +166,12 @@ export default function ContractViewPage() {
     status?: string
   ): "default" | "secondary" | "destructive" | "outline" | "accent" => {
     switch (status) {
-      case "completed":
-        return "accent"; 
-      case "pending":
-        return "outline";
       case "draft":
         return "secondary";
       default:
         return "secondary";
     }
   };
-
-  const getStatusTextClass = (status?: string): string => {
-    switch (status) {
-      case "pending":
-        return "text-yellow-800";
-      default:
-        return "";
-    }
-  };
-  
-    const getPartyStatusIcon = (status?: 'pending' | 'signed') => {
-        switch (status) {
-            case 'signed':
-                return <CheckCircle className="w-4 h-4 text-accent" />;
-            case 'pending':
-                return <Hourglass className="w-4 h-4 text-yellow-600" />;
-            default:
-                return null;
-        }
-    };
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return "N/A";
@@ -393,66 +285,6 @@ export default function ContractViewPage() {
     }
   };
 
-  const handleSendForSignature = async () => {
-    if (!contractId || !isOwner || !isSignable) return;
-    setIsProcessing(true);
-    setError("");
-
-    toast({
-      title: "מכין בקשת חתימה...",
-      description: "אנא המתן, המערכת יוצרת סביבת חתימה מאובטחת.",
-    });
-
-    try {
-      const initiateSigningSessionFn = httpsCallable(
-        functions,
-        "initiateSigningSession"
-      );
-      await initiateSigningSessionFn({ contractId });
-      
-      const updatedContract = await fetchContractById(contractId);
-      setContract(updatedContract);
-      
-      toast({
-        title: "הצלחה!",
-        description: "החוזה נשלח לחתימה. כל הצדדים יכולים כעת לחתום.",
-      });
-
-    } catch (err: any) {
-      const errorMessage =
-        err.details?.message || err.message || "Function call failed";
-      const errorToDisplay = `התנעת תהליך החתימה נכשלה. ${errorMessage}. ודא שפונקציית השרת \`initiateSigningSession\` פרוסה ועובדת כראוי, ובדוק את הלוגים של הפונקציה ב-Firebase Console.`;
-      setError(errorToDisplay);
-      toast({
-        title: "שגיאה בקריאה לפונקציה",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      console.error("Error calling initiateSigningSession function:", err);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const handleRefreshStatus = async () => {
-      if (!contractId) return;
-      setIsProcessing(true);
-      setError('');
-      try {
-          const refreshStatusFn = httpsCallable(functions, 'refreshContractStatus');
-          const result: any = await refreshStatusFn({ contractId });
-          setContract(result.data as StoredContractData);
-          toast({ title: 'סטטוס התעדכן', description: 'סטטוס החוזה והחתימות עודכן בהצלחה.', variant: 'default' });
-      } catch (err: any) {
-          console.error("Error refreshing contract status:", err);
-          const errorMessage = err.details?.message || err.message || "Function call failed";
-          setError(`רענון הסטטוס נכשל: ${errorMessage}`);
-          toast({ title: 'שגיאה ברענון', description: errorMessage, variant: 'destructive'});
-      } finally {
-          setIsProcessing(false);
-      }
-  };
-
   const handleDeleteContract = async () => {
     if (!contractId || !isOwner) return;
     setIsProcessing(true);
@@ -493,7 +325,7 @@ export default function ContractViewPage() {
       </div>
     );
   }
-  
+
   if (!contract || !currentUser || !hasAccess()) {
     return (
       <div className="text-center py-10">
@@ -518,19 +350,7 @@ export default function ContractViewPage() {
       date: formatDate(contract.createdAt),
       icon: <FileText className="text-primary" />,
     },
-    (contract.status === "pending" || contract.status === "completed") && {
-        action: "נשלח לחתימה",
-        user: contract.ownerId === currentUser.uid ? "את/ה" : "הבעלים",
-        date: formatDate(contract.lastUpdatedAt),
-        icon: <Send className="text-blue-500" />,
-      },
-    contract.status === "completed" && {
-      action: "החוזה נחתם במלואו",
-      user: "כל הצדדים",
-      date: formatDate(contract.lastUpdatedAt),
-      icon: <CheckCircle className="text-accent" />,
-    },
-  ].filter(Boolean) as AuditLogItem[];
+  ];
 
   return (
     <section className="space-y-8">
@@ -558,14 +378,12 @@ export default function ContractViewPage() {
             <div className="flex flex-col items-start sm:items-end gap-2 w-full sm:w-auto">
               <Badge
                 variant={getStatusVariant(contract.status)}
-                className={`text-sm px-3 py-1 self-start sm:self-auto ${getStatusTextClass(
-                  contract.status
-                )}`}
+                className="text-sm px-3 py-1 self-start sm:self-auto"
               >
                 {getStatusText(contract.status)}
               </Badge>
               <div className="flex gap-2 mt-2 sm:mt-0 flex-wrap justify-start sm:justify-end">
-                {isOwner && contract.status === 'draft' && (
+                {isOwner && contract.status === "draft" && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -578,27 +396,6 @@ export default function ContractViewPage() {
                     <Edit className="ml-2 h-4 w-4" />
                     ערוך טיוטה
                   </Button>
-                )}
-                {isOwner && contract.status === "draft" && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={handleSendForSignature}
-                    disabled={isProcessing || !isSignable}
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="ml-2 h-4 w-4" />
-                    )}
-                    שלח לחתימה
-                  </Button>
-                )}
-                {contract.status === "pending" && (
-                   <Button variant="outline" size="sm" onClick={handleRefreshStatus} disabled={isProcessing}>
-                       {isProcessing ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="ml-2 h-4 w-4" />}
-                       רענן סטטוס
-                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={handleCopyLink}>
                   <Copy className="ml-2 h-4 w-4" />
@@ -652,7 +449,7 @@ export default function ContractViewPage() {
               תצוגה מקדימה של המסמך
             </h3>
             <ScrollArea className="h-[500px] md:h-[600px] border rounded-lg bg-muted/50 p-4 shadow-inner">
-              <div className="prose prose-sm max-w-none text-right leading-relaxed text-gray-700">
+              <div className="prose prose-sm max-w-none text-right leading-relaxed text-foreground/80">
                 <h4 className="text-center font-bold text-lg mb-4 text-foreground">
                   {contract.title}
                 </h4>
@@ -707,42 +504,6 @@ export default function ContractViewPage() {
                   )}
               </div>
             </ScrollArea>
-            
-            {contract.status === "pending" && contract.parties?.some(p => p.email.toLowerCase() === currentUser.email?.toLowerCase() && p.status === 'pending') && (
-              <>
-                <Dialog open={showSigningUI} onOpenChange={setShowSigningUI}>
-                  <DialogContent className="max-w-4xl w-full p-0 overflow-hidden h-[90vh]">
-                    <DialogHeader className="p-4 border-b">
-                      <DialogTitle>חתימה על החוזה</DialogTitle>
-                       <DialogClose asChild>
-                          <Button variant="ghost" size="icon" className="absolute top-3 left-3">
-                            <X className="w-5 h-5"/>
-                          </Button>
-                        </DialogClose>
-                    </DialogHeader>
-                    <div
-                      className="w-full h-full"
-                      ref={hellosignModalRef}
-                    />
-                  </DialogContent>
-                </Dialog>
-                {!showSigningUI && (
-                  <Button
-                    variant="accent"
-                    onClick={handleSignNow}
-                    className="mb-4 mt-8 w-full md:w-auto"
-                    disabled={isSigning || isProcessing}
-                  >
-                    {isSigning ? (
-                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="ml-2 h-4 w-4" />
-                    )}
-                    חתום עכשיו
-                  </Button>
-                )}
-              </>
-            )}
           </div>
 
           <div className="lg:col-span-1 space-y-6">
@@ -762,15 +523,14 @@ export default function ContractViewPage() {
                         className="flex justify-between items-center p-2.5 bg-muted/30 rounded-lg"
                       >
                         <div className="flex flex-col items-start">
-                           <span className="font-medium text-foreground">
+                          <span className="font-medium text-foreground">
                             {party.name}
                           </span>
                           <span className="text-xs">{party.email}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                         {getPartyStatusIcon(party.status)}
-                          <Badge variant={party.status === 'signed' ? 'accent' : 'secondary'} className="text-xs">
-                             {party.status === 'signed' ? 'נחתם' : 'ממתין'}
+                          <Badge variant="secondary" className="text-xs">
+                            {party.name ? "הוזן" : "ממתין למילוי"}
                           </Badge>
                         </div>
                       </li>
