@@ -6,6 +6,7 @@ import {
   SubSignatureRequestSigner,
   SignatureRequestCreateEmbeddedRequest,
 } from "@dropbox/sign";
+import { getStorage } from "firebase-admin/storage";
 
 // Define the expected structure for a signer
 export interface Signer {
@@ -60,6 +61,7 @@ export const getEmbeddedSignUrl = async (
       phone: false,
       defaultType: "draw" as SubSigningOptions.DefaultTypeEnum,
     },
+    useTextTags: true,
     testMode: true, // Use test mode for development
   };
 
@@ -98,7 +100,65 @@ export const getEmbeddedSignUrl = async (
     functions.logger.error("Error creating embedded signature request:", error);
     throw new functions.https.HttpsError(
       "internal",
-      "Failed to create embedded signature request.",
+      "Error creating embedded signature request",
+      error,
+    );
+  }
+};
+
+/**
+ * Downloads the signed PDF and audit trail from Dropbox Sign.
+ *
+ * @param signatureRequestId The ID of the signature request.
+ * @param contractId The ID of the contract.
+ * @returns An object with the URLs of the signed PDF and the audit trail.
+ */
+export const downloadSignedFiles = async (
+  signatureRequestId: string,
+  contractId: string,
+): Promise<{ signedPdfUrl: string; auditTrailUrl: string }> => {
+  const dropboxApiKey = functions.config().dropbox.apikey;
+  const signatureRequestApi = new SignatureRequestApi();
+  signatureRequestApi.username = dropboxApiKey;
+
+  const bucket = getStorage().bucket();
+
+  const downloadAndUpload = async (fileType: "pdf" | "zip"): Promise<string> => {
+    const result = await signatureRequestApi.signatureRequestFiles(
+      signatureRequestId,
+      fileType,
+    );
+
+    const destination = `contracts/${contractId}/signed.${fileType}`;
+    const file = bucket.file(destination);
+
+    // The body is a Buffer, so we can save it directly
+    await file.save(result.body, {
+      metadata: {
+        contentType: fileType === "pdf" ? "application/pdf" : "application/zip",
+      },
+    });
+
+    const [url] = await file.getSignedUrl({
+      action: "read",
+      expires: "03-09-2491", // A long time in the future
+    });
+    return url;
+  };
+
+  try {
+    const signedPdfUrl = await downloadAndUpload("pdf");
+    const auditTrailUrl = await downloadAndUpload("zip"); // This is a zip with PDF and audit trail
+
+    return { signedPdfUrl, auditTrailUrl };
+  } catch (error) {
+    functions.logger.error(
+      `Error downloading files for signature request ${signatureRequestId}:`,
+      error,
+    );
+    throw new functions.https.HttpsError(
+      "internal",
+      "Failed to download signed files.",
     );
   }
 };

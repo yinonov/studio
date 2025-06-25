@@ -40,8 +40,12 @@
 - [x] Implement `initiateDropboxSignSession` Cloud Function:
   - [x] Call Dropbox Sign's `/signature_request/create_embedded` endpoint.
   - [x] Use text tags for signature fields.
-  - [ ] Handle callbacks from Dropbox Sign.
+  - [x] Handle callbacks from Dropbox Sign.
   - [x] Update the contract status in Firestore.
+- [x] Implement the `dropboxSignCallback` function to handle events from Dropbox Sign.
+  - [x] Verify the event hash to ensure it's from Dropbox Sign.
+  - [x] When a `signature_request_signed` event is received, download the signed PDF and audit trail.
+  - [x] Update the contract status to `completed` and save the URLs of the signed documents.
 
 ## 4. CI/CD
 

@@ -45,8 +45,13 @@ export const generatePdfForSigning = onCall({ memory: "1GiB", timeoutSeconds: 30
 
     // 5. TODO: Generate real HTML from contractData.formData and a template
     // For now, using placeholder HTML. This will be a major task later.
-    const htmlContent = `<html><body><h1>${contractData.title}</h1>` +
-      `<p>This is a test contract generated for user ${uid}.</p></body></html>`;
+    const htmlContent = "<html><body><h1>" + contractData.title + "</h1>" +
+      "<p>This is a test contract generated for user " + uid + ".</p>" +
+      "<br><br><br><br>" +
+      "[sig|req|signer1|Signature]" +
+      "<br><br>" +
+      "[date|req|signer1|Date Signed]" +
+      "</body></html>";
 
     // 6. Update contract status to 'generating-pdf'
     await contractRef.update({ status: "generating-pdf" });

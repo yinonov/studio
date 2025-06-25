@@ -3,7 +3,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import { onCall, onRequest } from "firebase-functions/v2/https";
-import { getEmbeddedSignUrl } from "./services/dropbox-sign";
+import { getEmbeddedSignUrl, downloadSignedFiles } from "./services/dropbox-sign";
 import * as crypto from "crypto";
 
 const db = getFirestore();
@@ -101,18 +101,22 @@ export const dropboxSignCallback = onRequest(async (req, res) => {
       const contractDoc = snapshot.docs[0];
       const contractId = contractDoc.id;
 
-      switch (event.event.event_type) {
-      case "signature_request_all_signed":
-        await db.collection("contracts").doc(contractId).update({
+      if (event.event.event_type === "signature_request_signed") {
+        const { signedPdfUrl, auditTrailUrl } = await downloadSignedFiles(signatureRequestId, contractId);
+
+        await contractDoc.ref.update({
           status: "completed",
+          signedPdfUrl: signedPdfUrl,
+          auditTrailUrl: auditTrailUrl,
           lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        // TODO: Download the signed PDF and audit trail
-        break;
-        // Add other event handlers as needed
+
+        functions.logger.log(`Contract ${contractId} signed and files saved.`);
       }
+
+      // TODO: Handle other event types like 'signature_request_viewed', etc.
     } catch (error) {
-      functions.logger.error("Error processing Dropbox Sign event:", error);
+      functions.logger.error(`Error processing Dropbox Sign event for signature request ${signatureRequestId}:`, error);
     }
   } else {
     res.status(405).send("Method Not Allowed");
