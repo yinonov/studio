@@ -10,7 +10,6 @@ import {
   SubSigningOptions,
   type SignatureRequestCreateEmbeddedRequest,
 } from "@dropbox/sign";
-import axios from 'axios'; // Import axios
 
 if (getApps().length === 0) {
   initializeApp();
@@ -295,20 +294,17 @@ export const initiateSigningSession = onCall(
           contractData.formData || {}
       );
 
-      // ** Convert HTML to PDF using DocRaptor **
+      // ** Upload to Firebase Storage as an HTML file **
       const bucket = storage.bucket();
-      const pdfFileName = `contract_${contractId}.pdf`;
-      const filePath = `generated_contracts/${pdfFileName}`;
+      const filePath = `generated_contracts/${contractId}.html`;
       const file = bucket.file(filePath);
-
-      const docRaptorApiUrl = 'https://sync.docraptor.com/docs'; // Or async endpoint if preferred
-
-      const docRaptorPayload = {
-        document_content: contractHtmlContent,
-        name: pdfFileName,
-        document_type: 'pdf',
-        test: true, // Use free testing mode
+      await file.save(Buffer.from(contractHtmlContent, 'utf8'), {
+        contentType: 'text/html',
       });
+      await file.makePublic();
+      const publicUrl = file.publicUrl();
+      logger.info(`Contract HTML file uploaded to: ${publicUrl}`);
+
 
       if (!contractData.parties || contractData.parties.length === 0) {
         throw new HttpsError("failed-precondition", "Contract has no parties/signers defined.");
@@ -320,41 +316,6 @@ export const initiateSigningSession = onCall(
           order: index,
         })
       );
-
-      // DocRaptor options for PDF/A, flattening, metadata, etc.
-      // Consult DocRaptor API documentation for available options:
-      // https://docraptor.com/documentation/api#api_general
-      const docRaptorOptions: any = {
-        strict: 'pdfa', // Request PDF/A compliance (e.g., 'pdfa', 'pdfa-2u')
-        // For embedding metadata (e.g., contract ID, version, timestamp):
-        // Check DocRaptor docs for options like `metadata` or how to use HTML meta tags.
-        // metadata: {
-        //   'Contract-ID': contractId,
-        //   'Version': contractData.version || 'N/A',
-        //   'Generated-At': new Date().toISOString(),
-        // },
-        // For flattening form fields while preserving signature anchors:
-        // This often requires carefully structuring your HTML and potentially
-        // using DocRaptor's form field capabilities in conjunction with
-        // how Dropbox Sign defines signature fields. Consult both APIs' docs.
-        // e.g., `form_fields: false` might flatten, but need to handle signatures.
-      };
-
-      let pdfBuffer: Buffer;
-      try {
-        const docRaptorResponse = await axios.post(docRaptorApiUrl, { ...docRaptorPayload, ...docRaptorOptions }, {
-          auth: {
-            username: process.env.DOCRAPTOR_API_KEY, // Use DocRaptor API key
-            password: '', // No password needed for API key
-          },
-          responseType: 'arraybuffer', // Get response as a buffer
-        });
-        pdfBuffer = docRaptorResponse.data;
-        logger.info(`Successfully generated PDF for contract ${contractId} with DocRaptor.`);
-      } catch (error: any) {
-          logger.error("Error generating PDF with DocRaptor:", { contractId, error: error.response ? (error.response.data || error.response.body) : error.message, status: error.response ? error.response.status : 'N/A', });
-          throw new HttpsError("internal", "An error occurred while generating the PDF for signing.", error.message);
-      }
       
       const isDevelopment = process.env.FUNCTIONS_EMULATOR === "true";
 
@@ -372,7 +333,7 @@ export const initiateSigningSession = onCall(
         subject: `Signature Request: ${contractData.title || "Contract"}`,
         message: "Please review and sign the document.",
         signers,
-        fileUrls: [publicUrl], // This publicUrl will be set after uploading the PDF
+        fileUrls: [publicUrl],
         testMode: isDevelopment,
         signingOptions: signingOptions,
       };
@@ -381,13 +342,6 @@ export const initiateSigningSession = onCall(
       });
 
       const response = await signatureRequestApi.signatureRequestCreateEmbedded(signatureRequestData);
-
-      // ** Upload PDF to Firebase Storage after successful DocRaptor call **
-      await file.save(pdfBuffer, {
-        contentType: 'application/pdf',
-      });
-      await file.makePublic(); // Or generate a signed URL for more security
-      const publicUrl = file.publicUrl(); // Get the public URL of the uploaded PDF
       const signatureRequest = response.body.signatureRequest;
 
       if (!signatureRequest || !signatureRequest.signatures || !signatureRequest.signatureRequestId) {
@@ -414,7 +368,7 @@ export const initiateSigningSession = onCall(
         status: "pending",
         lastUpdatedAt: FieldValue.serverTimestamp(),
         signatureRequestId: signatureRequest.signatureRequestId,
-        parties: partiesWithDetails, // Assuming parties details don't need to be updated with signature URLs from Dropbox Sign response directly here
+        parties: partiesWithDetails,
         contractFileUrl: publicUrl, // Save the file URL for reference
       });
       logger.info("Updated contract in Firestore with pending status and signature details.", { contractId });
