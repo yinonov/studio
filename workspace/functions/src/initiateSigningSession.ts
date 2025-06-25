@@ -10,7 +10,7 @@ import {
   SubSigningOptions,
   type SignatureRequestCreateEmbeddedRequest,
 } from "@dropbox/sign";
-import axios from 'axios'; // Import axios
+import axios from 'axios'; // Import axios for DocRaptor API call
 
 if (getApps().length === 0) {
   initializeApp();
@@ -25,7 +25,7 @@ const storage = getStorage();
 interface TemplateField {
   id: string;
   label: string;
-  type: "text" | "number" | "date" | "textarea";
+  type: "text" | "number" | "date" | "textarea" | "email";
   placeholder?: string;
   required?: boolean;
 }
@@ -114,7 +114,14 @@ const defaultTemplates: Template[] = [
 
 // --- END: Template Definitions Fallback ---
 
-// Helper function to interpolate contract data into clauses
+/**
+ * Interpolates contract data into clauses, handling default values.
+ * e.g., "Hello, {{name||World}}" with data {} becomes "Hello, World".
+ * e.g., "Hello, {{name||World}}" with data {name: "Yinon"} becomes "Hello, Yinon".
+ * @param text The string containing placeholders.
+ * @param data The data object to fill placeholders.
+ * @returns The interpolated string.
+ */
 function interpolateWithDefaults(
   text: string,
   data: Record<string, string>
@@ -139,6 +146,16 @@ function interpolateWithDefaults(
   });
 }
 
+/**
+ * Generates a professionally styled HTML document for the contract.
+ * This HTML is sent to DocRaptor for PDF conversion. It includes RTL support
+ * and embeds the 'Heebo' font for visual consistency with the app.
+ * @param title The contract title.
+ * @param baseClauses An array of standard clauses.
+ * @param customClauses An array of user-defined custom clauses.
+ * @param formData The data filled in by the user.
+ * @returns A string containing the full HTML document.
+ */
 function generateContractHtml(
     title: string,
     baseClauses: string[],
@@ -160,7 +177,8 @@ function generateContractHtml(
                   .join("")
             : "";
 
-    // These styles are designed to mimic the TailwindCSS 'prose-sm' class for visual consistency.
+    // These styles are designed to create a professional, printable document.
+    // They ensure RTL layout and embed the Heebo font for Hebrew text.
     return `
         <!DOCTYPE html>
         <html lang="he" dir="rtl">
@@ -187,9 +205,9 @@ function generateContractHtml(
                     padding: 20px 40px;
                 }
                 h1 {
-                    font-size: 1.875rem; /* ~30px, similar to prose-sm h1 */
+                    font-size: 1.875rem; /* ~30px */
                     font-weight: 800;
-                    color: #111827; /* prose text-gray-900 */
+                    color: #111827; /* text-gray-900 */
                     margin-bottom: 1.5em;
                     text-align: center;
                 }
@@ -203,7 +221,7 @@ function generateContractHtml(
                     padding-bottom: 0.4em;
                 }
                 p {
-                    margin-bottom: 1.25em; /* prose-sm paragraph margin */
+                    margin-bottom: 1.25em;
                     text-align: justify;
                 }
                 strong {
@@ -228,10 +246,10 @@ export const initiateSigningSession = onCall(
   async (request) => {
     logger.info("initiateSigningSession called with data: ", request.data);
 
+    // 1. AUTHENTICATION & VALIDATION
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
-
     const { contractId } = request.data;
     if (!contractId || typeof contractId !== "string") {
       throw new HttpsError("invalid-argument", "The function must be called with a valid 'contractId'.");
@@ -239,12 +257,18 @@ export const initiateSigningSession = onCall(
 
     const dropboxSignApiKey = process.env.DROPBOX_SIGN_API_KEY;
     const dropboxSignClientId = process.env.DROPBOX_SIGN_CLIENT_ID;
+    const docRaptorApiKey = process.env.DOCRAPTOR_API_KEY;
 
-    if (!dropboxSignApiKey || !dropboxSignClientId) {
-      logger.error("Dropbox Sign API key or Client ID is not configured.");
+    if (!dropboxSignApiKey || !dropboxSignClientId || !docRaptorApiKey) {
+      const missingKeys = [
+        !dropboxSignApiKey && "Dropbox Sign API Key",
+        !dropboxSignClientId && "Dropbox Sign Client ID",
+        !docRaptorApiKey && "DocRaptor API Key",
+      ].filter(Boolean).join(', ');
+      logger.error(`Server configuration error: Missing API keys: ${missingKeys}`);
       throw new HttpsError(
         "failed-precondition",
-        "The Dropbox Sign integration is not configured on the server."
+        `The server is not configured for signing. Missing: ${missingKeys}.`
       );
     }
 
@@ -252,6 +276,7 @@ export const initiateSigningSession = onCall(
     signatureRequestApi.username = dropboxSignApiKey;
 
     try {
+      // 2. FETCH CONTRACT & TEMPLATE DATA
       const contractRef = db.collection("contracts").doc(contractId);
       const contractDoc = await contractRef.get();
       if (!contractDoc.exists) {
@@ -261,7 +286,6 @@ export const initiateSigningSession = onCall(
       if (!contractData) {
         throw new HttpsError("internal", "Contract data is empty.");
       }
-
       if (!contractData.templateId) {
         throw new HttpsError("failed-precondition", "Contract is missing a template ID.");
       }
@@ -270,24 +294,20 @@ export const initiateSigningSession = onCall(
       const templateDoc = await templateRef.get();
       
       let templateData: Template | undefined;
-
       if (templateDoc.exists()) {
         templateData = templateDoc.data() as Template;
       } else {
         logger.warn(`Template ${contractData.templateId} not found in Firestore. Falling back to local definitions.`);
         templateData = defaultTemplates.find(t => t.id === contractData.templateId);
       }
-
       if (!templateData) {
-        throw new HttpsError("not-found", "Contract template not found.");
+        throw new HttpsError("not-found", `Contract template '${contractData.templateId}' not found.`);
       }
 
-
-      // ** Generate contract content as HTML **
+      // 3. GENERATE PROFESSIONAL HTML DOCUMENT
       const contractTitle = contractData.title || templateData.title || 'Contract';
       const baseClauses = templateData.baseClauses || [];
       const customClauses = contractData.customClauses || [];
-
       const contractHtmlContent = generateContractHtml(
           contractTitle,
           baseClauses,
@@ -295,21 +315,42 @@ export const initiateSigningSession = onCall(
           contractData.formData || {}
       );
 
-      // ** Convert HTML to PDF using DocRaptor **
-      const bucket = storage.bucket();
-      const pdfFileName = `contract_${contractId}.pdf`;
-      const filePath = `generated_contracts/${pdfFileName}`;
-      const file = bucket.file(filePath);
-
-      const docRaptorApiUrl = 'https://sync.docraptor.com/docs'; // Or async endpoint if preferred
-
+      // 4. CONVERT HTML TO PDF/A-2u USING DOCRAPTOR
+      logger.info(`Generating PDF for contract ${contractId} via DocRaptor.`);
       const docRaptorPayload = {
         document_content: contractHtmlContent,
-        name: pdfFileName,
+        name: `contract_${contractId}.pdf`,
         document_type: 'pdf',
-        test: true, // Use free testing mode
-      });
+        test: true, // Use 'false' in production. Test documents are watermarked.
+        strict: 'pdfa-2u', // Specify PDF/A-2u for compliance and Unicode support.
+      };
 
+      let pdfBuffer: Buffer;
+      try {
+        const docRaptorResponse = await axios.post('https://sync.docraptor.com/docs', docRaptorPayload, {
+          auth: {
+            username: docRaptorApiKey,
+            password: '', // API key is used as username, no password needed.
+          },
+          responseType: 'arraybuffer', // Important to get the response as a binary buffer.
+        });
+        pdfBuffer = Buffer.from(docRaptorResponse.data);
+        logger.info(`Successfully generated PDF for contract ${contractId}. Size: ${pdfBuffer.length} bytes.`);
+      } catch (error: any) {
+          const errorDetails = error.response ? (error.response.data.toString('utf-8') || error.response.statusText) : error.message;
+          logger.error("Error generating PDF with DocRaptor:", { contractId, error: errorDetails });
+          throw new HttpsError("internal", `An error occurred while generating the PDF: ${errorDetails}`);
+      }
+
+      // 5. UPLOAD THE GENERATED PDF TO FIREBASE STORAGE (for archival)
+      const bucket = storage.bucket();
+      const pdfFilePath = `contracts/${contractId}/final_document.pdf`;
+      const file = bucket.file(pdfFilePath);
+      await file.save(pdfBuffer, { contentType: 'application/pdf' });
+      // We will get a signed URL for permanent access if needed later, but will pass the raw buffer to Dropbox Sign.
+      const contractFileUrl = (await file.getSignedUrl({ action: 'read', expires: '01-01-2500' }))[0];
+
+      // 6. INITIATE DROPBOX SIGN EMBEDDED SIGNING SESSION
       if (!contractData.parties || contractData.parties.length === 0) {
         throw new HttpsError("failed-precondition", "Contract has no parties/signers defined.");
       }
@@ -320,44 +361,8 @@ export const initiateSigningSession = onCall(
           order: index,
         })
       );
-
-      // DocRaptor options for PDF/A, flattening, metadata, etc.
-      // Consult DocRaptor API documentation for available options:
-      // https://docraptor.com/documentation/api#api_general
-      const docRaptorOptions: any = {
-        strict: 'pdfa', // Request PDF/A compliance (e.g., 'pdfa', 'pdfa-2u')
-        // For embedding metadata (e.g., contract ID, version, timestamp):
-        // Check DocRaptor docs for options like `metadata` or how to use HTML meta tags.
-        // metadata: {
-        //   'Contract-ID': contractId,
-        //   'Version': contractData.version || 'N/A',
-        //   'Generated-At': new Date().toISOString(),
-        // },
-        // For flattening form fields while preserving signature anchors:
-        // This often requires carefully structuring your HTML and potentially
-        // using DocRaptor's form field capabilities in conjunction with
-        // how Dropbox Sign defines signature fields. Consult both APIs' docs.
-        // e.g., `form_fields: false` might flatten, but need to handle signatures.
-      };
-
-      let pdfBuffer: Buffer;
-      try {
-        const docRaptorResponse = await axios.post(docRaptorApiUrl, { ...docRaptorPayload, ...docRaptorOptions }, {
-          auth: {
-            username: process.env.DOCRAPTOR_API_KEY, // Use DocRaptor API key
-            password: '', // No password needed for API key
-          },
-          responseType: 'arraybuffer', // Get response as a buffer
-        });
-        pdfBuffer = docRaptorResponse.data;
-        logger.info(`Successfully generated PDF for contract ${contractId} with DocRaptor.`);
-      } catch (error: any) {
-          logger.error("Error generating PDF with DocRaptor:", { contractId, error: error.response ? (error.response.data || error.response.body) : error.message, status: error.response ? error.response.status : 'N/A', });
-          throw new HttpsError("internal", "An error occurred while generating the PDF for signing.", error.message);
-      }
       
       const isDevelopment = process.env.FUNCTIONS_EMULATOR === "true";
-
       const signingOptions: SubSigningOptions = {
         draw: true,
         type: true,
@@ -368,26 +373,20 @@ export const initiateSigningSession = onCall(
 
       const signatureRequestData: SignatureRequestCreateEmbeddedRequest = {
         clientId: dropboxSignClientId,
-        title: contractData.title || "Contract for Signature",
-        subject: `Signature Request: ${contractData.title || "Contract"}`,
-        message: "Please review and sign the document.",
+        title: contractTitle,
+        subject: `Your signature is requested: ${contractTitle}`,
+        message: "Please review and sign the attached document.",
         signers,
-        fileUrls: [publicUrl], // This publicUrl will be set after uploading the PDF
+        // Pass the raw PDF file buffer directly to Dropbox Sign. This is more secure than using public URLs.
+        files: [{
+            name: `contract_${contractId}.pdf`,
+            data: pdfBuffer,
+        }],
         testMode: isDevelopment,
         signingOptions: signingOptions,
       };
-      logger.info("Prepared signature request data for Dropbox Sign API.", {
-        isDevelopment,
-      });
 
       const response = await signatureRequestApi.signatureRequestCreateEmbedded(signatureRequestData);
-
-      // ** Upload PDF to Firebase Storage after successful DocRaptor call **
-      await file.save(pdfBuffer, {
-        contentType: 'application/pdf',
-      });
-      await file.makePublic(); // Or generate a signed URL for more security
-      const publicUrl = file.publicUrl(); // Get the public URL of the uploaded PDF
       const signatureRequest = response.body.signatureRequest;
 
       if (!signatureRequest || !signatureRequest.signatures || !signatureRequest.signatureRequestId) {
@@ -397,6 +396,7 @@ export const initiateSigningSession = onCall(
         signatureRequestId: signatureRequest.signatureRequestId,
       });
       
+      // 7. MAP SIGNATURE IDs BACK TO PARTIES AND UPDATE FIRESTORE
       const signatureIdMap = new Map<string, string>();
       signatureRequest.signatures.forEach(sig => {
         if (sig.signerEmailAddress && sig.signatureId) {
@@ -414,22 +414,21 @@ export const initiateSigningSession = onCall(
         status: "pending",
         lastUpdatedAt: FieldValue.serverTimestamp(),
         signatureRequestId: signatureRequest.signatureRequestId,
-        parties: partiesWithDetails, // Assuming parties details don't need to be updated with signature URLs from Dropbox Sign response directly here
-        contractFileUrl: publicUrl, // Save the file URL for reference
+        parties: partiesWithDetails,
+        contractFileUrl: contractFileUrl, // Save the permanent signed URL for archival.
       });
       logger.info("Updated contract in Firestore with pending status and signature details.", { contractId });
 
-      return { success: true };
+      return { success: true, message: "Signing session initiated successfully." };
     } catch (error: any) {
-      logger.error("Error during Dropbox Sign process:", {
+      logger.error("Critical error during signing session initiation:", {
         contractId,
-        error: error.response ? error.response.body : error.message,
+        errorMessage: error.message,
+        errorDetails: error.response ? error.response.body : error.stack,
       });
-      throw new HttpsError(
-        "internal",
-        "An unexpected error occurred while initiating the signing session.",
-        error.message
-      );
+      // Ensure we pass a clear error message back to the client.
+      const message = error instanceof HttpsError ? error.message : "An unexpected error occurred.";
+      throw new HttpsError( "internal", message, error.details );
     }
   }
 );
