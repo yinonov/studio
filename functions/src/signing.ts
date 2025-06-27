@@ -1,4 +1,4 @@
-import { StoredContractDataSchema, RequestDataSchema, DropboxSignEventSchema } from "../../src/types/schemas";
+import { StoredContractDataSchema, RequestDataSchema, DropboxSignEventSchema } from "./types/schemas";
 import { getFirestore } from "firebase-admin/firestore";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";

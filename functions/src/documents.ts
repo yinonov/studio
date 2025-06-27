@@ -1,4 +1,4 @@
-import { StoredContractDataSchema, RequestDataSchema } from "../../src/types/schemas";
+import { StoredContractDataSchema, RequestDataSchema } from "./types/schemas";
 import { createPdf, pollForPdf, downloadAndSavePdf } from "./services/docraptor";
 import { getFirestore } from "firebase-admin/firestore";
 import * as admin from "firebase-admin";
