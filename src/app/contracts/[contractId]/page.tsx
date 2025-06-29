@@ -7,6 +7,8 @@ import {
   fetchContractById,
   updateContractData,
   deleteContractById,
+  generateContractPdf,
+  initiateSigningSession,
 } from "@/firebase/contractServices";
 import type { StoredContractData } from "@/types";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -29,6 +31,7 @@ import {
   Copy,
   Phone,
   Mail,
+  FileSignature,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -105,11 +108,9 @@ export default function ContractViewPage() {
     if (!currentUser || !contract) return false;
     if (isOwner) return true;
     return (
-      contract.sharedWith?.some(
-        (identifier) =>
-          (currentUser.email &&
-            identifier.toLowerCase() === currentUser.email.toLowerCase()) ||
-          (currentUser.phoneNumber && identifier === currentUser.phoneNumber)
+      contract.sharedWith?.some((identifier: string) =>
+        (currentUser.email && identifier.toLowerCase() === currentUser.email.toLowerCase()) ||
+        (currentUser.phoneNumber && identifier === currentUser.phoneNumber)
       ) || false
     );
   }, [currentUser, contract, isOwner]);
@@ -204,7 +205,7 @@ export default function ContractViewPage() {
     setIsProcessing(true);
     try {
       const currentSharedWith =
-        contract.sharedWith?.map((s) => s.toLowerCase()) || [];
+        contract.sharedWith?.map((s: string) => s.toLowerCase()) || [];
       if (currentSharedWith.includes(normalizedIdentifier)) {
         toast({
           title: "מידע",
@@ -220,7 +221,7 @@ export default function ContractViewPage() {
         shareIdentifier.trim(),
       ];
       await updateContractData(contract.id, { sharedWith: updatedSharedWith });
-      setContract((prev) =>
+      setContract((prev: StoredContractData | null) =>
         prev ? { ...prev, sharedWith: updatedSharedWith } : null
       );
       toast({
@@ -245,11 +246,9 @@ export default function ContractViewPage() {
     setIsProcessing(true);
     try {
       const updatedSharedWith =
-        contract.sharedWith?.filter(
-          (u) => u.toLowerCase() !== identifierToRemove.toLowerCase()
-        ) || [];
+        contract.sharedWith?.filter((u: string) => u.toLowerCase() !== identifierToRemove.toLowerCase()) || [];
       await updateContractData(contract.id, { sharedWith: updatedSharedWith });
-      setContract((prev) =>
+      setContract((prev: StoredContractData | null) =>
         prev ? { ...prev, sharedWith: updatedSharedWith } : null
       );
       toast({
@@ -302,6 +301,47 @@ export default function ContractViewPage() {
         description: "מחיקת החוזה נכשלה.",
         variant: "destructive",
       });
+      setIsProcessing(false);
+    }
+  };
+
+  const handleGenerateAndSign = async () => {
+    if (!contractId || !isOwner) return;
+    setIsProcessing(true);
+    toast({
+      title: "מכין את החוזה לחתימה...",
+      description: "זה עשוי לקחת מספר רגעים.",
+    });
+    try {
+      const pdfResult = await generateContractPdf(contractId);
+      if (!pdfResult.success || !pdfResult.pdfUrl) {
+        throw new Error("Failed to generate PDF for signing.");
+      }
+      toast({
+        title: "PDF נוצר בהצלחה",
+        description: "מכין את סביבת החתימה...",
+      });
+      const signResult = await initiateSigningSession(contractId);
+      if (!signResult.success || !signResult.signUrl) {
+        throw new Error("Failed to initiate signing session.");
+      }
+      // Update contract status locally and in Firestore
+      const updatedContract = { ...contract, status: "out-for-signature" };
+      setContract(updatedContract as StoredContractData);
+      await updateContractData(contractId, { status: "out-for-signature" });
+      toast({
+        title: "מוכן לחתימה!",
+        description: "החוזה מוכן לחתימה. פותח חלון חתימה...",
+      });
+      window.open(signResult.signUrl, "_blank");
+    } catch (err: any) {
+      console.error("Error during generate and sign process:", err);
+      toast({
+        title: "שגיאה בתהליך החתימה",
+        description: err.message || "An unknown error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -384,18 +424,28 @@ export default function ContractViewPage() {
               </Badge>
               <div className="flex gap-2 mt-2 sm:mt-0 flex-wrap justify-start sm:justify-end">
                 {isOwner && contract.status === "draft" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      router.push(
-                        `/templates/${contract.templateId}/create?contractId=${contract.id}`
-                      )
-                    }
-                  >
-                    <Edit className="ml-2 h-4 w-4" />
-                    ערוך טיוטה
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        router.push(
+                          `/templates/${contract.templateId}/create?contractId=${contract.id}`
+                        )
+                      }
+                    >
+                      <Edit className="ml-2 h-4 w-4" />
+                      ערוך טיוטה
+                    </Button>
+                    <Button
+                      onClick={handleGenerateAndSign}
+                      disabled={isProcessing}
+                      size="sm"
+                    >
+                      <FileSignature className="ml-2 h-4 w-4" />
+                      הכן לחתימה ושלח
+                    </Button>
+                  </>
                 )}
                 <Button variant="outline" size="sm" onClick={handleCopyLink}>
                   <Copy className="ml-2 h-4 w-4" />
@@ -485,7 +535,7 @@ export default function ContractViewPage() {
                       <h5 className="font-semibold mt-4 text-foreground">
                         סעיפים מותאמים אישית:
                       </h5>
-                      {contract.customClauses.map((clause, idx) => (
+                      {contract.customClauses.map((clause: any, idx: number) => (
                         <p
                           key={idx}
                           className="text-xs mt-1 whitespace-pre-wrap"
@@ -517,7 +567,7 @@ export default function ContractViewPage() {
               <CardContent>
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   {contract.parties && contract.parties.length > 0 ? (
-                    contract.parties.map((party, i) => (
+                    contract.parties.map((party: any, i: number) => (
                       <li
                         key={i}
                         className="flex justify-between items-center p-2.5 bg-muted/30 rounded-lg"
@@ -624,7 +674,7 @@ export default function ContractViewPage() {
                       </p>
                     )}
                     <ul className="space-y-1 text-sm">
-                      {contract.sharedWith?.map((identifier) => (
+                      {contract.sharedWith?.map((identifier: string) => (
                         <li
                           key={identifier}
                           className="flex items-center justify-between p-1.5 bg-muted/30 rounded-md"

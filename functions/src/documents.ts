@@ -33,7 +33,10 @@ export const generatePdfForSigning = onCall({ memory: "1GiB", timeoutSeconds: 30
       throw new functions.https.HttpsError("not-found", "Contract not found.");
     }
 
-    const contractData = StoredContractDataSchema.parse(contractDoc.data());
+    const contractData = StoredContractDataSchema.parse({
+      id: contractDoc.id,
+      ...contractDoc.data(),
+    });
 
     // 4. Check if user is the owner
     if (contractData.ownerId !== uid) {
@@ -60,7 +63,12 @@ export const generatePdfForSigning = onCall({ memory: "1GiB", timeoutSeconds: 30
     const statusId = await createPdf(htmlContent, true); // Using test mode for now
 
     // 8. Update contract with DocRaptor job ID
-    await contractRef.update({ docraptorJobId: statusId });
+    // Remove undefined fields before update
+    const docraptorUpdate = { docraptorJobId: statusId } as Record<string, unknown>;
+    Object.keys(docraptorUpdate).forEach(
+      (key) => docraptorUpdate[key] === undefined && delete docraptorUpdate[key]
+    );
+    await contractRef.update(docraptorUpdate);
 
     // 9. Poll for PDF completion
     const downloadUrl = await pollForPdf(statusId);
@@ -69,11 +77,15 @@ export const generatePdfForSigning = onCall({ memory: "1GiB", timeoutSeconds: 30
     const pdfUrl = await downloadAndSavePdf(downloadUrl, contractId);
 
     // 11. Update contract with PDF URL and new status
-    await contractRef.update({
+    const pdfUpdate = {
       pdfUrl: pdfUrl,
       status: "out-for-signature", // Ready for the next step
       lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    } as Record<string, unknown>;
+    Object.keys(pdfUpdate).forEach(
+      (key) => pdfUpdate[key] === undefined && delete pdfUpdate[key]
+    );
+    await contractRef.update(pdfUpdate);
 
     return { success: true, pdfUrl: pdfUrl };
   } catch (error) {

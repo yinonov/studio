@@ -30,7 +30,10 @@ export const initiateDropboxSignSession = onCall(async (request) => {
     if (!contractDoc.exists) {
       throw new functions.https.HttpsError("not-found", "Contract not found.");
     }
-    const contractData = StoredContractDataSchema.parse(contractDoc.data());
+    const contractData = StoredContractDataSchema.parse({
+      id: contractDoc.id,
+      ...contractDoc.data(),
+    });
 
     // 4. Check if user is the owner
     if (contractData.ownerId !== uid) {
@@ -67,7 +70,10 @@ export const initiateDropboxSignSession = onCall(async (request) => {
     if (error instanceof functions.https.HttpsError) {
       throw error;
     }
-    throw new functions.https.HttpsError("internal", "An unexpected error occurred while preparing the document for signing.");
+    throw new functions.https.HttpsError(
+      "internal",
+      "An unexpected error occurred while preparing the document for signing."
+    );
   }
 });
 

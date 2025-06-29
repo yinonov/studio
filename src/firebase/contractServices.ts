@@ -1,4 +1,3 @@
-
 import { 
     collection, 
     getDocs, 
@@ -13,6 +12,7 @@ import {
     getDoc,
     deleteDoc
 } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '@/lib/firebase';
 import type { StoredContractData, Template } from '@/types';
 
@@ -121,5 +121,37 @@ export const deleteContractById = async (contractId: string): Promise<void> => {
     } catch (error) {
         console.error(`Error deleting contract ${contractId}:`, error);
         throw error; // Re-throw to be handled by the caller
+    }
+};
+
+export const generateContractPdf = async (contractId: string): Promise<{ success: boolean; pdfUrl?: string }> => {
+    if (!contractId) {
+        console.error("Contract ID is required to generate a PDF.");
+        throw new Error("Contract ID is required.");
+    }
+    try {
+        const functions = getFunctions();
+        const generatePdfForSigning = httpsCallable(functions, 'generatePdfForSigning');
+        const result = await generatePdfForSigning({ contractId });
+        return result.data as { success: boolean; pdfUrl?: string };
+    } catch (error) {
+        console.error(`Error calling generatePdfForSigning for contract ${contractId}:`, error);
+        throw error;
+    }
+};
+
+export const initiateSigningSession = async (contractId: string): Promise<{ success: boolean; signUrl?: string }> => {
+    if (!contractId) {
+        console.error("Contract ID is required to initiate a signing session.");
+        throw new Error("Contract ID is required.");
+    }
+    try {
+        const functions = getFunctions();
+        const initiateDropboxSignSession = httpsCallable(functions, 'initiateDropboxSignSession');
+        const result = await initiateDropboxSignSession({ contractId });
+        return result.data as { success: boolean; signUrl?: string };
+    } catch (error) {
+        console.error(`Error calling initiateDropboxSignSession for contract ${contractId}:`, error);
+        throw error;
     }
 };
