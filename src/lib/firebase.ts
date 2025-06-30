@@ -33,8 +33,6 @@ function getClientApp() {
       appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     };
 
-    // Firebase's own SDK will throw a useful error if the key is still missing.
-    // Let's rely on that instead of a custom check.
     app = initializeApp(firebaseConfig);
     return app;
 }
@@ -46,7 +44,7 @@ export function getClientAuth() {
     auth = getAuth(getClientApp());
     if (process.env.NODE_ENV === 'development' && !global.__authEmulatorConnected) {
         console.log("Connecting to Auth emulator");
-        connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+        connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
         global.__authEmulatorConnected = true;
     }
     return auth;
@@ -58,7 +56,7 @@ export function getClientDb() {
     db = getFirestore(getClientApp());
     if (process.env.NODE_ENV === 'development' && !global.__dbEmulatorConnected) {
         console.log("Connecting to Firestore emulator");
-        connectFirestoreEmulator(db, '127.0.0.1', 8080);
+        connectFirestoreEmulator(db, 'localhost', 8080);
         global.__dbEmulatorConnected = true;
     }
     return db;
@@ -70,7 +68,7 @@ export function getClientFunctions() {
     functions = getFunctions(getClientApp(), 'us-central1');
     if (process.env.NODE_ENV === 'development' && !global.__functionsEmulatorConnected) {
         console.log("Connecting to Functions emulator");
-        connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+        connectFunctionsEmulator(functions, 'localhost', 5001);
         global.__functionsEmulatorConnected = true;
     }
     return functions;
