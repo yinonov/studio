@@ -1,4 +1,3 @@
-
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
@@ -18,17 +17,13 @@ declare global {
 }
 
 function getClientApp() {
-    // If the app is already initialized, return it.
     if (app) return app;
 
-    // If there are already apps, get the default one. This is for HMR.
     if (getApps().length > 0) {
         app = getApp();
         return app;
     }
 
-    // Define the config object here, inside the function, to ensure
-    // process.env is populated by Next.js before it's accessed.
     const firebaseConfig = {
       apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
       authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -38,7 +33,8 @@ function getClientApp() {
       appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     };
 
-    // Initialize the Firebase app. Firebase will throw its own error if the key is missing.
+    // Firebase's own SDK will throw a useful error if the key is still missing.
+    // Let's rely on that instead of a custom check.
     app = initializeApp(firebaseConfig);
     return app;
 }

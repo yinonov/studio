@@ -1,4 +1,3 @@
-
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { getClientDb } from '@/lib/firebase';
 import type { Template, TemplateField } from '@/types'; // Updated to import TemplateField
@@ -151,6 +150,3 @@ export const fetchTemplateById = async (templateId: string): Promise<Template | 
     return null;
   }
 };
-
-
-    

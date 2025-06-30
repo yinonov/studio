@@ -1,4 +1,3 @@
-
 import { doc, setDoc, getDoc, serverTimestamp, type Timestamp } from 'firebase/firestore';
 import { getClientDb } from '@/lib/firebase';
 import type { User as FirebaseUser } from 'firebase/auth';
