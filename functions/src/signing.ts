@@ -7,8 +7,11 @@ import { getEmbeddedSignUrl, downloadSignedFiles } from "./services/dropbox-sign
 import * as crypto from "crypto";
 import axios from "axios";
 import type { EventCallbackRequest } from "@dropbox/sign";
+import { defineString } from "firebase-functions/params";
 
 const db = getFirestore();
+const dropboxSignApiKeyParam = defineString("DROPBOX_SIGN_API_KEY");
+
 
 /**
  * Initiates an embedded signing session with Dropbox Sign.
@@ -83,7 +86,13 @@ export const initiateDropboxSignSession = onCall(async (request) => {
 });
 
 export const dropboxSignCallback = onRequest(async (req, res) => {
-  const dropboxApiKey = functions.config().dropbox.apikey;
+  const dropboxApiKey = dropboxSignApiKeyParam.value();
+  if (!dropboxApiKey) {
+    functions.logger.error("Dropbox Sign API key is not configured.");
+    res.status(500).send("Configuration error.");
+    return;
+  }
+
   if (req.method === "POST") {
     // Use Dropbox Sign SDK type for event
     const event = req.body as EventCallbackRequest;
