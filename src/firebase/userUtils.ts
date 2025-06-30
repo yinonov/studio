@@ -1,6 +1,6 @@
 
 import { doc, setDoc, getDoc, serverTimestamp, type Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getClientDb } from '@/lib/firebase';
 import type { User as FirebaseUser } from 'firebase/auth';
 
 interface UserProfileData {
@@ -15,7 +15,8 @@ interface UserProfileData {
 
 export const createUserProfileDocument = async (userAuth: FirebaseUser, additionalData: Record<string, any> = {}) => {
   if (!userAuth) return;
-
+  
+  const db = getClientDb();
   const userRef = doc(db, `users/${userAuth.uid}`);
   const snapshot = await getDoc(userRef);
 
@@ -42,6 +43,7 @@ export const createUserProfileDocument = async (userAuth: FirebaseUser, addition
 
 export const getUserProfile = async (uid: string) => {
   if (!uid) return null;
+  const db = getClientDb();
   const userRef = doc(db, `users/${uid}`);
   const snapshot = await getDoc(userRef);
   if (snapshot.exists()) {

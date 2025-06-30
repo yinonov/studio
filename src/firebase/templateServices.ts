@@ -1,6 +1,6 @@
 
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getClientDb } from '@/lib/firebase';
 import type { Template, TemplateField } from '@/types'; // Updated to import TemplateField
 import { Building, Handshake, ShieldCheck, FileText } from 'lucide-react'; // Default icons
 
@@ -98,6 +98,7 @@ const defaultTemplates: Template[] = [
 
 export const fetchTemplates = async (): Promise<Template[]> => {
   try {
+    const db = getClientDb();
     const querySnapshot = await getDocs(collection(db, "templates"));
     if (querySnapshot.empty) {
       return defaultTemplates.map(t => ({...t, icon: getIconForCategory(t.category)}));
@@ -119,6 +120,7 @@ export const fetchTemplates = async (): Promise<Template[]> => {
 
 export const fetchTemplateById = async (templateId: string): Promise<Template | null> => {
   try {
+    const db = getClientDb();
     const templateRef = doc(db, "templates", templateId);
     const docSnap = await getDoc(templateRef);
     if (docSnap.exists()) {

@@ -16,7 +16,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword
 } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { getClientAuth } from '@/lib/firebase';
 import { createUserProfileDocument } from '@/firebase/userUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
+    const auth = getClientAuth();
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         await createUserProfileDocument(firebaseUser); // Ensure profile exists
@@ -152,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsFirebaseLoading(true);
     const provider = new GoogleAuthProvider();
     try {
+      const auth = getClientAuth();
       const result = await signInWithPopup(auth, provider);
       await createUserProfileDocument(result.user);
       return handleAuthSuccess(result.user);
@@ -165,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sendOtpToPhone = async (phoneNumber: string, appVerifier: RecaptchaVerifier): Promise<ConfirmationResult | null> => {
     setIsFirebaseLoading(true);
     try {
+      const auth = getClientAuth();
       const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
       toast({ title: 'קוד נשלח', description: 'קוד אימות נשלח למספר הטלפון שלך.' });
       return confirmationResult;
@@ -191,6 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signupWithEmail = async (email: string, pass: string, additionalData: Record<string, any> = {}) => {
     setIsFirebaseLoading(true);
     try {
+      const auth = getClientAuth();
       const { user } = await createUserWithEmailAndPassword(auth, email, pass);
       await createUserProfileDocument(user, { ...additionalData, email }); 
       return handleAuthSuccess(user);
@@ -204,6 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithEmail = async (email: string, pass: string) => {
     setIsFirebaseLoading(true);
     try {
+      const auth = getClientAuth();
       const { user } = await signInWithEmailAndPassword(auth, email, pass);
       return handleAuthSuccess(user);
     } catch (error: any) {
@@ -216,6 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setIsFirebaseLoading(true);
     try {
+      const auth = getClientAuth();
       await firebaseSignOut(auth);
       setCurrentUser(null);
       router.push('/'); 

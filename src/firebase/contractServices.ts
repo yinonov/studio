@@ -1,3 +1,4 @@
+
 import {
   collection,
   getDocs,
@@ -12,8 +13,8 @@ import {
   getDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { db } from "@/lib/firebase";
+import { httpsCallable } from "firebase/functions";
+import { getClientDb, getClientFunctions } from "@/lib/firebase";
 import type { StoredContractData, Template } from "@/types";
 
 export const fetchContractsForUser = (
@@ -25,7 +26,7 @@ export const fetchContractsForUser = (
     onError(new Error("User ID is required to fetch contracts."));
     return () => {}; // Return an empty unsubscribe function
   }
-
+  const db = getClientDb();
   const q = query(collection(db, "contracts"), where("ownerId", "==", userId));
 
   const unsubscribe = onSnapshot(
@@ -61,6 +62,7 @@ export const createDraftContract = async (
     return null;
   }
   try {
+    const db = getClientDb();
     const parties = [
       {
         name: initialData.party1Name || "",
@@ -100,6 +102,7 @@ export const updateContractData = async (
     console.error("Contract ID is required to update data.");
     return;
   }
+  const db = getClientDb();
   const contractRef = doc(db, "contracts", contractId);
   try {
     await setDoc(
@@ -121,6 +124,7 @@ export const fetchContractById = async (
 ): Promise<StoredContractData | null> => {
   if (!contractId) return null;
   try {
+    const db = getClientDb();
     const contractRef = doc(db, "contracts", contractId);
     const docSnap = await getDoc(contractRef);
     if (docSnap.exists()) {
@@ -139,6 +143,7 @@ export const deleteContractById = async (contractId: string): Promise<void> => {
     console.error("Contract ID is required to delete a contract.");
     throw new Error("Contract ID is required.");
   }
+  const db = getClientDb();
   const contractRef = doc(db, "contracts", contractId);
   try {
     await deleteDoc(contractRef);
@@ -156,7 +161,7 @@ export const prepareContractForSigning = async (
     throw new Error("Contract ID is required.");
   }
   try {
-    const functions = getFunctions();
+    const functions = getClientFunctions();
     const generatePdfForSigning = httpsCallable(
       functions,
       "generatePdfForSigning"

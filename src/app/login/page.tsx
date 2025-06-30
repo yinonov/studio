@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Loader2, Mail, Phone, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RecaptchaVerifier, type ConfirmationResult } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { getClientAuth } from '@/lib/firebase';
 import Link from 'next/link';
 import FormInput from '@/components/shared/FormInput';
 
@@ -51,6 +51,7 @@ export default function LoginPage() {
     // This effect manages the RecaptchaVerifier lifecycle for phone authentication
     if (authMethod === 'phone' && !confirmationResult && typeof window !== 'undefined' && recaptchaContainerRef.current) {
         if (!recaptchaVerifierRef.current?.auth) { // Only initialize if not already present or tied to an auth instance
+            const auth = getClientAuth();
             const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
                 'size': 'invisible',
                 'callback': () => { /* reCAPTCHA solved */ },
@@ -92,7 +93,7 @@ export default function LoginPage() {
             }
         }
     };
-  }, [authMethod, confirmationResult, toast, auth]); // `auth` from firebase/auth is stable
+  }, [authMethod, confirmationResult, toast]);
 
 
   const handleGoogleSignIn = async () => { 
