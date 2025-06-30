@@ -7,6 +7,11 @@ import {
   SignatureRequestCreateEmbeddedRequest,
 } from "@dropbox/sign";
 import { getStorage } from "firebase-admin/storage";
+import type { z } from "zod";
+import { StoredContractDataSchema } from "../types/schemas";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
 // Define the expected structure for a signer
 export interface Signer {
@@ -14,24 +19,26 @@ export interface Signer {
   name: string;
 }
 
+export type StoredContractData = z.infer<typeof StoredContractDataSchema>;
+
 /**
  * Creates an embedded signature request with Dropbox Sign.
  *
- * @param fileUrl The publicly accessible URL of the PDF to be signed.
+ * @param pdfBuffer The PDF file as a Buffer.
  * @param signers An array of signers for the document.
  * @returns An object with the sign URL and signature request ID.
  */
 export const getEmbeddedSignUrl = async (
-  fileUrl: string,
-  signers: Signer[],
+  pdfBuffer: Buffer,
+  signers: Signer[]
 ): Promise<{ signUrl: string; signatureRequestId: string }> => {
-  const dropboxApiKey = functions.config().dropbox.apikey;
-  const dropboxClientId = functions.config().dropbox.clientid;
+  const dropboxApiKey = process.env.DROPBOX_SIGN_API_KEY;
+  const dropboxClientId = process.env.DROPBOX_SIGN_CLIENT_ID;
 
   if (!dropboxApiKey || !dropboxClientId) {
     throw new functions.https.HttpsError(
       "failed-precondition",
-      "Dropbox Sign API key or Client ID is not configured.",
+      "Dropbox Sign API key or Client ID is not configured."
     );
   }
 
@@ -44,12 +51,19 @@ export const getEmbeddedSignUrl = async (
       emailAddress: signer.emailAddress,
       name: signer.name,
       order: index,
-    }),
+    })
   );
 
+  // Write buffer to a temp file and use fs.createReadStream
+  const tempFilePath = path.join(
+    os.tmpdir(),
+    `dropboxsign-upload-${Date.now()}.pdf`
+  );
+  fs.writeFileSync(tempFilePath, pdfBuffer);
+  const pdfReadStream = fs.createReadStream(tempFilePath);
   const data: SignatureRequestCreateEmbeddedRequest = {
     clientId: dropboxClientId,
-    fileUrls: [fileUrl],
+    files: [pdfReadStream],
     title: "Contract for Signing",
     subject: "Your contract is ready for signature",
     message: "Please sign the contract to finalize our agreement.",
@@ -66,7 +80,12 @@ export const getEmbeddedSignUrl = async (
   };
 
   try {
-    const result = await signatureRequestApi.signatureRequestCreateEmbedded(data);
+    const result = await signatureRequestApi.signatureRequestCreateEmbedded(
+      data
+    );
+    // Clean up temp file
+    fs.unlinkSync(tempFilePath);
+
     const signatureRequest = result.body.signatureRequest;
 
     if (!signatureRequest?.signatures?.length) {
@@ -101,7 +120,7 @@ export const getEmbeddedSignUrl = async (
     throw new functions.https.HttpsError(
       "internal",
       "Error creating embedded signature request",
-      error,
+      error
     );
   }
 };
@@ -115,7 +134,7 @@ export const getEmbeddedSignUrl = async (
  */
 export const downloadSignedFiles = async (
   signatureRequestId: string,
-  contractId: string,
+  contractId: string
 ): Promise<{ signedPdfUrl: string; auditTrailUrl: string }> => {
   const dropboxApiKey = functions.config().dropbox.apikey;
   const signatureRequestApi = new SignatureRequestApi();
@@ -123,10 +142,12 @@ export const downloadSignedFiles = async (
 
   const bucket = getStorage().bucket();
 
-  const downloadAndUpload = async (fileType: "pdf" | "zip"): Promise<string> => {
+  const downloadAndUpload = async (
+    fileType: "pdf" | "zip"
+  ): Promise<string> => {
     const result = await signatureRequestApi.signatureRequestFiles(
       signatureRequestId,
-      fileType,
+      fileType
     );
 
     const destination = `contracts/${contractId}/signed.${fileType}`;
@@ -154,11 +175,11 @@ export const downloadSignedFiles = async (
   } catch (error) {
     functions.logger.error(
       `Error downloading files for signature request ${signatureRequestId}:`,
-      error,
+      error
     );
     throw new functions.https.HttpsError(
       "internal",
-      "Failed to download signed files.",
+      "Failed to download signed files."
     );
   }
 };

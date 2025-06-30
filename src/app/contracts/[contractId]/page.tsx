@@ -7,8 +7,7 @@ import {
   fetchContractById,
   updateContractData,
   deleteContractById,
-  generateContractPdf,
-  initiateSigningSession,
+  prepareContractForSigning,
 } from "@/firebase/contractServices";
 import type { StoredContractData } from "@/types";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -53,6 +52,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import HelloSign from "hellosign-embedded";
 
 interface AuditLogItem {
   action: string;
@@ -100,6 +100,7 @@ export default function ContractViewPage() {
   const [error, setError] = useState<string | null>(null);
   const [shareIdentifier, setShareIdentifier] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
 
   const isOwner =
     contract && currentUser && contract.ownerId === currentUser.uid;
@@ -108,9 +109,11 @@ export default function ContractViewPage() {
     if (!currentUser || !contract) return false;
     if (isOwner) return true;
     return (
-      contract.sharedWith?.some((identifier: string) =>
-        (currentUser.email && identifier.toLowerCase() === currentUser.email.toLowerCase()) ||
-        (currentUser.phoneNumber && identifier === currentUser.phoneNumber)
+      contract.sharedWith?.some(
+        (identifier: string) =>
+          (currentUser.email &&
+            identifier.toLowerCase() === currentUser.email.toLowerCase()) ||
+          (currentUser.phoneNumber && identifier === currentUser.phoneNumber)
       ) || false
     );
   }, [currentUser, contract, isOwner]);
@@ -246,7 +249,9 @@ export default function ContractViewPage() {
     setIsProcessing(true);
     try {
       const updatedSharedWith =
-        contract.sharedWith?.filter((u: string) => u.toLowerCase() !== identifierToRemove.toLowerCase()) || [];
+        contract.sharedWith?.filter(
+          (u: string) => u.toLowerCase() !== identifierToRemove.toLowerCase()
+        ) || [];
       await updateContractData(contract.id, { sharedWith: updatedSharedWith });
       setContract((prev: StoredContractData | null) =>
         prev ? { ...prev, sharedWith: updatedSharedWith } : null
@@ -313,37 +318,56 @@ export default function ContractViewPage() {
       description: "זה עשוי לקחת מספר רגעים.",
     });
     try {
-      const pdfResult = await generateContractPdf(contractId);
-      if (!pdfResult.success || !pdfResult.pdfUrl) {
-        throw new Error("Failed to generate PDF for signing.");
+      // Only call if signUrl is not present
+      if (contract?.signUrl) {
+        setIsProcessing(false);
+        handleOpenEmbeddedSigning(contract.signUrl);
+        return;
       }
-      toast({
-        title: "PDF נוצר בהצלחה",
-        description: "מכין את סביבת החתימה...",
-      });
-      const signResult = await initiateSigningSession(contractId);
-      if (!signResult.success || !signResult.signUrl) {
-        throw new Error("Failed to initiate signing session.");
+      const result = await prepareContractForSigning(contractId);
+      if (!result.success || !result.signUrl) {
+        throw new Error("Failed to prepare contract for signing.");
       }
-      // Update contract status locally and in Firestore
-      const updatedContract = { ...contract, status: "out-for-signature" };
-      setContract(updatedContract as StoredContractData);
-      await updateContractData(contractId, { status: "out-for-signature" });
       toast({
         title: "מוכן לחתימה!",
         description: "החוזה מוכן לחתימה. פותח חלון חתימה...",
       });
-      window.open(signResult.signUrl, "_blank");
+      // Update contract locally
+      if (contract) {
+        const updatedContract = {
+          ...contract,
+          status: "out-for-signature",
+          signUrl: result.signUrl,
+        };
+        setContract(updatedContract as StoredContractData);
+        await updateContractData(contractId, {
+          status: "out-for-signature",
+          signUrl: result.signUrl,
+        });
+      }
+      handleOpenEmbeddedSigning(result.signUrl);
     } catch (err: any) {
       console.error("Error during generate and sign process:", err);
       toast({
         title: "שגיאה בתהליך החתימה",
-        description: err.message || "An unknown error occurred. Please try again.",
+        description:
+          err.message || "An unknown error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Embedded signing handler
+  const handleOpenEmbeddedSigning = (signUrl: string) => {
+    if (!signUrl) return;
+    const client = new HelloSign();
+    client.open(signUrl, {
+      clientId: process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID || "",
+      skipDomainVerification: process.env.NODE_ENV !== "production",
+      // Optionally, add event handlers here (on: { ... })
+    });
   };
 
   if (isLoadingContract || isFirebaseLoading) {
@@ -447,6 +471,22 @@ export default function ContractViewPage() {
                     </Button>
                   </>
                 )}
+                {/* Embedded signing button for out-for-signature */}
+                {isOwner &&
+                  contract.status === "out-for-signature" &&
+                  contract.signUrl && (
+                    <Button
+                      onClick={() =>
+                        handleOpenEmbeddedSigning(contract.signUrl!)
+                      }
+                      disabled={isProcessing}
+                      size="sm"
+                      variant="accent"
+                    >
+                      <FileSignature className="ml-2 h-4 w-4" />
+                      חתום עכשיו
+                    </Button>
+                  )}
                 <Button variant="outline" size="sm" onClick={handleCopyLink}>
                   <Copy className="ml-2 h-4 w-4" />
                   העתק קישור
@@ -535,14 +575,16 @@ export default function ContractViewPage() {
                       <h5 className="font-semibold mt-4 text-foreground">
                         סעיפים מותאמים אישית:
                       </h5>
-                      {contract.customClauses.map((clause: any, idx: number) => (
-                        <p
-                          key={idx}
-                          className="text-xs mt-1 whitespace-pre-wrap"
-                        >
-                          {clause.legalWording}
-                        </p>
-                      ))}
+                      {contract.customClauses.map(
+                        (clause: any, idx: number) => (
+                          <p
+                            key={idx}
+                            className="text-xs mt-1 whitespace-pre-wrap"
+                          >
+                            {clause.legalWording}
+                          </p>
+                        )
+                      )}
                     </>
                   )}
                 {(!template?.baseClauses ||

@@ -1,10 +1,12 @@
-import { StoredContractDataSchema, RequestDataSchema, DropboxSignEventSchema } from "./types/schemas";
+import { StoredContractDataSchema, RequestDataSchema } from "./types/schemas";
 import { getFirestore } from "firebase-admin/firestore";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import { onCall, onRequest } from "firebase-functions/v2/https";
 import { getEmbeddedSignUrl, downloadSignedFiles } from "./services/dropbox-sign";
 import * as crypto from "crypto";
+import axios from "axios";
+import type { EventCallbackRequest } from "@dropbox/sign";
 
 const db = getFirestore();
 
@@ -56,7 +58,10 @@ export const initiateDropboxSignSession = onCall(async (request) => {
     }
 
     // 7. Call Dropbox Sign service to get an embedded signing URL
-    const { signUrl, signatureRequestId } = await getEmbeddedSignUrl(contractData.pdfUrl, [signer]);
+    // Download the PDF from pdfUrl and pass as buffer
+    const pdfResponse = await axios.get(contractData.pdfUrl, { responseType: "arraybuffer" });
+    const pdfBuffer = Buffer.from(pdfResponse.data);
+    const { signUrl, signatureRequestId } = await getEmbeddedSignUrl(pdfBuffer, [signer]);
 
     // 8. Update contract with signature request ID
     await contractRef.update({
@@ -80,21 +85,28 @@ export const initiateDropboxSignSession = onCall(async (request) => {
 export const dropboxSignCallback = onRequest(async (req, res) => {
   const dropboxApiKey = functions.config().dropbox.apikey;
   if (req.method === "POST") {
-    const event = DropboxSignEventSchema.parse(req.body);
+    // Use Dropbox Sign SDK type for event
+    const event = req.body as EventCallbackRequest;
 
     // Verify the event hash to ensure it's from Dropbox Sign
+    // Update property access to match EventCallbackRequest (camelCase)
     const hash = crypto.createHmac("sha256", dropboxApiKey)
-      .update(event.event.event_time + event.event.event_type)
+      .update(event.event.eventTime + event.event.eventType)
       .digest("hex");
 
-    if (hash !== event.event.event_hash) {
+    if (hash !== event.event.eventHash) {
       res.status(401).send("Event hash mismatch.");
       return;
     }
 
     res.status(200).send("Hello API Event Received");
 
-    const signatureRequestId = event.signature_request.signature_request_id;
+    if (!event.signatureRequest || !event.signatureRequest.signatureRequestId) {
+      functions.logger.error("signatureRequest or signatureRequestId missing in Dropbox Sign event");
+      res.status(400).send("Missing signatureRequestId");
+      return;
+    }
+    const signatureRequestId = event.signatureRequest.signatureRequestId;
     const contractRef = db.collection("contracts").where("signatureRequestId", "==", signatureRequestId);
 
     try {
@@ -107,7 +119,7 @@ export const dropboxSignCallback = onRequest(async (req, res) => {
       const contractDoc = snapshot.docs[0];
       const contractId = contractDoc.id;
 
-      if (event.event.event_type === "signature_request_signed") {
+      if (event.event.eventType === "signature_request_signed") {
         const { signedPdfUrl, auditTrailUrl } = await downloadSignedFiles(signatureRequestId, contractId);
 
         await contractDoc.ref.update({
