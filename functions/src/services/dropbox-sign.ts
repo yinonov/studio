@@ -12,6 +12,10 @@ import { StoredContractDataSchema } from "../types/schemas";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import { defineString } from "firebase-functions/params";
+
+const DROPBOX_SIGN_API_KEY_PARAM = defineString("DROPBOX_SIGN_API_KEY");
+const DROPBOX_SIGN_CLIENT_ID_PARAM = defineString("DROPBOX_SIGN_CLIENT_ID");
 
 // Define the expected structure for a signer
 export interface Signer {
@@ -32,10 +36,9 @@ export const getEmbeddedSignUrl = async (
   pdfBuffer: Buffer,
   signers: Signer[]
 ): Promise<{ signUrl: string; signatureRequestId: string }> => {
-  const dropboxApiKey = process.env.DROPBOX_SIGN_API_KEY;
-  const dropboxClientId = process.env.DROPBOX_SIGN_CLIENT_ID;
-
-  if (!dropboxApiKey || !dropboxClientId) {
+  const DROPBOX_SIGN_API_KEY = DROPBOX_SIGN_API_KEY_PARAM.value();
+  const DROPBOX_SIGN_CLIENT_ID = DROPBOX_SIGN_CLIENT_ID_PARAM.value();
+  if (!DROPBOX_SIGN_API_KEY || !DROPBOX_SIGN_CLIENT_ID) {
     throw new functions.https.HttpsError(
       "failed-precondition",
       "Dropbox Sign API key or Client ID is not configured."
@@ -43,7 +46,7 @@ export const getEmbeddedSignUrl = async (
   }
 
   const signatureRequestApi = new SignatureRequestApi();
-  signatureRequestApi.username = dropboxApiKey;
+  signatureRequestApi.username = DROPBOX_SIGN_API_KEY;
 
   const subSignatureRequestSigners: SubSignatureRequestSigner[] = signers.map(
     (signer, index) => ({
@@ -62,7 +65,7 @@ export const getEmbeddedSignUrl = async (
   fs.writeFileSync(tempFilePath, pdfBuffer);
   const pdfReadStream = fs.createReadStream(tempFilePath);
   const data: SignatureRequestCreateEmbeddedRequest = {
-    clientId: dropboxClientId,
+    clientId: DROPBOX_SIGN_CLIENT_ID,
     files: [pdfReadStream],
     title: "Contract for Signing",
     subject: "Your contract is ready for signature",
@@ -98,7 +101,7 @@ export const getEmbeddedSignUrl = async (
     }
 
     const embeddedApi = new EmbeddedApi();
-    embeddedApi.username = dropboxApiKey;
+    embeddedApi.username = DROPBOX_SIGN_API_KEY;
 
     const embeddedResult = await embeddedApi.embeddedSignUrl(signatureId);
     const signUrl = embeddedResult.body.embedded?.signUrl;
@@ -136,9 +139,9 @@ export const downloadSignedFiles = async (
   signatureRequestId: string,
   contractId: string
 ): Promise<{ signedPdfUrl: string; auditTrailUrl: string }> => {
-  const dropboxApiKey = functions.config().dropbox.apikey;
+  const DROPBOX_SIGN_API_KEY = DROPBOX_SIGN_API_KEY_PARAM.value();
   const signatureRequestApi = new SignatureRequestApi();
-  signatureRequestApi.username = dropboxApiKey;
+  signatureRequestApi.username = DROPBOX_SIGN_API_KEY;
 
   const bucket = getStorage().bucket();
 

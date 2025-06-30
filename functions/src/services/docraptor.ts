@@ -2,13 +2,10 @@
 import axios, { isAxiosError } from "axios";
 import * as functions from "firebase-functions";
 import { logger } from "firebase-functions";
+import { defineString } from "firebase-functions/params";
 
-const DOCRAPTOR_API_KEY = process.env.DOCRAPTOR_API_KEY;
-const DOCRAPTOR_API_URL = "https://api.docraptor.com/docs"; // Fixed endpoint to match DocRaptor docs
-
-if (!DOCRAPTOR_API_KEY) {
-  logger.error("DocRaptor API key is not set in environment variables.");
-}
+const docraptorApiKeyParam = defineString("DOCRAPTOR_API_KEY");
+const docraptorApiUrl = "https://api.docraptor.com/docs"; // Fixed endpoint to match DocRaptor docs
 
 /**
  * Initiates PDF generation with DocRaptor and returns a Buffer.
@@ -20,7 +17,8 @@ export async function createPdfBuffer(
   htmlContent: string,
   test = true
 ): Promise<Buffer> {
-  if (!DOCRAPTOR_API_KEY) {
+  const docraptorApiKey = docraptorApiKeyParam.value();
+  if (!docraptorApiKey) {
     throw new functions.https.HttpsError(
       "internal",
       "DocRaptor API key is not configured."
@@ -29,9 +27,9 @@ export async function createPdfBuffer(
 
   try {
     const response = await axios.post(
-      DOCRAPTOR_API_URL,
+      docraptorApiUrl,
       {
-        user_credentials: DOCRAPTOR_API_KEY,
+        user_credentials: docraptorApiKey,
         doc: {
           document_content: htmlContent,
           type: "pdf",
