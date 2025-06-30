@@ -4,22 +4,13 @@ import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator, type Functions } from 'firebase/functions';
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-// Singleton instances
+// Singleton instances for Firebase services
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let db: Firestore | undefined;
 let functions: Functions | undefined;
 
-// We use a global variable to prevent reconnecting on hot reloads.
+// We use a global variable to prevent reconnecting on hot reloads during development.
 declare global {
   var __authEmulatorConnected: boolean | undefined;
   var __dbEmulatorConnected: boolean | undefined;
@@ -27,20 +18,31 @@ declare global {
 }
 
 function getClientApp() {
+    // If the app is already initialized, return it.
     if (app) return app;
 
+    // If there are already apps, get the default one. This is for HMR.
     if (getApps().length > 0) {
         app = getApp();
         return app;
     }
 
-    if (!firebaseConfig.apiKey) {
-        throw new Error("Firebase configuration is missing the API key. Ensure NEXT_PUBLIC_FIREBASE_API_KEY is set in your .env file.");
-    }
+    // Define the config object here, inside the function, to ensure
+    // process.env is populated by Next.js before it's accessed.
+    const firebaseConfig = {
+      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    };
 
+    // Initialize the Firebase app. Firebase will throw its own error if the key is missing.
     app = initializeApp(firebaseConfig);
     return app;
 }
+
 
 export function getClientAuth() {
     if (auth) return auth;
