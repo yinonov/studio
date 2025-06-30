@@ -1,6 +1,6 @@
 
-// src/lib/firebase.ts
-import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import 'dotenv/config'; // Explicitly load environment variables first
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator, type Functions } from 'firebase/functions';
@@ -14,38 +14,39 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-let app: FirebaseApp;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApps()[0]!;
+// A more robust way to initialize the app, preventing re-initialization on HMR.
+function initializeClientApp(): FirebaseApp {
+    if (getApps().length) {
+        return getApp();
+    }
+    
+    // The check for apiKey is implicitly handled by initializeApp.
+    // If it's missing, Firebase will throw a descriptive error.
+    const app = initializeApp(firebaseConfig);
+    return app;
 }
 
+const app: FirebaseApp = initializeClientApp();
 const auth: Auth = getAuth(app);
 const db: Firestore = getFirestore(app);
 const functions: Functions = getFunctions(app, 'us-central1');
 
-// Connect to emulators in development mode
-if (process.env.NODE_ENV === 'development') {
+// Connect to emulators in development mode.
+// We use a global variable to prevent reconnecting on hot reloads, which is a clean pattern.
+declare global {
+  var __firebaseEmulatorsConnected: boolean | undefined;
+}
+
+if (process.env.NODE_ENV === 'development' && !global.__firebaseEmulatorsConnected) {
   console.log("Development mode: Connecting to Firebase Emulators.");
-  // Check if emulators are already connected to prevent errors on hot reloads
   try {
-    if (!auth.emulatorConfig) {
-      connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-      console.log("Auth Emulator connected.");
-    }
-    // A bit of a hacky way to check for the firestore emulator connection
-    if (!(db as any)._settings.host.includes('127.0.0.1')) {
-      connectFirestoreEmulator(db, '127.0.0.1', 8080);
-      console.log("Firestore Emulator connected.");
-    }
-    // A bit of a hacky way to check for the functions emulator connection
-    if (!(functions as any)._emulator) {
-      connectFunctionsEmulator(functions, '127.0.0.1', 5001);
-      console.log("Functions Emulator connected.");
-    }
+    connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+    connectFirestoreEmulator(db, '127.0.0.1', 8080);
+    connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+    global.__firebaseEmulatorsConnected = true;
+    console.log("Firebase Emulators connected.");
   } catch (error) {
-      console.error("Error connecting to Firebase emulators:", error);
+    console.error("Error connecting to Firebase emulators:", error);
   }
 }
 
