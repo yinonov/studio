@@ -52,7 +52,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import HelloSign from "hellosign-embedded";
 
 interface AuditLogItem {
   action: string;
@@ -360,8 +359,9 @@ export default function ContractViewPage() {
   };
 
   // Embedded signing handler
-  const handleOpenEmbeddedSigning = (signUrl: string) => {
+  const handleOpenEmbeddedSigning = async (signUrl: string) => {
     if (!signUrl) return;
+    const HelloSign = (await import("hellosign-embedded")).default;
     const client = new HelloSign();
     client.open(signUrl, {
       clientId: process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID || "",
