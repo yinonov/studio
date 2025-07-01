@@ -76,7 +76,7 @@ export const getEmbeddedSignUrl = async (
       type: true,
       upload: true,
       phone: false,
-      defaultType: "draw" as SubSigningOptions.DefaultTypeEnum,
+      defaultType: SubSigningOptions.DefaultTypeEnum.Draw,
     },
     useTextTags: true,
     testMode: true, // Use test mode for development

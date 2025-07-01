@@ -360,11 +360,31 @@ export default function ContractViewPage() {
 
   // Embedded signing handler
   const handleOpenEmbeddedSigning = async (signUrl: string) => {
-    if (!signUrl) return;
+    if (!signUrl) {
+      console.error("[Dropbox Sign] signUrl is missing or empty.");
+      alert("שגיאה: כתובת חתימה חסרה. פנה למנהל המערכת.");
+      return;
+    }
+    console.log(
+      "[Dropbox Sign] Opening embedded signing with signUrl:",
+      signUrl
+    );
+    const clientId = process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID;
+    if (!clientId) {
+      console.error(
+        "[Dropbox Sign] NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID is missing or not exposed to the client."
+      );
+      alert("שגיאה: מזהה לקוח Dropbox Sign לא מוגדר. פנה למנהל המערכת.");
+      return;
+    }
+    console.log("[Dropbox Sign] Using clientId:", {
+      clientId,
+      skipDomainVerification: process.env.NODE_ENV !== "production",
+    });
     const HelloSign = (await import("hellosign-embedded")).default;
     const client = new HelloSign();
     client.open(signUrl, {
-      clientId: process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID || "",
+      clientId,
       skipDomainVerification: process.env.NODE_ENV !== "production",
       // Optionally, add event handlers here (on: { ... })
     });
