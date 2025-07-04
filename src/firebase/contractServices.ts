@@ -162,15 +162,16 @@ export const prepareContractForSigning = async (
   }
   try {
     const functions = getClientFunctions();
-    const generatePdfForSigning = httpsCallable(
+    // The callable function name must match the exported function name in functions/src/index.ts
+    const callableFunction = httpsCallable(
       functions,
-      "generatePdfForSigning"
+      "prepareContractForSigning"
     );
-    const result = await generatePdfForSigning({ contractId });
+    const result = await callableFunction({ contractId }); // The data sent must be an object
     return result.data as { success: boolean; signUrl?: string };
   } catch (error) {
     console.error(
-      `Error calling generatePdfForSigning for contract ${contractId}:`,
+      `Error calling prepareContractForSigning for contract ${contractId}:`,
       error
     );
     throw error;
