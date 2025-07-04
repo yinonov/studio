@@ -26,14 +26,14 @@ export interface Signer {
 export type StoredContractData = z.infer<typeof StoredContractDataSchema>;
 
 /**
- * Creates an embedded signature request with Dropbox Sign.
+ * Creates an embedded signature request with Dropbox Sign from an HTML buffer.
  *
- * @param pdfBuffer The PDF file as a Buffer.
+ * @param htmlBuffer The HTML file content as a Buffer.
  * @param signers An array of signers for the document.
  * @returns An object with the sign URL and signature request ID.
  */
 export const getEmbeddedSignUrl = async (
-  pdfBuffer: Buffer,
+  htmlBuffer: Buffer,
   signers: Signer[]
 ): Promise<{ signUrl: string; signatureRequestId: string }> => {
   const dropboxSignApiKey = dropboxSignApiKeyParam.value();
@@ -57,16 +57,16 @@ export const getEmbeddedSignUrl = async (
     })
   );
 
-  // Write buffer to a temp file and use fs.createReadStream
+  // Write HTML buffer to a temp file to be uploaded
   const tempFilePath = path.join(
     os.tmpdir(),
-    `dropboxsign-upload-${Date.now()}.pdf`
+    `dropboxsign-upload-${Date.now()}.html`
   );
-  fs.writeFileSync(tempFilePath, pdfBuffer);
-  const pdfReadStream = fs.createReadStream(tempFilePath);
+  fs.writeFileSync(tempFilePath, htmlBuffer);
+  const htmlReadStream = fs.createReadStream(tempFilePath);
   const data: SignatureRequestCreateEmbeddedRequest = {
     clientId: dropboxSignClientId,
-    files: [pdfReadStream],
+    files: [htmlReadStream],
     title: "Contract for Signing",
     subject: "Your contract is ready for signature",
     message: "Please sign the contract to finalize our agreement.",
@@ -95,6 +95,7 @@ export const getEmbeddedSignUrl = async (
       throw new Error("No signatures found in the response.");
     }
 
+    // Get the first signer's ID to generate the embedded URL
     const signatureId = signatureRequest.signatures[0].signatureId;
     if (!signatureId) {
       throw new Error("Signature ID is missing.");

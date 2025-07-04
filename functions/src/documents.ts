@@ -1,16 +1,8 @@
 import { StoredContractDataSchema, RequestDataSchema } from "./types/schemas";
-import { createPdfBuffer } from "./services/docraptor";
 import { getEmbeddedSignUrl } from "./services/dropbox-sign";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import { onCall } from "firebase-functions/v2/https";
-import { onDocumentUpdated } from "firebase-functions/v2/firestore";
-import { generateThumbnail } from "./services/pdf";
-import * as path from "path";
-import * as os from "os";
-import * as fs from "fs";
-import axios from "axios";
 
 const db = getFirestore();
 
@@ -70,21 +62,19 @@ export const generatePdfForSigning = onCall(
       // 6. Update contract status to 'generating-pdf'
       await contractRef.update({ status: "generating-pdf" });
 
-      // 7. Create PDF buffer (synchronous, best practice)
-      functions.logger.info("Calling createPdfBuffer for contract", contractId);
-      const pdfBuffer = await createPdfBuffer(htmlContent, true);
-      functions.logger.info(
-        "Received PDF buffer from createPdfBuffer",
-        contractId
-      );
+      // 7. Convert HTML string to a Buffer
+      functions.logger.info("Converting HTML to buffer for contract", contractId);
+      const htmlBuffer = Buffer.from(htmlContent, "utf-8");
 
-      // 8. Pass pdfBuffer to Dropbox Sign API
+      // 8. Pass htmlBuffer to Dropbox Sign API
       // Prepare signers array from contractData.parties
       const signers = (contractData.parties || []).map((party) => ({
         emailAddress: party.email,
         name: party.name,
       }));
-      const signResult = await getEmbeddedSignUrl(pdfBuffer, signers);
+
+      // Let Dropbox Sign convert the HTML to a signable PDF
+      const signResult = await getEmbeddedSignUrl(htmlBuffer, signers);
 
       // 9. Update contract status and store Dropbox Sign URLs/metadata
       await contractRef.update({
@@ -111,86 +101,6 @@ export const generatePdfForSigning = onCall(
         "internal",
         "An unexpected error occurred while generating the PDF."
       );
-    }
-  }
-);
-
-/**
- * Generates a watermarked "DRAFT" thumbnail for a contract.
- * Triggered when a contract's status becomes 'out-for-signature' and a PDF URL is available.
- */
-export const generateDraftThumbnail = onDocumentUpdated(
-  "contracts/{contractId}",
-  async (event) => {
-    if (!event.data) {
-      return;
-    }
-    const contractDataAfter = event.data.after.data();
-    const contractDataBefore = event.data.before.data();
-
-    if (!contractDataAfter) {
-      functions.logger.log("No data after update, exiting.");
-      return;
-    }
-
-    // Check if the PDF is ready and thumbnail hasn't been generated
-    const isReadyForThumbnail =
-      contractDataAfter.status === "out-for-signature" &&
-      contractDataAfter.pdfUrl &&
-      !contractDataAfter.thumbnailUrl &&
-      contractDataBefore.status !== "out-for-signature";
-
-    if (isReadyForThumbnail) {
-      const { contractId } = event.params;
-      const pdfUrl = contractDataAfter.pdfUrl;
-
-      functions.logger.log(`Generating thumbnail for contract ${contractId}`);
-
-      try {
-        // 1. Download the PDF to a temporary file
-        const tempFileName = `${contractId}.pdf`;
-        const tempFilePath = path.join(os.tmpdir(), tempFileName);
-        const response = await axios.get(pdfUrl, { responseType: "stream" });
-        const writer = fs.createWriteStream(tempFilePath);
-        response.data.pipe(writer);
-
-        await new Promise<void>((resolve, reject) => {
-          writer.on("finish", resolve);
-          writer.on("error", reject);
-        });
-
-        // 2. Generate thumbnail using the pdf service
-        const bucket = admin.storage().bucket();
-        const thumbnailStoragePath = `contracts-thumbs/${contractId}.png`;
-        await generateThumbnail(tempFilePath, bucket, thumbnailStoragePath);
-
-        // 3. Get a signed URL for the thumbnail
-        const signedUrl = await bucket.file(thumbnailStoragePath).getSignedUrl({
-          action: "read",
-          expires: "03-09-2491", // A very long time
-        });
-
-        // 4. Update Firestore with the thumbnail URL
-        await db.collection("contracts").doc(contractId).update({
-          thumbnailUrl: signedUrl[0],
-        });
-
-        functions.logger.log(
-          `Successfully generated thumbnail for contract ${contractId}`
-        );
-
-        // 5. Clean up temporary file
-        fs.unlinkSync(tempFilePath);
-      } catch (error) {
-        functions.logger.error(
-          `Error generating thumbnail for contract ${contractId}:`,
-          error
-        );
-        await db.collection("contracts").doc(contractId).update({
-          status: "error",
-          statusMessage: "Failed to generate thumbnail.",
-        });
-      }
     }
   }
 );

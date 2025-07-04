@@ -1,89 +1,14 @@
-import { StoredContractDataSchema, RequestDataSchema } from "./types/schemas";
 import { getFirestore } from "firebase-admin/firestore";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
-import { onCall, onRequest } from "firebase-functions/v2/https";
-import { getEmbeddedSignUrl, downloadSignedFiles } from "./services/dropbox-sign";
+import { onRequest } from "firebase-functions/v2/https";
+import { downloadSignedFiles } from "./services/dropbox-sign";
 import * as crypto from "crypto";
-import axios from "axios";
 import type { EventCallbackRequest } from "@dropbox/sign";
 import { defineString } from "firebase-functions/params";
 
 const db = getFirestore();
 const dropboxSignApiKeyParam = defineString("DROPBOX_SIGN_API_KEY");
-
-
-/**
- * Initiates an embedded signing session with Dropbox Sign.
- * This function is called by the client to get a URL for the embedded signing view.
- */
-export const initiateDropboxSignSession = onCall(async (request) => {
-  // 1. Validate input data
-  const { contractId } = RequestDataSchema.parse(request.data);
-
-  // 2. Check for authenticated user
-  if (!request.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "You must be logged in.");
-  }
-  const uid = request.auth.uid;
-
-  const contractRef = db.collection("contracts").doc(contractId);
-
-  try {
-    // 3. Get contract from Firestore
-    const contractDoc = await contractRef.get();
-    if (!contractDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Contract not found.");
-    }
-    const contractData = StoredContractDataSchema.parse({
-      id: contractDoc.id,
-      ...contractDoc.data(),
-    });
-
-    // 4. Check if user is the owner
-    if (contractData.ownerId !== uid) {
-      throw new functions.https.HttpsError("permission-denied", "You are not authorized to sign this contract.");
-    }
-
-    // 5. Check contract status
-    if (contractData.status !== "out-for-signature" || !contractData.pdfUrl) {
-      throw new functions.https.HttpsError("failed-precondition", "Contract is not ready for signature.");
-    }
-
-    // 6. Get signer information
-    const signer = {
-      emailAddress: request.auth.token.email || "",
-      name: request.auth.token.name || "Contract Owner",
-    };
-
-    if (!signer.emailAddress) {
-      throw new functions.https.HttpsError("failed-precondition", "User email is not available.");
-    }
-
-    // 7. Call Dropbox Sign service to get an embedded signing URL
-    // Download the PDF from pdfUrl and pass as buffer
-    const pdfResponse = await axios.get(contractData.pdfUrl, { responseType: "arraybuffer" });
-    const pdfBuffer = Buffer.from(pdfResponse.data);
-    const { signUrl, signatureRequestId } = await getEmbeddedSignUrl(pdfBuffer, [signer]);
-
-    // 8. Update contract with signature request ID
-    await contractRef.update({
-      signatureRequestId: signatureRequestId,
-      status: "signing-in-progress",
-    });
-
-    return { success: true, signUrl: signUrl };
-  } catch (error) {
-    functions.logger.error(`Error initiating Dropbox Sign for contract ${contractId}:`, error);
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-    throw new functions.https.HttpsError(
-      "internal",
-      "An unexpected error occurred while preparing the document for signing."
-    );
-  }
-});
 
 export const dropboxSignCallback = onRequest(async (req, res) => {
   const dropboxApiKey = dropboxSignApiKeyParam.value();
@@ -92,6 +17,10 @@ export const dropboxSignCallback = onRequest(async (req, res) => {
     res.status(500).send("Configuration error.");
     return;
   }
+
+  // Dropbox Sign requires a "200 OK" response with a specific body format
+  res.setHeader("Content-Type", "text/plain");
+  res.status(200).send("Hello API Event Received");
 
   if (req.method === "POST") {
     // Use Dropbox Sign SDK type for event
@@ -104,16 +33,13 @@ export const dropboxSignCallback = onRequest(async (req, res) => {
       .digest("hex");
 
     if (hash !== event.event.eventHash) {
-      res.status(401).send("Event hash mismatch.");
-      return;
+      functions.logger.warn("Event hash mismatch, ignoring callback.");
+      return; // Return after sending the 200 response
     }
-
-    res.status(200).send("Hello API Event Received");
 
     if (!event.signatureRequest || !event.signatureRequest.signatureRequestId) {
       functions.logger.error("signatureRequest or signatureRequestId missing in Dropbox Sign event");
-      res.status(400).send("Missing signatureRequestId");
-      return;
+      return; // Return after sending the 200 response
     }
     const signatureRequestId = event.signatureRequest.signatureRequestId;
     const contractRef = db.collection("contracts").where("signatureRequestId", "==", signatureRequestId);
@@ -146,6 +72,6 @@ export const dropboxSignCallback = onRequest(async (req, res) => {
       functions.logger.error(`Error processing Dropbox Sign event for signature request ${signatureRequestId}:`, error);
     }
   } else {
-    res.status(405).send("Method Not Allowed");
+    functions.logger.warn(`Received a ${req.method} request, but only POST is handled.`);
   }
 });
