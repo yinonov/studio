@@ -1,3 +1,4 @@
+
 import * as functions from "firebase-functions";
 import {
   SignatureRequestApi,
@@ -50,7 +51,7 @@ export const getEmbeddedSignUrl = async (
 
   const subSignatureRequestSigners: SubSignatureRequestSigner[] = signers.map(
     (signer, index) => ({
-      role: `signer_${index + 1}`,
+      role: `signer${index + 1}`,
       emailAddress: signer.emailAddress,
       name: signer.name,
       order: index,
