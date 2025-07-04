@@ -45,19 +45,37 @@ export const generatePdfForSigning = onCall(
         );
       }
 
-      // 5. Generate HTML from contractData.formData and a template (placeholder for now)
-      const htmlContent =
-        "<html><body><h1>" +
-        contractData.title +
-        "</h1>" +
-        "<p>This is a test contract generated for user " +
-        uid +
-        ".</p>" +
-        "<br><br><br><br>" +
-        "[sig|req|signer1|Signature]" +
-        "<br><br>" +
-        "[date|req|signer1|Date Signed]" +
-        "</body></html>";
+      // 5. Generate a more robust HTML structure
+      const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${contractData.title}</title>
+  <style>
+    body { font-family: 'Helvetica', 'Arial', sans-serif; }
+    .sig-container { 
+      border: 1px solid #ccc; 
+      padding: 15px; 
+      margin-top: 20px;
+      margin-bottom: 20px;
+      width: 250px; 
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <h1>${contractData.title}</h1>
+  <p>This is a test contract generated for user ${uid}.</p>
+  <p>FormData: ${JSON.stringify(contractData.formData)}</p>
+  <br/><br/><br/><br/>
+  <div class="sig-container">
+    [sig|req|signer1|Signature]
+  </div>
+  <div class="sig-container">
+    [date|req|signer1|Date Signed]
+  </div>
+</body>
+</html>`;
 
       // 6. Update contract status to 'generating-pdf'
       await contractRef.update({ status: "generating-pdf" });
