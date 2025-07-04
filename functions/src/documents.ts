@@ -1,122 +1,108 @@
 
-import { StoredContractDataSchema, RequestDataSchema } from "./types/schemas";
 import { getEmbeddedSignUrl } from "./services/dropbox-sign";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
-import { onCall } from "firebase-functions/v2/https";
+import { onCall } from "firebase-functions/v2/onCall";
+// import { getFirestore } from "firebase-admin/firestore";
+// import { StoredContractDataSchema, RequestDataSchema } from "./types/schemas";
 
-const db = getFirestore();
+// const db = getFirestore();
 
 /**
- * Creates a signable document from contract data and prepares it for embedded signing
- * using Dropbox Sign. This function handles HTML generation and API interaction.
+ * Creates a signable document with DUMMY data and prepares it for embedded signing
+ * using Dropbox Sign. This function is for testing and bypasses Firestore.
  */
 export const prepareContractForSigning = onCall(
   { memory: "1GiB", timeoutSeconds: 300 },
   async (request) => {
-    // 1. Validate input data and authentication
-    const { contractId } = RequestDataSchema.parse(request.data);
+    // 1. Validate that the user is authenticated (still a good practice)
     if (!request.auth) {
       throw new functions.https.HttpsError(
         "unauthenticated",
         "You must be logged in to prepare a contract for signing."
       );
     }
-    const uid = request.auth.uid;
-    const contractRef = db.collection("contracts").doc(contractId);
 
     try {
-      // 2. Fetch contract from Firestore and validate ownership
-      const contractDoc = await contractRef.get();
-      if (!contractDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "Contract not found.");
-      }
-      const contractData = StoredContractDataSchema.parse({
-        id: contractDoc.id,
-        ...contractDoc.data(),
-      });
+      functions.logger.info("Using DUMMY data to prepare contract for signing.");
 
-      if (contractData.ownerId !== uid) {
-        throw new functions.https.HttpsError(
-          "permission-denied",
-          "You are not authorized to modify this contract."
-        );
-      }
+      // 2. Create a DUMMY contract object instead of fetching from Firestore.
+      const dummyContract = {
+        title: "Dummy Test Contract for Signing",
+        parties: [
+          { email: "signer1@example.com", name: "Dummy Signer One" },
+          { email: "signer2@example.com", name: "Dummy Signer Two" },
+        ],
+        formData: {
+          testField: "Some test data for the contract body.",
+        },
+      };
 
-      // 3. Generate a robust HTML document for signing
+      // 3. Generate a robust, well-formed HTML document for signing using the dummy data.
       const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>${contractData.title}</title>
+  <title>${dummyContract.title}</title>
   <style>
-    body { font-family: 'Helvetica', 'Arial', sans-serif; direction: rtl; text-align: right; }
+    body { font-family: 'Helvetica', 'Arial', sans-serif; padding: 40px; text-align: right; direction: rtl;}
     h1 { font-size: 24px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
     p { line-height: 1.6; }
-    .sig-container { 
-      border: 1px solid #ccc; 
-      padding: 15px; 
+    .sig-container {
+      border: 1px solid #ccc;
+      padding: 15px;
       margin-top: 20px;
       margin-bottom: 20px;
-      width: 250px; 
+      width: 250px;
       background-color: #f9f9f9;
     }
   </style>
 </head>
 <body>
-  <h1>${contractData.title}</h1>
-  <p><strong>נערך ונחתם בתאריך:</strong> ${new Date().toLocaleDateString("he-IL")}</p>
-  <p><strong>פרטי החוזה:</strong> ${JSON.stringify(contractData.formData, null, 2)}</p>
+  <h1>${dummyContract.title}</h1>
+  <p>זהו חוזה בדיקה שנוצר למטרות ניפוי שגיאות.</p>
+  <p><strong>נתוני בדיקה:</strong> ${JSON.stringify(
+    dummyContract.formData,
+    null,
+    2
+  )}</p>
   <br/><br/><br/><br/>
-  <p><strong>חתימת צד א':</strong></p>
+  <p><strong>חתימה עבור צד א':</strong></p>
   <div class="sig-container">
-    [sig|req|signer1|חתימה]
+    [sig|req|signer1|נא לחתום כאן]
   </div>
-  <p><strong>חתימת צד ב':</strong></p>
+  <p><strong>חתימה עבור צד ב':</strong></p>
    <div class="sig-container">
-    [sig|req|signer2|חתימה]
+    [sig|req|signer2|נא לחתום כאן]
   </div>
 </body>
 </html>`;
 
-      functions.logger.info(`Generated HTML for contract ${contractId}`);
+      functions.logger.info("Generated HTML for DUMMY contract.");
 
-      // 4. Update contract status to prevent concurrent modifications
-      await contractRef.update({ status: "generating-pdf" });
-
-      // 5. Call Dropbox Sign to create the embedded signing request
+      // 4. Call Dropbox Sign with the dummy data to create the embedded signing request
       const htmlBuffer = Buffer.from(htmlContent, "utf-8");
-      const signers = (contractData.parties || []).map((party) => ({
-        emailAddress: party.email,
-        name: party.name,
-      }));
+      const signers = dummyContract.parties;
 
-      // Ensure there are signers before proceeding
-      if (signers.length === 0) {
-        throw new functions.https.HttpsError("failed-precondition", "The contract must have at least one party to sign.");
-      }
+      const signResult = await getEmbeddedSignUrl(
+        htmlBuffer,
+        signers,
+        dummyContract.title
+      );
 
-      const signResult = await getEmbeddedSignUrl(htmlBuffer, signers, contractData.title);
-
-      // 6. Update contract in Firestore with signing metadata
-      await contractRef.update({
-        status: "out-for-signature",
-        lastUpdatedAt: FieldValue.serverTimestamp(),
-        signatureRequestId: signResult.signatureRequestId,
-        signUrl: signResult.signUrl,
-      });
-
-      functions.logger.info(`Contract ${contractId} is now out for signature.`);
+      // 5. Return the signing URL directly to the client without updating Firestore.
+      functions.logger.info("Dummy contract is now ready for signature.");
       return { success: true, ...signResult };
     } catch (error: any) {
-      functions.logger.error(`Error preparing contract ${contractId} for signing:`, error);
-      await contractRef.update({ status: "error" });
+      functions.logger.error(
+        `Error preparing DUMMY contract for signing:`,
+        error
+      );
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
       throw new functions.https.HttpsError(
         "internal",
-        "An unexpected error occurred while preparing the contract."
+        "An unexpected error occurred while preparing the DUMMY contract."
       );
     }
   }
