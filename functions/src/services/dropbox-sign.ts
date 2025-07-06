@@ -6,7 +6,7 @@ import {
   SubSignatureRequest,
   EmbeddedApi,
 } from "@dropbox/sign";
-import { StoredContractData, Template, Party } from "../types/schemas";
+import { StoredContractData, Party } from "../types/schemas";
 import { Firestore } from "firebase-admin/firestore";
 import * as crypto from "crypto";
 
@@ -15,62 +15,8 @@ const dropboxSignApiKeyParam = defineString("DROPBOX_SIGN_API_KEY");
 const dropboxSignClientIdParam = defineString("DROPBOX_SIGN_CLIENT_ID");
 
 /**
- * Generates an HTML string from contract data and a template.
- * @param {StoredContractData} contract - The contract data from Firestore.
- * @param {Template} template - The template data.
- * @return {string} - The generated HTML string.
- */
-function generateContractHtml(
-  contract: StoredContractData,
-  template: Template
-): string {
-  const interpolate = (text: string) =>
-    text.replace(/\{\{(.+?)\}\}/g, (_match, key) => {
-      const fieldName = key.trim();
-      return contract.formData[fieldName] || `[${fieldName}]`;
-    });
-
-  const clausesHtml = template.baseClauses
-    ?.map((clause) => `<p>${interpolate(clause)}</p>`)
-    .join("\n");
-  const customClausesHtml = contract.customClauses
-    ?.map(
-      (clause) =>
-        `<div><h4>Custom Clause:</h4><p>${clause.legalWording}</p></div>`
-    )
-    .join("\n");
-
-  let partyIndex = 1;
-  const signatureBoxes = contract.parties
-    ?.map(() => {
-      const signerRole = `signer${partyIndex++}`;
-      return `<div style="margin-top: 40px; border: 1px solid #eee; padding: 20px; background: #f9f9f9;">[sig|req|${signerRole}|Please sign here]</div>`;
-    })
-    .join("\n");
-
-  return `
-    <!DOCTYPE html>
-    <html lang="he" dir="rtl">
-    <head>
-      <meta charset="UTF-8">
-      <title>${contract.title}</title>
-      <style>
-        body { font-family: 'Arial', sans-serif; padding: 40px; text-align: right; direction: rtl; line-height: 1.6;}
-        h1 { font-size: 24px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-      </style>
-    </head>
-    <body>
-      <h1>${contract.title}</h1>
-      ${clausesHtml || ""}
-      ${customClausesHtml || ""}
-      ${signatureBoxes || ""}
-    </body>
-    </html>
-  `;
-}
-
-/**
  * Prepares a contract for signing by creating a Dropbox Sign signature request.
+ * This version uses a DUMMY HTML content for testing the flow.
  * @param {string} contractId - The ID of the contract document in Firestore.
  * @param {Firestore} db - The Firestore database instance.
  * @return {Promise<{success: boolean}>}
@@ -99,18 +45,6 @@ export const prepareContractForSigning = async (
   }
   const contract = contractDoc.data() as StoredContractData;
 
-  const templateRef = db.collection("templates").doc(contract.templateId);
-  const templateDoc = await templateRef.get();
-  if (!templateDoc.exists) {
-    throw new functions.https.HttpsError(
-      "not-found",
-      `Template with ID ${contract.templateId} not found.`
-    );
-  }
-  const template = templateDoc.data() as Template;
-
-  const htmlContent = generateContractHtml(contract, template);
-
   const signers =
     contract.parties?.map((party, index) => ({
       emailAddress: party.email,
@@ -119,13 +53,38 @@ export const prepareContractForSigning = async (
       role: `signer${index + 1}`,
     })) || [];
 
+  // Generate signature boxes dynamically based on the number of signers
+  const signatureBoxes = signers.map((signer) => 
+    `<div style="margin-top: 40px; border: 1px solid #eee; padding: 20px; background: #f9f9f9;">[sig|req|${signer.role}|Please sign here, ${signer.name}]</div>`
+  ).join("\n");
+  
+  // DUMMY HTML CONTENT
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <title>דוגמה: ${contract.title}</title>
+      <style>
+        body { font-family: 'Arial', sans-serif; padding: 40px; text-align: right; direction: rtl; line-height: 1.6;}
+        h1 { font-size: 24px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+      </style>
+    </head>
+    <body>
+      <h1>דוגמת חוזה: ${contract.title}</h1>
+      <p>זוהי דוגמה של חוזה לבדיקת תהליך החתימה בלבד. התוכן המוצג כאן אינו התוכן הסופי של החוזה.</p>
+      <p>אנא חתמו במקומות המיועדים להלן.</p>
+      ${signatureBoxes}
+    </body>
+    </html>
+  `;
+
   const signatureRequestData: SignatureRequestCreateEmbeddedRequest = {
     clientId: dropboxSignClientId,
     title: contract.title,
     subject: `חתימה על חוזה: ${contract.title}`,
     message: "נא לעבור על החוזה ולחתום במקומות המיועדים.",
     signers: signers,
-    // Dropbox Sign expects an array of files. We'll pass our generated HTML as a file.
     files: [
       {
         name: `${contractId}.html`,
