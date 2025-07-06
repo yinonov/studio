@@ -67,10 +67,12 @@ export const createDraftContract = async (
       {
         name: initialData.party1Name || "",
         email: initialData.party1Email || "",
+        status: "pending",
       },
       {
         name: initialData.party2Name || "",
-        email: initialData.party2Name ? initialData.party2Email || "" : "",
+        email: initialData.party2Email || "",
+        status: "pending",
       },
     ].filter((p) => p.name && p.email); // Only include parties with both name and email
 
@@ -153,8 +155,35 @@ export const deleteContractById = async (contractId: string): Promise<void> => {
   }
 };
 
-export const callDropboxSignDummy = async (): Promise<void> => {
+export const prepareAndSendForSigning = async (
+  contractId: string
+): Promise<void> => {
   const functions = getClientFunctions();
-  const testDropboxSign = httpsCallable(functions, "testDropboxSign");
-  await testDropboxSign();
+  const prepareFunction = httpsCallable(
+    functions,
+    "prepareContractForSigning"
+  );
+  try {
+    await prepareFunction({ contractId });
+  } catch (error) {
+    console.error("Error preparing contract for signing:", error);
+    throw error;
+  }
+};
+
+export const getSignUrl = async (
+  signatureId: string
+): Promise<{ signUrl: string }> => {
+  const functions = getClientFunctions();
+  const getUrlFunction = httpsCallable(
+    functions,
+    "getEmbeddedSignUrlForSigner"
+  );
+  try {
+    const result = await getUrlFunction({ signatureId });
+    return result.data as { signUrl: string };
+  } catch (error) {
+    console.error("Error getting sign URL:", error);
+    throw error;
+  }
 };

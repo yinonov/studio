@@ -31,7 +31,6 @@ export const TemplateSchema = z.object({
   baseClauses: z.array(z.string()).optional(),
 });
 
-// Added schemas to be available on the client-side
 export const CustomClauseSchema = z.object({
   description: z.string(),
   legalWording: z.string(),
@@ -54,7 +53,6 @@ export const StoredContractDataSchema = z.object({
   parties: z.array(PartySchema).optional(),
   status: z.enum([
     "draft",
-    "generating-pdf",
     "out-for-signature",
     "partially-signed",
     "completed",
@@ -65,4 +63,5 @@ export const StoredContractDataSchema = z.object({
   createdAt: z.any(), // Firestore Timestamps
   lastUpdatedAt: z.any(), // Firestore Timestamps
   sharedWith: z.array(z.string()).optional(),
+  signatureRequestId: z.string().optional(),
 });

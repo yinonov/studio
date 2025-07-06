@@ -7,9 +7,10 @@ import {
   fetchContractById,
   updateContractData,
   deleteContractById,
-  callDropboxSignDummy,
+  prepareAndSendForSigning,
+  getSignUrl,
 } from "@/firebase/contractServices";
-import type { StoredContractData } from "@/types";
+import type { Party, StoredContractData } from "@/types";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -29,6 +30,10 @@ import {
   Copy,
   Phone,
   Mail,
+  Send,
+  PenSquare,
+  Clock,
+  CheckCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -50,6 +55,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import HelloSign from "hellosign-embedded";
 
 interface AuditLogItem {
   action: string;
@@ -97,7 +103,6 @@ export default function ContractViewPage() {
   const [error, setError] = useState<string | null>(null);
   const [shareIdentifier, setShareIdentifier] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [loadingDropboxSign, setLoadingDropboxSign] = useState(false);
 
   const isOwner =
     contract && currentUser && contract.ownerId === currentUser.uid;
@@ -156,10 +161,14 @@ export default function ContractViewPage() {
 
   const getStatusText = (status?: string): string => {
     switch (status) {
-      case "draft":
-        return "טיוטה";
-      default:
-        return status || "לא ידוע";
+      case "draft": return "טיוטה";
+      case "out-for-signature": return "נשלח לחתימות";
+      case "partially-signed": return "נחתם חלקית";
+      case "completed": return "הושלם ונחתם";
+      case "voided": return "בוטל";
+      case "declined": return "נדחה";
+      case "error": return "שגיאה";
+      default: return status || "לא ידוע";
     }
   };
 
@@ -167,10 +176,14 @@ export default function ContractViewPage() {
     status?: string
   ): "default" | "secondary" | "destructive" | "outline" | "accent" => {
     switch (status) {
-      case "draft":
-        return "secondary";
-      default:
-        return "secondary";
+      case "draft": return "secondary";
+      case "out-for-signature": return "outline";
+      case "partially-signed": return "outline";
+      case "completed": return "accent";
+      case "error":
+      case "voided":
+      case "declined": return "destructive";
+      default: return "secondary";
     }
   };
 
@@ -307,17 +320,82 @@ export default function ContractViewPage() {
     }
   };
 
-  const handleDropboxSignClick = async () => {
-    setLoadingDropboxSign(true);
+  const handlePrepareAndSend = async () => {
+    if (!contractId) return;
+    setIsProcessing(true);
     try {
-      await callDropboxSignDummy();
-      alert("Dummy Dropbox Sign cloud function called!");
-    } catch {
-      alert("Failed to call Dropbox Sign cloud function.");
+      await prepareAndSendForSigning(contractId);
+      toast({
+        title: "החוזה נשלח לחתימות!",
+        description: "הצדדים יקבלו בקשה לחתום לפי הסדר.",
+      });
+      // Refetch contract to update status
+      const updatedContract = await fetchContractById(contractId);
+      setContract(updatedContract);
+    } catch (error: any) {
+      toast({
+        title: "שגיאה בשליחת החוזה",
+        description:
+          error.message || "לא ניתן היה להכין את החוזה לחתימה.",
+        variant: "destructive",
+      });
     } finally {
-      setLoadingDropboxSign(false);
+      setIsProcessing(false);
     }
   };
+
+  const openSigningSession = async (signatureId: string) => {
+    if (!process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID) {
+      toast({
+        title: "שגיאת הגדרה",
+        description: "מזהה לקוח של Dropbox Sign חסר.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const { signUrl } = await getSignUrl(signatureId);
+
+      const client = new HelloSign({
+        clientId: process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID,
+      });
+
+      client.open(signUrl, {
+        allowCancel: true,
+        skipDomainVerification: true, // Important for development/testing
+      });
+
+      client.on("sign", () => {
+        toast({
+          title: "החתימה הושלמה!",
+          description: "הסטטוס יתעדכן בקרוב...",
+        });
+      });
+
+      client.on("close", () => {
+        // You might want to refresh data here
+      });
+
+      client.on("error", (err) => {
+        toast({
+          title: "שגיאה בתהליך החתימה",
+          description: err.message,
+          variant: "destructive",
+        });
+      });
+    } catch (error: any) {
+      toast({
+        title: "שגיאה בפתיחת חלון חתימה",
+        description: error.message || "לא ניתן היה לקבל את כתובת החתימה.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
 
   if (isLoadingContract || isFirebaseLoading) {
     return (
@@ -363,7 +441,11 @@ export default function ContractViewPage() {
       date: formatDate(contract.createdAt),
       icon: <FileText className="text-primary" />,
     },
+    // Future audit log items can be added here
   ];
+  
+  const signedPartiesCount = contract.parties?.filter(p => p.status === 'signed').length || 0;
+  const isReadyForSigning = ['out-for-signature', 'partially-signed'].includes(contract.status);
 
   return (
     <section className="space-y-8">
@@ -406,25 +488,29 @@ export default function ContractViewPage() {
                           `/templates/${contract.templateId}/create?contractId=${contract.id}`
                         )
                       }
+                      disabled={isProcessing}
                     >
                       <Edit className="ml-2 h-4 w-4" />
                       ערוך טיוטה
+                    </Button>
+                     <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handlePrepareAndSend}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? (
+                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="ml-2 h-4 w-4" />
+                      )}
+                      הכן ושלח לחתימה
                     </Button>
                   </>
                 )}
                 <Button variant="outline" size="sm" onClick={handleCopyLink}>
                   <Copy className="ml-2 h-4 w-4" />
                   העתק קישור
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDropboxSignClick}
-                  disabled={loadingDropboxSign}
-                >
-                  {loadingDropboxSign
-                    ? "בודק Dropbox Sign..."
-                    : "בדיקת Dropbox Sign"}
                 </Button>
                 {isOwner && (
                   <AlertDialog>
@@ -537,31 +623,49 @@ export default function ContractViewPage() {
             <Card className="rounded-2xl shadow-md">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
-                  <span>צדדים בחוזה</span>{" "}
+                  <span>צדדים וחתימות</span>{" "}
                   <User className="w-5 h-5 text-muted-foreground" />
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   {contract.parties && contract.parties.length > 0 ? (
-                    contract.parties.map((party: any, i: number) => (
+                    contract.parties.map((party: Party, i: number) => {
+                       const isMyTurn = isReadyForSigning && i === signedPartiesCount && party.email === currentUser?.email;
+                       const isSigned = party.status === 'signed';
+
+                      return (
                       <li
                         key={i}
-                        className="flex justify-between items-center p-2.5 bg-muted/30 rounded-lg"
+                        className="flex flex-col gap-2 p-2.5 bg-muted/30 rounded-lg"
                       >
-                        <div className="flex flex-col items-start">
-                          <span className="font-medium text-foreground">
-                            {party.name}
-                          </span>
-                          <span className="text-xs">{party.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {party.name ? "הוזן" : "ממתין למילוי"}
+                        <div className="flex justify-between items-center">
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium text-foreground">
+                              {party.name}
+                            </span>
+                            <span className="text-xs">{party.email}</span>
+                          </div>
+                          
+                          <Badge variant={isSigned ? "accent" : "secondary"} className="text-xs whitespace-nowrap">
+                            {isSigned ? (<> <CheckCircle className="w-3 h-3 ml-1" /> נחתם</>) : 
+                              isReadyForSigning ? (<> <Clock className="w-3 h-3 ml-1" /> ממתין לחתימה</>) : 'ממתין'
+                            }
                           </Badge>
                         </div>
+                         {isMyTurn && (
+                            <Button 
+                              size="sm" 
+                              className="w-full mt-2"
+                              onClick={() => party.signatureId && openSigningSession(party.signatureId)}
+                              disabled={isProcessing || !party.signatureId}
+                            >
+                              <PenSquare className="ml-2 w-4 h-4" />
+                              חתום על החוזה
+                            </Button>
+                         )}
                       </li>
-                    ))
+                    )})
                   ) : (
                     <li className="text-gray-500">לא צוינו צדדים.</li>
                   )}
@@ -600,7 +704,7 @@ export default function ContractViewPage() {
               </CardContent>
             </Card>
 
-            {isOwner && (
+            {isOwner && contract.status === "draft" && (
               <Card className="rounded-2xl shadow-md">
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
