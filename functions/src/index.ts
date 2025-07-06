@@ -1,26 +1,58 @@
 import * as admin from "firebase-admin";
-import { onCall, onRequest } from "firebase-functions/v2/https";
-import {
-  prepareContractForSigning,
-  getEmbeddedSignUrlForSigner,
-  handleDropboxSignCallback,
-} from "./services/dropbox-sign";
+import * as functions from "firebase-functions";
+import { onCall } from "firebase-functions/v2/https";
+import { FieldValue } from "firebase-admin/firestore";
 
 admin.initializeApp();
 
-// Callable function to prepare and send a contract for signing
-exports.prepareContractForSigning = onCall(async (request) => {
-  const { contractId } = request.data;
-  return await prepareContractForSigning(contractId, admin.firestore());
-});
+import { createDropboxSignSignatureRequest } from "./services/dropbox-sign";
 
-// Callable function to get a specific signer's embedded URL
-exports.getEmbeddedSignUrlForSigner = onCall(async (request) => {
-  const { signatureId } = request.data;
-  return await getEmbeddedSignUrlForSigner(signatureId);
-});
+export const prepareContractForSigning = onCall(async (data, _context) => {
+  // For v2 onCall, input data is in data.data
+  const contractId = data?.data?.contractId;
+  if (!contractId) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Missing contractId."
+    );
+  }
+  functions.logger.info("contractId", {
+    contractId,
+  });
 
-// HTTP function to handle callbacks from Dropbox Sign
-exports.dropboxSignCallback = onRequest(async (request, response) => {
-  await handleDropboxSignCallback(request, response, admin.firestore());
+  try {
+    const dropboxSignSignatureRequestId =
+      await createDropboxSignSignatureRequest();
+    functions.logger.info(
+      "Result from createDropboxSignSignatureRequest (raw)",
+      { dropboxSignSignatureRequestId }
+    );
+    if (!dropboxSignSignatureRequestId) {
+      throw new functions.https.HttpsError(
+        "internal",
+        "Dropbox Sign did not return a signatureRequestId."
+      );
+    }
+    // Update contract in Firestore
+    const db = admin.firestore();
+
+    await db.collection("contracts").doc(contractId).update({
+      status: "ready_for_signing",
+      dropboxSignSignatureRequestId,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    functions.logger.info(
+      "Contract updated with Dropbox Sign signatureRequestId",
+      {
+        contractId,
+        dropboxSignSignatureRequestId,
+      }
+    );
+    return { success: true };
+  } catch (err) {
+    throw new functions.https.HttpsError(
+      "internal",
+      "Dropbox Sign dummy call failed."
+    );
+  }
 });
