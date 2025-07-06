@@ -1,27 +1,17 @@
-
-import * as functions from "firebase-functions";
+import { defineString } from "firebase-functions/params";
+import * as fs from "fs";
 import {
   SignatureRequestApi,
-  EmbeddedApi,
-  SubSigningOptions,
-  SubSignatureRequestSigner,
   SignatureRequestCreateEmbeddedRequest,
+  SubSignatureRequestSigner,
+  SubSigningOptions,
 } from "@dropbox/sign";
-import { getStorage } from "firebase-admin/storage";
-import * as fs from "fs";
+import * as functions from "firebase-functions";
 import * as os from "os";
-import * as path from "path";
-import { defineString } from "firebase-functions/params";
 
 // Define Firebase params for security
 const dropboxSignApiKeyParam = defineString("DROPBOX_SIGN_API_KEY");
 const dropboxSignClientIdParam = defineString("DROPBOX_SIGN_CLIENT_ID");
-
-// Define the expected structure for a signer
-export interface Signer {
-  emailAddress: string;
-  name: string;
-}
 
 /**
  * Creates an embedded signature request using Dropbox Sign.
@@ -31,149 +21,151 @@ export interface Signer {
  * @param title The title of the document.
  * @returns An object with the sign URL and the signature request ID.
  */
-export const getEmbeddedSignUrl = async (
-  htmlBuffer: Buffer,
-  signers: Signer[],
-  title: string
-): Promise<{ signUrl: string; signatureRequestId: string }> => {
+export const getEmbeddedSignUrl = async () => {
   const dropboxSignApiKey = dropboxSignApiKeyParam.value();
   const dropboxSignClientId = dropboxSignClientIdParam.value();
 
-  if (!dropboxSignApiKey || !dropboxSignClientId) {
-    throw new functions.https.HttpsError(
-      "failed-precondition",
-      "Dropbox Sign API key or Client ID is not configured in environment."
-    );
-  }
+  functions.logger.info("getEmbeddedSignUrl called", {
+    dropboxSignApiKeyPresent: !!dropboxSignApiKey,
+    dropboxSignClientIdPresent: !!dropboxSignClientId,
+  });
 
-  const signatureRequestApi = new SignatureRequestApi();
-  signatureRequestApi.username = dropboxSignApiKey;
+  functions.logger.info("Initializing Dropbox Sign API client", {
+    dropboxSignApiKey: dropboxSignApiKey,
+    dropboxSignClientId: dropboxSignClientId,
+  });
 
-  // Map the signers to the format required by the Dropbox Sign API
-  const subSignatureRequestSigners: SubSignatureRequestSigner[] = signers.map(
-    (signer, index) => ({
-      role: `signer${index + 1}`, // Crucially matches text tags like [sig|req|signer1|...]
-      emailAddress: signer.emailAddress,
-      name: signer.name,
-      order: index,
-    })
-  );
+  const apiCaller = new SignatureRequestApi();
+  apiCaller.username = dropboxSignApiKey;
+  // apiCaller.accessToken = "YOUR_ACCESS_TOKEN";
 
-  // Write the HTML buffer to a temporary file to be uploaded
-  const tempFilePath = path.join(os.tmpdir(), `contract-${Date.now()}.html`);
-  fs.writeFileSync(tempFilePath, htmlBuffer);
-  const fileReadStream = fs.createReadStream(tempFilePath);
-  
-  const data: SignatureRequestCreateEmbeddedRequest = {
-    clientId: dropboxSignClientId,
-    files: [fileReadStream],
-    title: title || "Contract for Signing",
-    subject: `Your contract "${title}" is ready for signature`,
-    message: "Please review and sign the attached document to finalize our agreement.",
-    signers: subSignatureRequestSigners,
-    signingOptions: {
-      draw: true,
-      type: true,
-      upload: false,
-      phone: false,
-      defaultType: SubSigningOptions.DefaultTypeEnum.Draw,
-    },
-    useTextTags: true,
-    hideTextTags: true,
-    testMode: true,
+  functions.logger.info("Dropbox Sign API initialized", {
+    username: apiCaller.username,
+  });
+
+  const signingOptions: SubSigningOptions = {
+    defaultType: SubSigningOptions.DefaultTypeEnum.Draw,
+    draw: true,
+    phone: false,
+    type: true,
+    upload: true,
   };
 
-  try {
-    const result = await signatureRequestApi.signatureRequestCreateEmbedded(data);
-    
-    // Clean up the temporary file
-    fs.unlinkSync(tempFilePath);
+  const signers1: SubSignatureRequestSigner = {
+    name: "Jack",
+    emailAddress: "jack@example.com",
+    order: 0,
+  };
 
-    const signatureRequest = result.body.signatureRequest;
-    if (!signatureRequest?.signatureRequestId) {
-        throw new Error("Signature Request ID missing from Dropbox Sign response.");
-    }
-    if (!signatureRequest.signatures?.length) {
-        throw new Error("No signatures found in the Dropbox Sign response.");
-    }
-    
-    const signatureId = signatureRequest.signatures[0].signatureId;
-    if (!signatureId) {
-        throw new Error("Signature ID for the first signer is missing.");
-    }
+  const signers2: SubSignatureRequestSigner = {
+    name: "Jill",
+    emailAddress: "jill@example.com",
+    order: 1,
+  };
 
-    // Use the signatureId to get the embedded signing URL
-    const embeddedApi = new EmbeddedApi();
-    embeddedApi.username = dropboxSignApiKey;
-    const embeddedResult = await embeddedApi.embeddedSignUrl(signatureId);
-    
-    const signUrl = embeddedResult.body.embedded?.signUrl;
-    if (!signUrl) {
-      throw new Error("Embedded Sign URL is missing from Dropbox Sign response.");
-    }
+  functions.logger.info("Signers defined", {
+    signers1: { name: signers1.name, email: signers1.emailAddress },
+    signers2: { name: signers2.name, email: signers2.emailAddress },
+  });
 
-    return {
-      signUrl: signUrl,
-      signatureRequestId: signatureRequest.signatureRequestId,
+  const signers = [signers1, signers2];
+
+  // Create a dummy HTML file in the temp directory
+  const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Dummy Test Contract for Signing</title>
+  <style>
+    body { font-family: 'Helvetica', 'Arial', sans-serif; padding: 40px; text-align: right; direction: rtl;}
+    h1 { font-size: 24px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    p { line-height: 1.6; }
+    .sig-container {
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-top: 20px;
+      margin-bottom: 20px;
+      width: 250px;
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <h1>Dummy Test Contract for Signing</h1>
+  <p>זהו חוזה בדיקה שנוצר למטרות ניפוי שגיאות.</p>
+  <p><strong>נתוני בדיקה:</strong> {"testField": "Some test data for the contract body."}</p>
+  <br/><br/><br/><br/>
+  <p><strong>חתימה עבור צד א':</strong></p>
+  <div class="sig-container">
+    [sig|req|signer1|נא לחתום כאן]
+  </div>
+  <p><strong>חתימה עבור צד ב':</strong></p>
+   <div class="sig-container">
+    [sig|req|signer2|נא לחתום כאן]
+  </div>
+</body>
+</html>`;
+
+  functions.logger.info("Creating dummy HTML content for Dropbox Sign", {
+    htmlContent: htmlContent.slice(0, 100) + "...", // Log only the first 100 characters
+  });
+  const tempHtmlPath = os.tmpdir() + "/dummy-contract-" + Date.now() + ".html";
+  fs.writeFileSync(tempHtmlPath, htmlContent, "utf-8");
+  functions.logger.info("Created dummy HTML file for Dropbox Sign", {
+    tempHtmlPath,
+    fileExists: fs.existsSync(tempHtmlPath),
+  });
+
+  functions.logger.info("HTML created", {
+    htmlContent: htmlContent.slice(0, 100) + "...", // Log only the first 100 characters
+    tempHtmlPath,
+    fileExists: fs.existsSync(tempHtmlPath),
+  });
+
+  const signatureRequestCreateEmbeddedRequest: SignatureRequestCreateEmbeddedRequest =
+    {
+      clientId: dropboxSignClientId,
+      message:
+        "Please sign this NDA and then we can discuss more. Let me know if you\nhave any questions.",
+      subject: "The NDA we talked about",
+      testMode: true,
+      title: "NDA with Acme Co.",
+      ccEmailAddresses: ["lawyer1@dropboxsign.com", "lawyer2@dropboxsign.com"],
+      files: [fs.createReadStream(tempHtmlPath)],
+      signingOptions: signingOptions,
+      signers: signers,
     };
-  } catch (error: any) {
-    functions.logger.error("Error creating embedded signature request:", error.response?.body || error.message);
-    // Clean up temp file on error as well
-    if (fs.existsSync(tempFilePath)) {
-      fs.unlinkSync(tempFilePath);
-    }
-    throw new functions.https.HttpsError(
-      "internal",
-      "Failed to create embedded signature request with Dropbox Sign.",
-      error
-    );
-  }
-};
 
-/**
- * Downloads the signed PDF and audit trail from Dropbox Sign and saves them to Cloud Storage.
- *
- * @param signatureRequestId The ID of the completed signature request.
- * @param contractId The ID of the contract document in Firestore.
- * @returns An object containing the public URLs of the saved files.
- */
-export const downloadSignedFiles = async (
-  signatureRequestId: string,
-  contractId: string
-): Promise<{ signedPdfUrl: string; auditTrailUrl: string }> => {
-  const dropboxSignApiKey = dropboxSignApiKeyParam.value();
-  const signatureRequestApi = new SignatureRequestApi();
-  signatureRequestApi.username = dropboxSignApiKey;
-  const bucket = getStorage().bucket();
+  functions.logger.info("About to call signatureRequestCreateEmbedded", {
+    request: {
+      clientId: dropboxSignClientId,
+      signers,
+      fileExists: fs.existsSync(tempHtmlPath),
+    },
+  });
 
-  // Helper function to download a file and upload it to GCS
-  const downloadAndUpload = async (fileType: "pdf" | "zip"): Promise<string> => {
-    const result = await signatureRequestApi.signatureRequestFiles(
-      signatureRequestId,
-      fileType
-    );
-
-    const destination = `contracts/${contractId}/signed_documents/${Date.now()}_${fileType === "pdf" ? "signed_contract.pdf" : "audit_trail.zip"}`;
-    const file = bucket.file(destination);
-
-    await file.save(result.body, {
-      metadata: { contentType: fileType === "pdf" ? "application/pdf" : "application/zip" },
+  apiCaller
+    .signatureRequestCreateEmbedded(signatureRequestCreateEmbeddedRequest)
+    .then((response) => {
+      functions.logger.info("Dropbox Sign API response", {
+        response: response.body,
+      });
+      console.log(response.body);
+      // Clean up temp file
+      fs.unlinkSync(tempHtmlPath);
+    })
+    .catch((error) => {
+      functions.logger.error(
+        "Exception when calling SignatureRequestApi#signatureRequestCreateEmbedded:",
+        error.body || error
+      );
+      console.log(
+        "Exception when calling SignatureRequestApi#signatureRequestCreateEmbedded:"
+      );
+      console.log(error.body);
+      // Clean up temp file
+      if (fs.existsSync(tempHtmlPath)) {
+        fs.unlinkSync(tempHtmlPath);
+      }
     });
-    
-    // Return a long-lived signed URL for the file
-    const [url] = await file.getSignedUrl({
-      action: "read",
-      expires: "03-09-2491", 
-    });
-    return url;
-  };
-
-  try {
-    const signedPdfUrl = await downloadAndUpload("pdf");
-    const auditTrailUrl = await downloadAndUpload("zip");
-    return { signedPdfUrl, auditTrailUrl };
-  } catch (error) {
-    functions.logger.error(`Error downloading signed files for request ${signatureRequestId}:`, error);
-    throw new functions.https.HttpsError("internal", "Failed to download signed files from Dropbox Sign.");
-  }
 };

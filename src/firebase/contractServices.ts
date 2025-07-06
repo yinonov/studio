@@ -1,4 +1,3 @@
-
 import {
   collection,
   getDocs,
@@ -13,9 +12,10 @@ import {
   getDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-import { getClientDb, getClientFunctions } from "@/lib/firebase";
+import { getClientDb } from "@/lib/firebase";
 import type { StoredContractData, Template } from "@/types";
+import { getClientFunctions } from "@/lib/firebase";
+import { httpsCallable } from "firebase/functions";
 
 export const fetchContractsForUser = (
   userId: string,
@@ -153,27 +153,8 @@ export const deleteContractById = async (contractId: string): Promise<void> => {
   }
 };
 
-export const prepareContractForSigning = async (
-  contractId: string
-): Promise<{ success: boolean; signUrl?: string }> => {
-  if (!contractId) {
-    console.error("Contract ID is required to prepare contract for signing.");
-    throw new Error("Contract ID is required.");
-  }
-  try {
-    const functions = getClientFunctions();
-    // The callable function name must match the exported function name in functions/src/index.ts
-    const callableFunction = httpsCallable(
-      functions,
-      "prepareContractForSigning"
-    );
-    const result = await callableFunction({ contractId }); // The data sent must be an object
-    return result.data as { success: boolean; signUrl?: string };
-  } catch (error) {
-    console.error(
-      `Error calling prepareContractForSigning for contract ${contractId}:`,
-      error
-    );
-    throw error;
-  }
+export const callDropboxSignDummy = async (): Promise<void> => {
+  const functions = getClientFunctions();
+  const testDropboxSign = httpsCallable(functions, "testDropboxSign");
+  await testDropboxSign();
 };

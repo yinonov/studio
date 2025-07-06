@@ -7,7 +7,7 @@ import {
   fetchContractById,
   updateContractData,
   deleteContractById,
-  prepareContractForSigning,
+  callDropboxSignDummy,
 } from "@/firebase/contractServices";
 import type { StoredContractData } from "@/types";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -22,7 +22,6 @@ import {
   Loader2,
   Share2,
   FileText,
-  CheckCircle,
   User,
   ChevronRight,
   Edit,
@@ -30,7 +29,6 @@ import {
   Copy,
   Phone,
   Mail,
-  FileSignature,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -99,7 +97,7 @@ export default function ContractViewPage() {
   const [error, setError] = useState<string | null>(null);
   const [shareIdentifier, setShareIdentifier] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isSigning, setIsSigning] = useState(false);
+  const [loadingDropboxSign, setLoadingDropboxSign] = useState(false);
 
   const isOwner =
     contract && currentUser && contract.ownerId === currentUser.uid;
@@ -309,85 +307,16 @@ export default function ContractViewPage() {
     }
   };
 
-  const handleGenerateAndSign = async () => {
-    if (!contractId || !isOwner) return;
-    setIsProcessing(true);
-    toast({
-      title: "מכין את החוזה לחתימה...",
-      description: "זה עשוי לקחת מספר רגעים.",
-    });
+  const handleDropboxSignClick = async () => {
+    setLoadingDropboxSign(true);
     try {
-      // Only call if signUrl is not present
-      if (contract?.signUrl) {
-        setIsProcessing(false);
-        handleOpenEmbeddedSigning(contract.signUrl);
-        return;
-      }
-      const result = await prepareContractForSigning(contractId);
-      if (!result.success || !result.signUrl) {
-        throw new Error("Failed to prepare contract for signing.");
-      }
-      toast({
-        title: "מוכן לחתימה!",
-        description: "החוזה מוכן לחתימה. פותח חלון חתימה...",
-      });
-      // Update contract locally
-      if (contract) {
-        const updatedContract = {
-          ...contract,
-          status: "out-for-signature",
-          signUrl: result.signUrl,
-        };
-        setContract(updatedContract as StoredContractData);
-        await updateContractData(contractId, {
-          status: "out-for-signature",
-          signUrl: result.signUrl,
-        });
-      }
-      handleOpenEmbeddedSigning(result.signUrl);
-    } catch (err: any) {
-      console.error("Error during generate and sign process:", err);
-      toast({
-        title: "שגיאה בתהליך החתימה",
-        description:
-          err.message || "An unknown error occurred. Please try again.",
-        variant: "destructive",
-      });
+      await callDropboxSignDummy();
+      alert("Dummy Dropbox Sign cloud function called!");
+    } catch {
+      alert("Failed to call Dropbox Sign cloud function.");
     } finally {
-      setIsProcessing(false);
+      setLoadingDropboxSign(false);
     }
-  };
-
-  // Embedded signing handler
-  const handleOpenEmbeddedSigning = async (signUrl: string) => {
-    if (!signUrl) {
-      console.error("[Dropbox Sign] signUrl is missing or empty.");
-      alert("שגיאה: כתובת חתימה חסרה. פנה למנהל המערכת.");
-      return;
-    }
-    console.log(
-      "[Dropbox Sign] Opening embedded signing with signUrl:",
-      signUrl
-    );
-    const clientId = process.env.NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID;
-    if (!clientId) {
-      console.error(
-        "[Dropbox Sign] NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID is missing or not exposed to the client."
-      );
-      alert("שגיאה: מזהה לקוח Dropbox Sign לא מוגדר. פנה למנהל המערכת.");
-      return;
-    }
-    console.log("[Dropbox Sign] Using clientId:", {
-      clientId,
-      skipDomainVerification: process.env.NODE_ENV !== "production",
-    });
-    const HelloSign = (await import("hellosign-embedded")).default;
-    const client = new HelloSign();
-    client.open(signUrl, {
-      clientId,
-      skipDomainVerification: process.env.NODE_ENV !== "production",
-      // Optionally, add event handlers here (on: { ... })
-    });
   };
 
   if (isLoadingContract || isFirebaseLoading) {
@@ -481,35 +410,21 @@ export default function ContractViewPage() {
                       <Edit className="ml-2 h-4 w-4" />
                       ערוך טיוטה
                     </Button>
-                    <Button
-                      onClick={handleGenerateAndSign}
-                      disabled={isProcessing}
-                      size="sm"
-                    >
-                      <FileSignature className="ml-2 h-4 w-4" />
-                      הכן לחתימה ושלח
-                    </Button>
                   </>
                 )}
-                {/* Embedded signing button for out-for-signature */}
-                {isOwner &&
-                  contract.status === "out-for-signature" &&
-                  contract.signUrl && (
-                    <Button
-                      onClick={() =>
-                        handleOpenEmbeddedSigning(contract.signUrl!)
-                      }
-                      disabled={isProcessing}
-                      size="sm"
-                      variant="accent"
-                    >
-                      <FileSignature className="ml-2 h-4 w-4" />
-                      חתום עכשיו
-                    </Button>
-                  )}
                 <Button variant="outline" size="sm" onClick={handleCopyLink}>
                   <Copy className="ml-2 h-4 w-4" />
                   העתק קישור
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDropboxSignClick}
+                  disabled={loadingDropboxSign}
+                >
+                  {loadingDropboxSign
+                    ? "בודק Dropbox Sign..."
+                    : "בדיקת Dropbox Sign"}
                 </Button>
                 {isOwner && (
                   <AlertDialog>

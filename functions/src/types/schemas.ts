@@ -29,17 +29,10 @@ export const StoredContractDataSchema = z.object({
     "voided",
     "declined",
     "error",
-    "signing-in-progress", // Added status from client
   ]),
   createdAt: z.any(), // Firestore Timestamps
   lastUpdatedAt: z.any(), // Firestore Timestamps
   sharedWith: z.array(z.string()).optional(),
-
-  // Dropbox Sign / HelloSign
-  signatureRequestId: z.string().optional(),
-  signUrl: z.string().url().optional(), // For embedded signing
-  signedPdfUrl: z.string().url().optional(), // The final, signed PDF
-  auditTrailUrl: z.string().url().optional(),
 });
 
 export const RequestDataSchema = z.object({
