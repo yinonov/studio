@@ -5,7 +5,10 @@ import { FieldValue } from "firebase-admin/firestore";
 
 admin.initializeApp();
 
-import { createDropboxSignSignatureRequest, getDropboxSignSignatureRequest } from "./services/dropbox-sign";
+import {
+  createDropboxSignSignatureRequest,
+  getDropboxSignSignatureRequest,
+} from "./services/dropbox-sign";
 import { StoredContractDataSchema } from "./types/schemas";
 
 export const prepareContractForSigning = onCall(async (data, _context) => {
@@ -65,7 +68,10 @@ export const getContractDropboxSignData = onCall(async (data, _context) => {
   try {
     const contractId = data?.data?.contractId;
     if (!contractId || typeof contractId !== "string") {
-      throw new functions.https.HttpsError("invalid-argument", "Missing or invalid contractId");
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Missing or invalid contractId"
+      );
     }
     const db = admin.firestore();
     const contractSnap = await db.collection("contracts").doc(contractId).get();
@@ -73,14 +79,24 @@ export const getContractDropboxSignData = onCall(async (data, _context) => {
       throw new functions.https.HttpsError("not-found", "Contract not found");
     }
     const contract = contractSnap.data();
-    const dropboxSignSignatureRequestId = contract?.dropboxSignSignatureRequestId;
+    const dropboxSignSignatureRequestId =
+      contract?.dropboxSignSignatureRequestId;
     if (!dropboxSignSignatureRequestId) {
-      throw new functions.https.HttpsError("not-found", "No Dropbox Sign signature request ID for this contract");
+      throw new functions.https.HttpsError(
+        "not-found",
+        "No Dropbox Sign signature request ID for this contract"
+      );
     }
-    const signatureRequestData = await getDropboxSignSignatureRequest(dropboxSignSignatureRequestId);
-    return { signatureRequest: signatureRequestData };
+    const signatureRequestGetResponse = await getDropboxSignSignatureRequest(
+      dropboxSignSignatureRequestId
+    );
+    return signatureRequestGetResponse;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : error;
-    throw new functions.https.HttpsError("internal", "Failed to fetch Dropbox Sign data", errorMsg);
+    throw new functions.https.HttpsError(
+      "internal",
+      "Failed to fetch Dropbox Sign data",
+      errorMsg
+    );
   }
 });

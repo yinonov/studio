@@ -153,12 +153,18 @@ export const createDropboxSignSignatureRequest: () => Promise<
     // Clean up temp file with error handling
     try {
       fs.unlinkSync(tempHtmlPath);
-      functions.logger.info("Temp HTML file deleted successfully", { tempHtmlPath });
+      functions.logger.info("Temp HTML file deleted successfully", {
+        tempHtmlPath,
+      });
     } catch (unlinkErr) {
-      functions.logger.error("Failed to delete temp HTML file", { tempHtmlPath, error: unlinkErr });
+      functions.logger.error("Failed to delete temp HTML file", {
+        tempHtmlPath,
+        error: unlinkErr,
+      });
     }
     // Robustly check for signatureRequestId
-    const signatureRequestId = response.body?.signatureRequest?.signatureRequestId;
+    const signatureRequestId =
+      response.body?.signatureRequest?.signatureRequestId;
     if (!signatureRequestId) {
       functions.logger.error(
         "Dropbox Sign response missing signatureRequestId",
@@ -168,7 +174,9 @@ export const createDropboxSignSignatureRequest: () => Promise<
       );
       throw new Error("Dropbox Sign did not return a signatureRequestId");
     }
-    functions.logger.info("Returning signatureRequestId", { signatureRequestId });
+    functions.logger.info("Returning signatureRequestId", {
+      signatureRequestId,
+    });
     return signatureRequestId;
   } catch (error: unknown) {
     // Type guard for error with 'body' property
@@ -196,7 +204,9 @@ export const createDropboxSignSignatureRequest: () => Promise<
  * @param signatureRequestId The Dropbox Sign signature request ID.
  * @returns The signature request data from Dropbox Sign.
  */
-export const getDropboxSignSignatureRequest = async (signatureRequestId: string) => {
+export const getDropboxSignSignatureRequest = async (
+  signatureRequestId: string
+) => {
   const dropboxSignApiKey = dropboxSignApiKeyParam.value();
   const apiCaller = new SignatureRequestApi();
   apiCaller.username = dropboxSignApiKey;
@@ -204,7 +214,10 @@ export const getDropboxSignSignatureRequest = async (signatureRequestId: string)
     const response = await apiCaller.signatureRequestGet(signatureRequestId);
     return response.body;
   } catch (error) {
-    functions.logger.error("Error fetching Dropbox Sign signature request", { signatureRequestId, error });
+    functions.logger.error("Error fetching Dropbox Sign signature request", {
+      signatureRequestId,
+      error,
+    });
     throw error;
   }
 };

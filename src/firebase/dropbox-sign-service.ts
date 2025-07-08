@@ -8,7 +8,10 @@ import { httpsCallable } from "firebase/functions";
  */
 export async function fetchDropboxSignSignatureRequest(contractId: string) {
   const functions = getClientFunctions();
-  const getDropboxSignData = httpsCallable(functions, "getContractDropboxSignData");
+  const getDropboxSignData = httpsCallable(
+    functions,
+    "getContractDropboxSignData"
+  );
   const result = await getDropboxSignData({ contractId });
   return result.data;
 }
@@ -18,9 +21,14 @@ export async function fetchDropboxSignSignatureRequest(contractId: string) {
  * @param signatureId The Dropbox Sign signature ID
  * @returns The embedded signing URL
  */
-export async function getSignUrl(signatureId: string): Promise<{ signUrl: string }> {
+export async function getSignUrl(
+  signatureId: string
+): Promise<{ signUrl: string }> {
   const functions = getClientFunctions();
-  const getUrlFunction = httpsCallable(functions, "getEmbeddedSignUrlForSigner");
+  const getUrlFunction = httpsCallable(
+    functions,
+    "getEmbeddedSignUrlForSigner"
+  );
   const result = await getUrlFunction({ signatureId });
   return result.data as { signUrl: string };
 }
