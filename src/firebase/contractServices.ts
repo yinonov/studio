@@ -13,13 +13,14 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { getClientDb } from "@/lib/firebase";
-import type { StoredContractData, Template } from "@/types";
+import type { TemplateSchema } from "@/types";
+import type { StoredContractDataSchema } from "@functions/types/schemas";
 import { getClientFunctions } from "@/lib/firebase";
 import { httpsCallable } from "firebase/functions";
 
 export const fetchContractsForUser = (
   userId: string,
-  callback: (contracts: StoredContractData[]) => void,
+  callback: (contracts: StoredContractDataSchema[]) => void,
   onError: (error: Error) => void
 ) => {
   if (!userId) {
@@ -37,7 +38,7 @@ export const fetchContractsForUser = (
           ({
             id: doc.id,
             ...doc.data(),
-          } as StoredContractData)
+          } as StoredContractDataSchema)
       );
       callback(contractsData);
     },
@@ -52,7 +53,7 @@ export const fetchContractsForUser = (
 
 export const createDraftContract = async (
   userId: string,
-  template: Pick<Template, "id" | "title">,
+  template: Pick<TemplateSchema, "id" | "title">,
   initialData: Record<string, any>
 ): Promise<string | null> => {
   if (!userId || !template) {
@@ -98,7 +99,7 @@ export const createDraftContract = async (
 
 export const updateContractData = async (
   contractId: string,
-  dataToUpdate: Partial<StoredContractData>
+  dataToUpdate: Partial<StoredContractDataSchema>
 ) => {
   if (!contractId) {
     console.error("Contract ID is required to update data.");
@@ -123,14 +124,14 @@ export const updateContractData = async (
 
 export const fetchContractById = async (
   contractId: string
-): Promise<StoredContractData | null> => {
+): Promise<StoredContractDataSchema | null> => {
   if (!contractId) return null;
   try {
     const db = getClientDb();
     const contractRef = doc(db, "contracts", contractId);
     const docSnap = await getDoc(contractRef);
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as StoredContractData;
+      return { id: docSnap.id, ...docSnap.data() } as StoredContractDataSchema;
     }
     console.warn(`Contract with id ${contractId} not found.`);
     return null;
@@ -159,31 +160,11 @@ export const prepareAndSendForSigning = async (
   contractId: string
 ): Promise<void> => {
   const functions = getClientFunctions();
-  const prepareFunction = httpsCallable(
-    functions,
-    "prepareContractForSigning"
-  );
+  const prepareFunction = httpsCallable(functions, "prepareContractForSigning");
   try {
     await prepareFunction({ contractId });
   } catch (error) {
     console.error("Error preparing contract for signing:", error);
-    throw error;
-  }
-};
-
-export const getSignUrl = async (
-  signatureId: string
-): Promise<{ signUrl: string }> => {
-  const functions = getClientFunctions();
-  const getUrlFunction = httpsCallable(
-    functions,
-    "getEmbeddedSignUrlForSigner"
-  );
-  try {
-    const result = await getUrlFunction({ signatureId });
-    return result.data as { signUrl: string };
-  } catch (error) {
-    console.error("Error getting sign URL:", error);
     throw error;
   }
 };

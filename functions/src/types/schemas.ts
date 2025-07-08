@@ -41,3 +41,4 @@ export const RequestDataSchema = z.object({
 });
 
 export type StoredContractDataSchema = z.infer<typeof StoredContractDataSchema>;
+export type PartySchema = z.infer<typeof PartySchema>;

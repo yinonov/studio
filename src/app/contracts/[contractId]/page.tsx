@@ -8,9 +8,15 @@ import {
   updateContractData,
   deleteContractById,
   prepareAndSendForSigning,
-  getSignUrl,
 } from "@/firebase/contractServices";
-import type { Party, StoredContractData } from "@/types";
+import {
+  fetchDropboxSignSignatureRequest,
+  getSignUrl,
+} from "@/firebase/dropbox-sign-service";
+import type {
+  PartySchema,
+  StoredContractDataSchema,
+} from "@functions/types/schemas"; // Adjust the import path as needed
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -43,7 +49,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { fetchTemplateById } from "@/firebase/templateServices";
-import type { Template } from "@/types";
+import type { TemplateSchema } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -159,16 +165,37 @@ export default function ContractViewPage() {
     loadContract();
   }, [currentUser, isFirebaseLoading, router, contractId]);
 
+  useEffect(() => {
+    if (contract && contract.dropboxSignSignatureRequestId) {
+      fetchDropboxSignSignatureRequest(contract.id)
+        .then((data) => {
+          // Log the Dropbox Sign signature request object
+          console.log("Dropbox Sign signature request object:", data);
+        })
+        .catch((err) => {
+          console.error("Failed to fetch Dropbox Sign signature request:", err);
+        });
+    }
+  }, [contract]);
+
   const getStatusText = (status?: string): string => {
     switch (status) {
-      case "draft": return "טיוטה";
-      case "out-for-signature": return "נשלח לחתימות";
-      case "partially-signed": return "נחתם חלקית";
-      case "completed": return "הושלם ונחתם";
-      case "voided": return "בוטל";
-      case "declined": return "נדחה";
-      case "error": return "שגיאה";
-      default: return status || "לא ידוע";
+      case "draft":
+        return "טיוטה";
+      case "out-for-signature":
+        return "נשלח לחתימות";
+      case "partially-signed":
+        return "נחתם חלקית";
+      case "completed":
+        return "הושלם ונחתם";
+      case "voided":
+        return "בוטל";
+      case "declined":
+        return "נדחה";
+      case "error":
+        return "שגיאה";
+      default:
+        return status || "לא ידוע";
     }
   };
 
@@ -176,14 +203,20 @@ export default function ContractViewPage() {
     status?: string
   ): "default" | "secondary" | "destructive" | "outline" | "accent" => {
     switch (status) {
-      case "draft": return "secondary";
-      case "out-for-signature": return "outline";
-      case "partially-signed": return "outline";
-      case "completed": return "accent";
+      case "draft":
+        return "secondary";
+      case "out-for-signature":
+        return "outline";
+      case "partially-signed":
+        return "outline";
+      case "completed":
+        return "accent";
       case "error":
       case "voided":
-      case "declined": return "destructive";
-      default: return "secondary";
+      case "declined":
+        return "destructive";
+      default:
+        return "secondary";
     }
   };
 
@@ -234,7 +267,7 @@ export default function ContractViewPage() {
         shareIdentifier.trim(),
       ];
       await updateContractData(contract.id, { sharedWith: updatedSharedWith });
-      setContract((prev: StoredContractData | null) =>
+      setContract((prev: StoredContractDataSchema | null) =>
         prev ? { ...prev, sharedWith: updatedSharedWith } : null
       );
       toast({
@@ -263,7 +296,7 @@ export default function ContractViewPage() {
           (u: string) => u.toLowerCase() !== identifierToRemove.toLowerCase()
         ) || [];
       await updateContractData(contract.id, { sharedWith: updatedSharedWith });
-      setContract((prev: StoredContractData | null) =>
+      setContract((prev: StoredContractDataSchema | null) =>
         prev ? { ...prev, sharedWith: updatedSharedWith } : null
       );
       toast({
@@ -335,8 +368,7 @@ export default function ContractViewPage() {
     } catch (error: any) {
       toast({
         title: "שגיאה בשליחת החוזה",
-        description:
-          error.message || "לא ניתן היה להכין את החוזה לחתימה.",
+        description: error.message || "לא ניתן היה להכין את החוזה לחתימה.",
         variant: "destructive",
       });
     } finally {
@@ -396,7 +428,6 @@ export default function ContractViewPage() {
     }
   };
 
-
   if (isLoadingContract || isFirebaseLoading) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -443,9 +474,12 @@ export default function ContractViewPage() {
     },
     // Future audit log items can be added here
   ];
-  
-  const signedPartiesCount = contract.parties?.filter(p => p.status === 'signed').length || 0;
-  const isReadyForSigning = ['out-for-signature', 'partially-signed'].includes(contract.status);
+
+  const signedPartiesCount =
+    contract.parties?.filter((p) => p.status === "signed").length || 0;
+  const isReadyForSigning = ["out-for-signature", "partially-signed"].includes(
+    contract.status
+  );
 
   return (
     <section className="space-y-8">
@@ -493,7 +527,7 @@ export default function ContractViewPage() {
                       <Edit className="ml-2 h-4 w-4" />
                       ערוך טיוטה
                     </Button>
-                     <Button
+                    <Button
                       variant="default"
                       size="sm"
                       onClick={handlePrepareAndSend}
@@ -630,42 +664,63 @@ export default function ContractViewPage() {
               <CardContent>
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   {contract.parties && contract.parties.length > 0 ? (
-                    contract.parties.map((party: Party, i: number) => {
-                       const isMyTurn = isReadyForSigning && i === signedPartiesCount && party.email === currentUser?.email;
-                       const isSigned = party.status === 'signed';
+                    contract.parties.map((party: PartySchema, i: number) => {
+                      const isMyTurn =
+                        isReadyForSigning &&
+                        i === signedPartiesCount &&
+                        party.email === currentUser?.email;
+                      const isSigned = party.status === "signed";
 
                       return (
-                      <li
-                        key={i}
-                        className="flex flex-col gap-2 p-2.5 bg-muted/30 rounded-lg"
-                      >
-                        <div className="flex justify-between items-center">
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium text-foreground">
-                              {party.name}
-                            </span>
-                            <span className="text-xs">{party.email}</span>
+                        <li
+                          key={i}
+                          className="flex flex-col gap-2 p-2.5 bg-muted/30 rounded-lg"
+                        >
+                          <div className="flex justify-between items-center">
+                            <div className="flex flex-col items-start">
+                              <span className="font-medium text-foreground">
+                                {party.name}
+                              </span>
+                              <span className="text-xs">{party.email}</span>
+                            </div>
+
+                            <Badge
+                              variant={isSigned ? "accent" : "secondary"}
+                              className="text-xs whitespace-nowrap"
+                            >
+                              {isSigned ? (
+                                <>
+                                  {" "}
+                                  <CheckCircle className="w-3 h-3 ml-1" /> נחתם
+                                </>
+                              ) : isReadyForSigning ? (
+                                <>
+                                  {" "}
+                                  <Clock className="w-3 h-3 ml-1" /> ממתין
+                                  לחתימה
+                                </>
+                              ) : (
+                                "ממתין"
+                              )}
+                            </Badge>
                           </div>
-                          
-                          <Badge variant={isSigned ? "accent" : "secondary"} className="text-xs whitespace-nowrap">
-                            {isSigned ? (<> <CheckCircle className="w-3 h-3 ml-1" /> נחתם</>) : 
-                              isReadyForSigning ? (<> <Clock className="w-3 h-3 ml-1" /> ממתין לחתימה</>) : 'ממתין'
-                            }
-                          </Badge>
-                        </div>
-                         {isMyTurn && (
-                            <Button 
-                              size="sm" 
+                          {isMyTurn && (
+                            <Button
+                              size="sm"
                               className="w-full mt-2"
-                              onClick={() => party.signatureId && openSigningSession(party.signatureId)}
+                              onClick={() =>
+                                party.signatureId &&
+                                openSigningSession(party.signatureId)
+                              }
                               disabled={isProcessing || !party.signatureId}
                             >
                               <PenSquare className="ml-2 w-4 h-4" />
                               חתום על החוזה
                             </Button>
-                         )}
-                      </li>
-                    )})
+                          )}
+                        </li>
+                      );
+                    })
                   ) : (
                     <li className="text-gray-500">לא צוינו צדדים.</li>
                   )}

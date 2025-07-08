@@ -30,3 +30,5 @@ export const TemplateSchema = z.object({
   defaultValues: z.record(z.string()).optional(),
   baseClauses: z.array(z.string()).optional(),
 });
+
+export type TemplateSchema = z.infer<typeof TemplateSchema>;

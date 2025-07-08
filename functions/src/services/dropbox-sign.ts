@@ -190,3 +190,21 @@ export const createDropboxSignSignatureRequest: () => Promise<
     throw error;
   }
 };
+
+/**
+ * Fetches a Dropbox Sign signature request by its ID.
+ * @param signatureRequestId The Dropbox Sign signature request ID.
+ * @returns The signature request data from Dropbox Sign.
+ */
+export const getDropboxSignSignatureRequest = async (signatureRequestId: string) => {
+  const dropboxSignApiKey = dropboxSignApiKeyParam.value();
+  const apiCaller = new SignatureRequestApi();
+  apiCaller.username = dropboxSignApiKey;
+  try {
+    const response = await apiCaller.signatureRequestGet(signatureRequestId);
+    return response.body;
+  } catch (error) {
+    functions.logger.error("Error fetching Dropbox Sign signature request", { signatureRequestId, error });
+    throw error;
+  }
+};
