@@ -16,6 +16,7 @@ export const StoredContractDataSchema = z.object({
   id: z.string(),
   ownerId: z.string(),
   templateId: z.string(),
+  dropboxSignSignatureRequestId: z.string(),
   title: z.string(),
   formData: z.record(z.any()),
   customClauses: z.array(CustomClauseSchema).optional(),

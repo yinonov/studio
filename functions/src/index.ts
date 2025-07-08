@@ -6,7 +6,7 @@ import { FieldValue } from "firebase-admin/firestore";
 admin.initializeApp();
 
 import { createDropboxSignSignatureRequest } from "./services/dropbox-sign";
-import type { ContractStatus } from "./types/schemas";
+import { StoredContractDataSchema } from "./types/schemas";
 
 export const prepareContractForSigning = onCall(async (data, _context) => {
   // For v2 onCall, input data is in data.data
@@ -36,14 +36,15 @@ export const prepareContractForSigning = onCall(async (data, _context) => {
     }
     // Update contract in Firestore
     const db = admin.firestore();
-
-    // Type-checked status value
-    const status: ContractStatus = "ready_for_signing";
-    await db.collection("contracts").doc(contractId).update({
-      status,
+    const updateData: Partial<StoredContractDataSchema> = {
+      status: "out-for-signature",
       dropboxSignSignatureRequestId,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+      lastUpdatedAt: FieldValue.serverTimestamp(),
+    };
+    await db
+      .collection("contracts")
+      .doc(contractId)
+      .update(StoredContractDataSchema.partial().parse(updateData));
     functions.logger.info(
       "Contract updated with Dropbox Sign signatureRequestId",
       {
