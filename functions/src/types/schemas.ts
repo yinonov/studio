@@ -38,3 +38,5 @@ export const StoredContractDataSchema = z.object({
 export const RequestDataSchema = z.object({
   contractId: z.string().min(1, { message: "contractId is required" }),
 });
+
+export type StoredContractDataSchema = z.infer<typeof StoredContractDataSchema>;
