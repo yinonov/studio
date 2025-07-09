@@ -613,62 +613,70 @@ export default function ContractViewPage() {
             <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">
               תצוגה מקדימה של המסמך
             </h3>
-            <ScrollArea className="h-[500px] md:h-[600px] border rounded-lg bg-muted/50 p-4 shadow-inner">
-              <div className="prose prose-sm max-w-none text-right leading-relaxed text-foreground/80">
-                <h4 className="text-center font-bold text-lg mb-4 text-foreground">
-                  {contract.title}
-                </h4>
-                {template?.baseClauses && template.baseClauses.length > 0
-                  ? template.baseClauses.map((clause, index) => (
-                      <p
-                        key={index}
-                        className="mb-3"
-                        dangerouslySetInnerHTML={{
-                          __html: interpolateWithDefaults(
-                            clause,
-                            contract.formData || {}
-                          ).replace(/\n/g, "<br />"),
-                        }}
-                      />
-                    ))
-                  : Object.entries(contract.formData || {}).map(
-                      ([key, value]) => {
-                        if (key.startsWith("party") || !value) return null;
-                        const label = key
-                          .replace(/([A-Z])/g, " $1")
-                          .replace(/^./, (str) => str.toUpperCase());
-                        return (
-                          <p key={key}>
-                            <strong>{label}:</strong> {String(value)}
-                          </p>
-                        );
-                      }
-                    )}
-                {contract.customClauses &&
-                  contract.customClauses.length > 0 && (
-                    <>
-                      <h5 className="font-semibold mt-4 text-foreground">
-                        סעיפים מותאמים אישית:
-                      </h5>
-                      {contract.customClauses.map(
-                        (clause: any, idx: number) => (
-                          <p
-                            key={idx}
-                            className="text-xs mt-1 whitespace-pre-wrap"
-                          >
-                            {clause.legalWording}
-                          </p>
-                        )
+            <ScrollArea className="h-[500px] md:h-[600px] border rounded-2xl bg-white shadow-lg p-0 flex items-center justify-center">
+              <div
+                className="w-full max-w-3xl mx-auto p-0 rtl text-right"
+                style={{ fontFamily: "Heebo, Arial, sans-serif" }}
+              >
+                <style>{`@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap');`}</style>
+                <header className="mb-8 border-b pb-4 pt-8">
+                  <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
+                    {contract.title}
+                  </h1>
+                </header>
+                <main>
+                  {template?.baseClauses && template.baseClauses.length > 0
+                    ? template.baseClauses.map((clause, index) => (
+                        <p
+                          key={index}
+                          className="mb-6 text-lg leading-relaxed text-gray-800"
+                          dangerouslySetInnerHTML={{
+                            __html: interpolateWithDefaults(
+                              clause,
+                              contract.formData || {}
+                            ).replace(/\n/g, "<br />"),
+                          }}
+                        />
+                      ))
+                    : Object.entries(contract.formData || {}).map(
+                        ([key, value]) => {
+                          if (key.startsWith("party") || !value) return null;
+                          const label = key
+                            .replace(/([A-Z])/g, " $1")
+                            .replace(/^./, (str) => str.toUpperCase());
+                          return (
+                            <p key={key} className="mb-4 text-lg">
+                              <strong>{label}:</strong> {String(value)}
+                            </p>
+                          );
+                        }
                       )}
-                    </>
-                  )}
-                {(!template?.baseClauses ||
-                  template.baseClauses.length === 0) &&
-                  Object.keys(contract.formData || {}).length === 0 && (
-                    <p className="text-center text-muted-foreground mt-6">
-                      [ אין תוכן להצגה בחוזה זה ]
-                    </p>
-                  )}
+                  {contract.customClauses &&
+                    contract.customClauses.length > 0 && (
+                      <section className="mt-8">
+                        <h2 className="font-bold text-xl mb-3 text-gray-900">
+                          סעיפים מותאמים אישית:
+                        </h2>
+                        {contract.customClauses.map(
+                          (clause: any, idx: number) => (
+                            <p
+                              key={idx}
+                              className="text-base mt-1 whitespace-pre-wrap text-gray-700"
+                            >
+                              {clause.legalWording}
+                            </p>
+                          )
+                        )}
+                      </section>
+                    )}
+                  {(!template?.baseClauses ||
+                    template.baseClauses.length === 0) &&
+                    Object.keys(contract.formData || {}).length === 0 && (
+                      <p className="text-center text-muted-foreground mt-6">
+                        [ אין תוכן להצגה בחוזה זה ]
+                      </p>
+                    )}
+                </main>
               </div>
             </ScrollArea>
           </div>
@@ -707,13 +715,24 @@ export default function ContractViewPage() {
                                 </span>
                               </div>
                               <Badge
-                                variant={sig.statusCode === "signed" ? "accent" : "secondary"}
+                                variant={
+                                  sig.statusCode === "signed"
+                                    ? "accent"
+                                    : "secondary"
+                                }
                                 className="text-xs whitespace-nowrap"
                               >
                                 {sig.statusCode === "signed" ? (
-                                  <><CheckCircle className="w-3 h-3 ml-1" /> נחתם</>
+                                  <>
+                                    <CheckCircle className="w-3 h-3 ml-1" />{" "}
+                                    נחתם
+                                  </>
                                 ) : (
-                                  <> <Clock className="w-3 h-3 ml-1" /> ממתין לחתימה</>
+                                  <>
+                                    {" "}
+                                    <Clock className="w-3 h-3 ml-1" /> ממתין
+                                    לחתימה
+                                  </>
                                 )}
                               </Badge>
                             </div>
@@ -721,7 +740,10 @@ export default function ContractViewPage() {
                               <Button
                                 size="sm"
                                 className="w-full mt-2"
-                                onClick={() => sig.signatureId && openSigningSession(sig.signatureId)}
+                                onClick={() =>
+                                  sig.signatureId &&
+                                  openSigningSession(sig.signatureId)
+                                }
                                 disabled={isProcessing || !sig.signatureId}
                               >
                                 <PenSquare className="ml-2 w-4 h-4" />
