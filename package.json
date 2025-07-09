@@ -11,7 +11,16 @@
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "typecheck": "tsc --noEmit",
-    "emu": "firebase emulators:start"
+    "emu": "firebase emulators:start",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:unit": "jest tests/unit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:all": "npm run test:unit && npm run test:e2e"
   },
   "dependencies": {
     "@genkit-ai/googleai": "1.7.0",
@@ -47,8 +56,8 @@
     "lucide-react": "^0.475.0",
     "next": "^15.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "react-day-picker": "^9.0.0-beta.1",
+    "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",
     "recharts": "^2.15.1",
     "tailwind-merge": "^3.0.1",
@@ -56,15 +65,24 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@dropbox/sign": "^1.9.0",
+    "@playwright/test": "^1.53.2",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/hellosign-embedded": "^2.0.6",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@dropbox/sign": "^1.9.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.0.0",
     "genkit-cli": "1.7.0",
+    "jest": "^30.0.4",
+    "jest-environment-jsdom": "^30.0.4",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

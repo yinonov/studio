@@ -1,0 +1,48 @@
+# Page snapshot
+
+```yaml
+- banner:
+  - link "חוזים חכמים":
+    - /url: /
+    - img
+    - text: חוזים חכמים
+  - navigation:
+    - link "תבניות":
+      - /url: /templates
+    - link "כניסה":
+      - /url: /login
+      - img
+      - text: כניסה
+- main:
+  - heading "ספריית תבניות החוזים" [level=1]
+  - paragraph: מצא/י את התבנית המשפטית המושלמת לצרכים שלך. כל התבניות מותאמות לשוק הישראלי.
+  - img
+  - heading "הסכם שכירות דירה" [level=3]
+  - paragraph: חוזה סטנדרטי למשכירים ושוכרים למגורים.
+  - link "השתמש בתבנית":
+    - /url: /templates/lease-residential/create
+    - text: השתמש בתבנית
+    - img
+  - img
+  - heading "הסכם שירותי פרילנס" [level=3]
+  - paragraph: חוזה לפרילנסרים המספקים שירותים ללקוחות.
+  - link "השתמש בתבנית":
+    - /url: /templates/service-freelance/create
+    - text: השתמש בתבנית
+    - img
+  - img
+  - heading "הסכם סודיות (NDA)" [level=3]
+  - paragraph: הסכם לשמירה על מידע רגיש בין צדדים.
+  - link "השתמש בתבנית":
+    - /url: /templates/nda/create
+    - text: השתמש בתבנית
+    - img
+- contentinfo:
+  - paragraph: © 2025 Smart Contracts IL. כל הזכויות שמורות.
+  - paragraph: פלטפורמה ליצירה וניהול חוזים חכמים בישראל.
+- region "Notifications (F8)":
+  - list
+- alert
+- button "Open Next.js Dev Tools":
+  - img
+```
