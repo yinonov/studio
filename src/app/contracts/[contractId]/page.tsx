@@ -59,6 +59,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import HelloSign from "hellosign-embedded";
+import type {
+  SignatureRequestResponse,
+  SignatureRequestResponseSignatures,
+} from "@dropbox/sign"; // Adjust the import path as needed
 
 interface AuditLogItem {
   action: string;
@@ -108,7 +112,8 @@ export default function ContractViewPage() {
   const [error, setError] = useState<string | null>(null);
   const [shareIdentifier, setShareIdentifier] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [signatureRequest, setSignatureRequest] = useState<any>(null);
+  const [signatureRequest, setSignatureRequest] =
+    useState<SignatureRequestResponse | null>(null);
 
   const isOwner =
     contract && currentUser && contract.ownerId === currentUser.uid;
@@ -681,42 +686,52 @@ export default function ContractViewPage() {
                   {signatureRequest &&
                   signatureRequest.signatures &&
                   signatureRequest.signatures.length > 0 ? (
-                    signatureRequest.signatures.map((sig: any, i: number) => (
-                      <li
-                        key={i}
-                        className="flex flex-col gap-2 p-2.5 bg-muted/30 rounded-lg"
-                      >
-                        <div className="flex justify-between items-center">
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium text-foreground">
-                              {sig.signerName || sig.signerEmailAddress}
-                            </span>
-                            <span className="text-xs">
-                              {sig.signerEmailAddress}
-                            </span>
-                          </div>
-                          <Badge
-                            variant={
-                              sig.status_code === "signed"
-                                ? "accent"
-                                : "secondary"
-                            }
-                            className="text-xs whitespace-nowrap"
+                    signatureRequest.signatures.map(
+                      (sig: SignatureRequestResponseSignatures, i: number) => {
+                        const isMyTurn =
+                          sig.signerEmailAddress?.toLowerCase() ===
+                            currentUser?.email?.toLowerCase() &&
+                          sig.statusCode === "awaiting_signature";
+                        return (
+                          <li
+                            key={i}
+                            className="flex flex-col gap-2 p-2.5 bg-muted/30 rounded-lg"
                           >
-                            {sig.status_code === "signed" ? (
-                              <>
-                                <CheckCircle className="w-3 h-3 ml-1" /> נחתם
-                              </>
-                            ) : (
-                              <>
-                                {" "}
-                                <Clock className="w-3 h-3 ml-1" /> ממתין לחתימה
-                              </>
+                            <div className="flex justify-between items-center">
+                              <div className="flex flex-col items-start">
+                                <span className="font-medium text-foreground">
+                                  {sig.signerName || sig.signerEmailAddress}
+                                </span>
+                                <span className="text-xs">
+                                  {sig.signerEmailAddress}
+                                </span>
+                              </div>
+                              <Badge
+                                variant={sig.statusCode === "signed" ? "accent" : "secondary"}
+                                className="text-xs whitespace-nowrap"
+                              >
+                                {sig.statusCode === "signed" ? (
+                                  <><CheckCircle className="w-3 h-3 ml-1" /> נחתם</>
+                                ) : (
+                                  <> <Clock className="w-3 h-3 ml-1" /> ממתין לחתימה</>
+                                )}
+                              </Badge>
+                            </div>
+                            {isMyTurn && (
+                              <Button
+                                size="sm"
+                                className="w-full mt-2"
+                                onClick={() => sig.signatureId && openSigningSession(sig.signatureId)}
+                                disabled={isProcessing || !sig.signatureId}
+                              >
+                                <PenSquare className="ml-2 w-4 h-4" />
+                                חתום על החוזה
+                              </Button>
                             )}
-                          </Badge>
-                        </div>
-                      </li>
-                    ))
+                          </li>
+                        );
+                      }
+                    )
                   ) : getPlannedSigners(contract.formData || {}).length > 0 ? (
                     getPlannedSigners(contract.formData || {}).map(
                       (signer, i) => (
