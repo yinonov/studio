@@ -169,8 +169,15 @@ export default function ContractViewPage() {
     if (contract && contract.dropboxSignSignatureRequestId) {
       fetchDropboxSignSignatureRequest(contract.id)
         .then((data) => {
-          // Log the Dropbox Sign signature request object
-          console.log("Dropbox Sign signature request object:", data);
+          // Log the Dropbox Sign signature request get response object
+          console.log(
+            "Dropbox Sign signature request get response object:",
+            data
+          );
+          console.log(
+            "Dropbox Sign signature request signature:",
+            data.signatureRequest.signatures
+          );
         })
         .catch((err) => {
           console.error("Failed to fetch Dropbox Sign signature request:", err);

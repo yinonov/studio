@@ -1,4 +1,5 @@
 import { getClientFunctions } from "@/lib/firebase";
+import type { SignatureRequestGetResponse } from "@dropbox/sign";
 import { httpsCallable } from "firebase/functions";
 
 /**
@@ -8,11 +9,11 @@ import { httpsCallable } from "firebase/functions";
  */
 export async function fetchDropboxSignSignatureRequest(contractId: string) {
   const functions = getClientFunctions();
-  const getDropboxSignData = httpsCallable(
+  const getDropboxSignData = httpsCallable<string, SignatureRequestGetResponse>(
     functions,
     "getContractDropboxSignData"
   );
-  const result = await getDropboxSignData({ contractId });
+  const result = await getDropboxSignData(contractId);
   return result.data;
 }
 

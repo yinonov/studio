@@ -66,7 +66,7 @@ export const prepareContractForSigning = onCall(async (data, _context) => {
 
 export const getContractDropboxSignData = onCall(async (data, _context) => {
   try {
-    const contractId = data?.data?.contractId;
+    const contractId = data?.data;
     if (!contractId || typeof contractId !== "string") {
       throw new functions.https.HttpsError(
         "invalid-argument",
