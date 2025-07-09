@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -103,12 +103,15 @@ export default function ContractViewPage() {
     typeof params.contractId === "string" ? params.contractId : null;
   const { toast } = useToast();
 
-  const [contract, setContract] = useState<StoredContractData | null>(null);
-  const [template, setTemplate] = useState<Template | null>(null);
+  const [contract, setContract] = useState<StoredContractDataSchema | null>(
+    null
+  );
+  const [template, setTemplate] = useState<TemplateSchema | null>(null);
   const [isLoadingContract, setIsLoadingContract] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shareIdentifier, setShareIdentifier] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [signatureRequest, setSignatureRequest] = useState<any>(null);
 
   const isOwner =
     contract && currentUser && contract.ownerId === currentUser.uid;
@@ -165,23 +168,19 @@ export default function ContractViewPage() {
     loadContract();
   }, [currentUser, isFirebaseLoading, router, contractId]);
 
+  // Fetch Dropbox Sign signature request if available
   useEffect(() => {
     if (contract && contract.dropboxSignSignatureRequestId) {
       fetchDropboxSignSignatureRequest(contract.id)
         .then((data) => {
-          // Log the Dropbox Sign signature request get response object
-          console.log(
-            "Dropbox Sign signature request get response object:",
-            data
-          );
-          console.log(
-            "Dropbox Sign signature request signature:",
-            data.signatureRequest.signatures
-          );
+          setSignatureRequest(data.signatureRequest);
         })
         .catch((err) => {
+          setSignatureRequest(null);
           console.error("Failed to fetch Dropbox Sign signature request:", err);
         });
+    } else {
+      setSignatureRequest(null);
     }
   }, [contract]);
 
@@ -488,6 +487,20 @@ export default function ContractViewPage() {
     contract.status
   );
 
+  // Heuristic: extract planned signers from formData
+  function getPlannedSigners(formData: Record<string, any>) {
+    // Looks for party1Name, party1Email, party2Name, party2Email, etc.
+    const signers: { name: string; email: string }[] = [];
+    for (let i = 1; i <= 5; i++) {
+      const name = formData[`party${i}Name`];
+      const email = formData[`party${i}Email`];
+      if (name && email) {
+        signers.push({ name, email });
+      }
+    }
+    return signers;
+  }
+
   return (
     <section className="space-y-8">
       <Button
@@ -670,15 +683,48 @@ export default function ContractViewPage() {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3 text-sm text-muted-foreground">
-                  {contract.parties && contract.parties.length > 0 ? (
-                    contract.parties.map((party: PartySchema, i: number) => {
-                      const isMyTurn =
-                        isReadyForSigning &&
-                        i === signedPartiesCount &&
-                        party.email === currentUser?.email;
-                      const isSigned = party.status === "signed";
-
-                      return (
+                  {signatureRequest &&
+                  signatureRequest.signatures &&
+                  signatureRequest.signatures.length > 0 ? (
+                    signatureRequest.signatures.map((sig: any, i: number) => (
+                      <li
+                        key={i}
+                        className="flex flex-col gap-2 p-2.5 bg-muted/30 rounded-lg"
+                      >
+                        <div className="flex justify-between items-center">
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium text-foreground">
+                              {sig.signer_name || sig.signer_email_address}
+                            </span>
+                            <span className="text-xs">
+                              {sig.signer_email_address}
+                            </span>
+                          </div>
+                          <Badge
+                            variant={
+                              sig.status_code === "signed"
+                                ? "accent"
+                                : "secondary"
+                            }
+                            className="text-xs whitespace-nowrap"
+                          >
+                            {sig.status_code === "signed" ? (
+                              <>
+                                <CheckCircle className="w-3 h-3 ml-1" /> נחתם
+                              </>
+                            ) : (
+                              <>
+                                {" "}
+                                <Clock className="w-3 h-3 ml-1" /> ממתין לחתימה
+                              </>
+                            )}
+                          </Badge>
+                        </div>
+                      </li>
+                    ))
+                  ) : getPlannedSigners(contract.formData || {}).length > 0 ? (
+                    getPlannedSigners(contract.formData || {}).map(
+                      (party, i) => (
                         <li
                           key={i}
                           className="flex flex-col gap-2 p-2.5 bg-muted/30 rounded-lg"
@@ -690,44 +736,16 @@ export default function ContractViewPage() {
                               </span>
                               <span className="text-xs">{party.email}</span>
                             </div>
-
                             <Badge
-                              variant={isSigned ? "accent" : "secondary"}
+                              variant="secondary"
                               className="text-xs whitespace-nowrap"
                             >
-                              {isSigned ? (
-                                <>
-                                  {" "}
-                                  <CheckCircle className="w-3 h-3 ml-1" /> נחתם
-                                </>
-                              ) : isReadyForSigning ? (
-                                <>
-                                  {" "}
-                                  <Clock className="w-3 h-3 ml-1" /> ממתין
-                                  לחתימה
-                                </>
-                              ) : (
-                                "ממתין"
-                              )}
+                              ממתין
                             </Badge>
                           </div>
-                          {isMyTurn && (
-                            <Button
-                              size="sm"
-                              className="w-full mt-2"
-                              onClick={() =>
-                                party.signatureId &&
-                                openSigningSession(party.signatureId)
-                              }
-                              disabled={isProcessing || !party.signatureId}
-                            >
-                              <PenSquare className="ml-2 w-4 h-4" />
-                              חתום על החוזה
-                            </Button>
-                          )}
                         </li>
-                      );
-                    })
+                      )
+                    )
                   ) : (
                     <li className="text-gray-500">לא צוינו צדדים.</li>
                   )}
