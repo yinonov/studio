@@ -9,6 +9,7 @@ import {
 } from "@dropbox/sign";
 import * as functions from "firebase-functions";
 import * as os from "os";
+import { EmbeddedApi } from "@dropbox/sign";
 
 // Define Firebase params for security
 const dropboxSignApiKeyParam = defineString("DROPBOX_SIGN_API_KEY");
@@ -216,6 +217,28 @@ export const getDropboxSignSignatureRequest = async (
   } catch (error) {
     functions.logger.error("Error fetching Dropbox Sign signature request", {
       signatureRequestId,
+      error,
+    });
+    throw error;
+  }
+};
+
+/**
+ * Gets the embedded signing URL for a given signatureId (Dropbox Sign signature ID).
+ * @param signatureId The Dropbox Sign signature ID for the signer.
+ * @returns The embedded signing URL for the signer.
+ */
+export const getEmbeddedSignUrl = async (signatureId: string) => {
+  const dropboxSignApiKey = dropboxSignApiKeyParam.value();
+  const apiCaller = new EmbeddedApi();
+  apiCaller.username = dropboxSignApiKey;
+  try {
+    const response = await apiCaller.embeddedSignUrl(signatureId);
+    // The URL is in response.body.embedded.signUrl
+    return response.body.embedded.signUrl;
+  } catch (error) {
+    functions.logger.error("Error fetching embedded sign URL", {
+      signatureId,
       error,
     });
     throw error;

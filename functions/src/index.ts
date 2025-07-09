@@ -8,6 +8,7 @@ admin.initializeApp();
 import {
   createDropboxSignSignatureRequest,
   getDropboxSignSignatureRequest,
+  getEmbeddedSignUrl,
 } from "./services/dropbox-sign";
 import { StoredContractDataSchema } from "./types/schemas";
 
@@ -96,6 +97,27 @@ export const getContractDropboxSignData = onCall(async (data, _context) => {
     throw new functions.https.HttpsError(
       "internal",
       "Failed to fetch Dropbox Sign data",
+      errorMsg
+    );
+  }
+});
+
+export const getEmbeddedSignUrlForSigner = onCall(async (data, _context) => {
+  const signatureId = data?.data?.signatureId;
+  if (!signatureId || typeof signatureId !== "string") {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Missing or invalid signatureId."
+    );
+  }
+  try {
+    const signUrl = await getEmbeddedSignUrl(signatureId);
+    return { signUrl };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : error;
+    throw new functions.https.HttpsError(
+      "internal",
+      "Failed to fetch embedded sign URL",
       errorMsg
     );
   }
