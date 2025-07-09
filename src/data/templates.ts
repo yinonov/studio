@@ -3,13 +3,13 @@
 // It can be kept for local fallback or removed if templates are solely managed in Firestore.
 // For this refactor, assuming Firestore is the source of truth.
 
-import type { Icon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { FileText, Home } from 'lucide-react';
 
 export interface TemplateField {
   id: string;
   label: string;
-  type: 'text' | 'number' | 'date' | 'textarea';
+  type: 'text' | 'number' | 'date' | 'textarea' | 'email';
   placeholder?: string;
   required?: boolean;
 }
@@ -18,7 +18,7 @@ export interface Template {
   id: string;
   name: string; // Corresponds to 'title' in new structure
   description: string;
-  icon?: Icon;
+  icon?: LucideIcon;
   category?: string; // Added for consistency with new structure
   fields: TemplateField[];
   baseClauses: string[]; 

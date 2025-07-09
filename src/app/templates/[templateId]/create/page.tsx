@@ -193,7 +193,7 @@ export default function ContractCreationPage() {
         const existingContractId = queryParams.get("contractId");
 
         let initialData: Record<string, string> = {};
-        (fetchedTemplate.fields || []).forEach((field) => {
+        (fetchedTemplate.fields || []).forEach((field: { id: string; label: string; type: string; placeholder?: string; required?: boolean }) => {
           if (
             field.id &&
             fetchedTemplate.defaultValues &&

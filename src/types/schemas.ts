@@ -10,6 +10,8 @@ export const UserSchema = z.object({
   createdAt: z.any().optional(), // Firestore Timestamps are tricky with Zod
 });
 
+export type UserSchema = z.infer<typeof UserSchema>;
+
 export const TemplateSchema = z.object({
   id: z.string(),
   title: z.string(),

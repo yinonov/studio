@@ -50,7 +50,7 @@ export default function LoginPage() {
   useEffect(() => {
     // This effect manages the RecaptchaVerifier lifecycle for phone authentication
     if (authMethod === 'phone' && !confirmationResult && typeof window !== 'undefined' && recaptchaContainerRef.current) {
-        if (!recaptchaVerifierRef.current?.auth) { // Only initialize if not already present or tied to an auth instance
+        if (!recaptchaVerifierRef.current) { // Only initialize if not already present
             const auth = getClientAuth();
             const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
                 'size': 'invisible',

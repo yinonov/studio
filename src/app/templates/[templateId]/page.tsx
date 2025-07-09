@@ -12,8 +12,8 @@ import { redirect } from 'next/navigation';
 // }
 
 // Params will be { templateId: string }
-export default function TemplateRedirectPage({ params }: { params: { templateId: string } }) {
-  const { templateId } = params;
+export default async function TemplateRedirectPage({ params }: { params: Promise<{ templateId: string }> }) {
+  const { templateId } = await params;
 
   if (templateId) {
     redirect(`/templates/${templateId}/create`);

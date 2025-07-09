@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import { useState } from "react";
 
 const HeroSection = () => (
   <section className="text-center py-16 sm:py-24">
@@ -12,49 +12,36 @@ const HeroSection = () => (
       <span className="block text-primary">בדקות, לא בימים.</span>
     </h1>
     <p className="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-gray-600">
-      פלטפורמה ליצירה וניהול חוזים המותאמת לעסקים ויחידים בישראל. תחשבו על שילוב של DocuSign ו-LegalZoom, אבל מותאם במיוחד לשוק הישראלי.
+      פלטפורמה ליצירה וניהול חוזים המותאמת לעסקים ויחידים בישראל. תחשבו על שילוב
+      של DocuSign ו-LegalZoom, אבל מותאם במיוחד לשוק הישראלי.
     </p>
     <div className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4">
-      <Button size="lg" asChild className="w-full sm:w-auto shadow-lg transform hover:scale-105 transition-all text-lg py-3 px-8">
+      <Button
+        size="lg"
+        asChild
+        className="w-full sm:w-auto shadow-lg transform hover:scale-105 transition-all text-lg py-3 px-8"
+      >
         <Link href="/templates">
           צור את החוזה הראשון שלך
           <ArrowLeft className="mr-2 h-5 w-5" />
         </Link>
       </Button>
-      <Button size="lg" variant="outline" asChild className="w-full sm:w-auto shadow-lg text-lg py-3 px-8 border-primary/50 hover:bg-primary/10 text-primary">
-        <Link href="/templates">
-          צפה בתבניות
-        </Link>
+      <Button
+        size="lg"
+        variant="outline"
+        asChild
+        className="w-full sm:w-auto shadow-lg text-lg py-3 px-8 border-primary/50 hover:bg-primary/10 text-primary"
+      >
+        <Link href="/templates">צפה בתבניות</Link>
       </Button>
     </div>
   </section>
 );
 
-const callDropboxSignDummy = async () => {
-  await fetch('/api/test-dropbox-sign', { method: 'POST' });
-};
-
 export default function HomePage() {
-  const [loading, setLoading] = useState(false);
-  const handleClick = async () => {
-    setLoading(true);
-    try {
-      await callDropboxSignDummy();
-      alert('Dummy Dropbox Sign cloud function called!');
-    } catch {
-      alert('Failed to call Dropbox Sign cloud function.');
-    } finally {
-      setLoading(false);
-    }
-  };
   return (
     <div className="space-y-16 md:space-y-20">
       <HeroSection />
-      <div className="flex justify-center">
-        <Button onClick={handleClick} disabled={loading} className="mt-8">
-          {loading ? 'Calling Dropbox Sign...' : 'Call Dropbox Sign Dummy Function'}
-        </Button>
-      </div>
     </div>
   );
 }
