@@ -5,13 +5,6 @@ export const CustomClauseSchema = z.object({
   legalWording: z.string(),
 });
 
-export const PartySchema = z.object({
-  name: z.string(),
-  email: z.string().email(),
-  status: z.enum(["pending", "signed"]).optional(),
-  signatureId: z.string().optional(),
-});
-
 export const StoredContractDataSchema = z.object({
   id: z.string(),
   ownerId: z.string(),
@@ -20,7 +13,6 @@ export const StoredContractDataSchema = z.object({
   title: z.string(),
   formData: z.record(z.any()),
   customClauses: z.array(CustomClauseSchema).optional(),
-  parties: z.array(PartySchema).optional(),
   status: z.enum([
     "draft",
     "generating-pdf",
@@ -41,4 +33,3 @@ export const RequestDataSchema = z.object({
 });
 
 export type StoredContractDataSchema = z.infer<typeof StoredContractDataSchema>;
-export type PartySchema = z.infer<typeof PartySchema>;

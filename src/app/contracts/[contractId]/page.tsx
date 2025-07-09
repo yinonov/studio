@@ -13,10 +13,7 @@ import {
   fetchDropboxSignSignatureRequest,
   getSignUrl,
 } from "@/firebase/dropbox-sign-service";
-import type {
-  PartySchema,
-  StoredContractDataSchema,
-} from "@functions/types/schemas"; // Adjust the import path as needed
+import type { StoredContractDataSchema } from "@functions/types/schemas"; // Adjust the import path as needed
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -481,8 +478,6 @@ export default function ContractViewPage() {
     // Future audit log items can be added here
   ];
 
-  const signedPartiesCount =
-    contract.parties?.filter((p) => p.status === "signed").length || 0;
   const isReadyForSigning = ["out-for-signature", "partially-signed"].includes(
     contract.status
   );
@@ -677,7 +672,7 @@ export default function ContractViewPage() {
             <Card className="rounded-2xl shadow-md">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold flex items-center justify-between text-foreground">
-                  <span>צדדים וחתימות</span>{" "}
+                  <span>חותמים וחתימות</span>{" "}
                   <User className="w-5 h-5 text-muted-foreground" />
                 </CardTitle>
               </CardHeader>
@@ -694,10 +689,10 @@ export default function ContractViewPage() {
                         <div className="flex justify-between items-center">
                           <div className="flex flex-col items-start">
                             <span className="font-medium text-foreground">
-                              {sig.signer_name || sig.signer_email_address}
+                              {sig.signerName || sig.signerEmailAddress}
                             </span>
                             <span className="text-xs">
-                              {sig.signer_email_address}
+                              {sig.signerEmailAddress}
                             </span>
                           </div>
                           <Badge
@@ -724,7 +719,7 @@ export default function ContractViewPage() {
                     ))
                   ) : getPlannedSigners(contract.formData || {}).length > 0 ? (
                     getPlannedSigners(contract.formData || {}).map(
-                      (party, i) => (
+                      (signer, i) => (
                         <li
                           key={i}
                           className="flex flex-col gap-2 p-2.5 bg-muted/30 rounded-lg"
@@ -732,9 +727,9 @@ export default function ContractViewPage() {
                           <div className="flex justify-between items-center">
                             <div className="flex flex-col items-start">
                               <span className="font-medium text-foreground">
-                                {party.name}
+                                {signer.name}
                               </span>
-                              <span className="text-xs">{party.email}</span>
+                              <span className="text-xs">{signer.email}</span>
                             </div>
                             <Badge
                               variant="secondary"
@@ -747,7 +742,7 @@ export default function ContractViewPage() {
                       )
                     )
                   ) : (
-                    <li className="text-gray-500">לא צוינו צדדים.</li>
+                    <li className="text-gray-500">לא צוינו חותמים.</li>
                   )}
                 </ul>
               </CardContent>

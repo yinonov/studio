@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -47,7 +46,7 @@ function debounce<F extends (...args: any[]) => any>(func: F, wait: number): Deb
 
 
 const STEPS_CONFIG = [
-    { name: 'צדדים וכותרת', fields: ['contractTitle', 'party1Name', 'party1Email', 'party2Name', 'party2Email'] },
+    { name: 'צדדים וכותרת', fields: ['contractTitle', 'signer1Name', 'signer1Email', 'signer2Name', 'signer2Email'] },
     { name: 'תנאים עיקריים', fields: ['address', 'rentAmount', 'startDate', 'serviceDescription', 'serviceFee', 'effectiveDate', 'confidentialInformationDescription', 'disclosingParty', 'receivingParty', 'additionalNotes'] }, 
     { name: 'סקירה וסיום', fields: [] }
 ];
@@ -76,16 +75,10 @@ export default function ContractCreationPage() {
             if (!cid || Object.keys(data).length === 0) return;
             setIsSaving(true);
             try {
-                const parties = [
-                    { name: data.party1Name || '', email: data.party1Email || ''},
-                    { name: data.party2Name || '', email: data.party2Email || ''} 
-                ].filter(p => p.name && p.email); // Only include parties with both name and email
-                
                 const contractTitle = data.contractTitle || currentTemplate.title || 'חוזה ללא כותרת';
 
                 await updateContractData(cid, { 
                     formData: data, 
-                    parties,
                     title: contractTitle,
                     status: 'draft' 
                 });
@@ -233,16 +226,10 @@ export default function ContractCreationPage() {
         
         setIsSaving(true); setError('');
         try {
-            const parties = [
-                { name: formData.party1Name || '', email: formData.party1Email || ''},
-                { name: formData.party2Name || '', email: formData.party2Email || ''}
-            ].filter(p => p.name && p.email); // Only include parties with both name and email
-            
             const contractTitle = formData.contractTitle || template.title || 'חוזה ללא כותרת';
 
             await updateContractData(contractId, { 
                 formData, 
-                parties,
                 title: contractTitle,
                 status: 'draft' 
             }); 
@@ -282,18 +269,18 @@ export default function ContractCreationPage() {
         const fieldsForCurrentStep = template.fields?.filter((field: any) => field.id && currentStepConfig.fields.includes(field.id)) || [];
         
         if (currentStep === 1) {
-            const partyFieldsConfig = [
+            const signerFieldsConfig = [
                 { id: 'contractTitle', label: 'כותרת החוזה (פנימי)', type: 'text', placeholder: "לדוגמה: הסכם שכירות הרצל 1", required: true, group: "כותרת" },
-                { id: 'party1Name', label: "שם צד א'", type: 'text', placeholder: "ישראל ישראלי", required: true, group: "צד א'" },
-                { id: 'party1Email', label: "אימייל צד א'", type: 'email', placeholder: "israel@example.com", required: true, group: "צד א'" },
-                { id: 'party2Name', label: "שם צד ב'", type: 'text', placeholder: "שרה לוי", required: template.fields?.find((f: any)=>f.id === 'party2Name')?.required || false, group: "צד ב'" },
-                { id: 'party2Email', label: "אימייל צד ב'", type: 'email', placeholder: "sarah@example.com", required: template.fields?.find(f=>f.id === 'party2Email')?.required || false, group: "צד ב'" },
+                { id: 'signer1Name', label: "שם חותם א'", type: 'text', placeholder: "ישראל ישראלי", required: true, group: "חותם א'" },
+                { id: 'signer1Email', label: "אימייל חותם א'", type: 'email', placeholder: "israel@example.com", required: true, group: "חותם א'" },
+                { id: 'signer2Name', label: "שם חותם ב'", type: 'text', placeholder: "שרה לוי", required: template.fields?.find((f: any)=>f.id === 'signer2Name')?.required || false, group: "חותם ב'" },
+                { id: 'signer2Email', label: "אימייל חותם ב'", type: 'email', placeholder: "sarah@example.com", required: template.fields?.find(f=>f.id === 'signer2Email')?.required || false, group: "חותם ב'" },
             ];
             
             let lastGroup = '';
             return (
                  <div className="space-y-6">
-                    {partyFieldsConfig.map(field => {
+                    {signerFieldsConfig.map(field => {
                         const templateFieldDefinition = template.fields?.find((f: any) => f.id === field.id);
                         const isRequired = templateFieldDefinition?.required !== undefined ? templateFieldDefinition.required : field.required;
 

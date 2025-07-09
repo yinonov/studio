@@ -64,18 +64,6 @@ export const createDraftContract = async (
   }
   try {
     const db = getClientDb();
-    const parties = [
-      {
-        name: initialData.party1Name || "",
-        email: initialData.party1Email || "",
-        status: "pending",
-      },
-      {
-        name: initialData.party2Name || "",
-        email: initialData.party2Email || "",
-        status: "pending",
-      },
-    ].filter((p) => p.name && p.email); // Only include parties with both name and email
 
     const contractTitle =
       initialData.contractTitle || template.title || "חוזה ללא כותרת";
@@ -86,7 +74,6 @@ export const createDraftContract = async (
       title: contractTitle,
       status: "draft",
       formData: initialData,
-      parties: parties,
       createdAt: serverTimestamp() as Timestamp,
       lastUpdatedAt: serverTimestamp() as Timestamp,
     });
