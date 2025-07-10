@@ -11,7 +11,7 @@
 
 ## Style Guidelines:
 
-- Primary color: Sandy Gold (#F0D78F) to represent tradition and trust, inspired by the sands of the Israeli desert. 
+- Primary color: Sandy Gold (#F0D78F) to represent tradition and trust, inspired by the sands of the Israeli desert.
 - Background color: Pale Sand (#F5F1E8), a very desaturated shade of the primary color.
 - Accent color: Muted Coral (#D7A886), an analogous color providing a gentle contrast.
 - Font pairing: 'Playfair' (serif) for headlines, providing an elegant, high-end feel, combined with 'PT Sans' (sans-serif) for body text.

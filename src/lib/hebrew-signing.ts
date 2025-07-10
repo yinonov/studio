@@ -9,40 +9,40 @@ interface TranslationMapping {
 
 const HEBREW_TRANSLATIONS: TranslationMapping = {
   // Common buttons
-  Sign: "חתום",
-  Continue: "המשך",
-  Cancel: "ביטול",
-  Done: "סיום",
-  Next: "הבא",
-  Previous: "הקודם",
-  Submit: "שלח",
-  Confirm: "אשר",
-  Close: "סגור",
-  Save: "שמור",
-  Download: "הורד",
-  Print: "הדפס",
+  Sign: 'חתום',
+  Continue: 'המשך',
+  Cancel: 'ביטול',
+  Done: 'סיום',
+  Next: 'הבא',
+  Previous: 'הקודם',
+  Submit: 'שלח',
+  Confirm: 'אשר',
+  Close: 'סגור',
+  Save: 'שמור',
+  Download: 'הורד',
+  Print: 'הדפס',
 
   // Form elements
-  Name: "שם",
-  Email: "אימייל",
-  Date: "תאריך",
-  Signature: "חתימה",
-  Initial: "ראשי תיבות",
-  Required: "חובה",
-  Optional: "אופציונלי",
+  Name: 'שם',
+  Email: 'אימייל',
+  Date: 'תאריך',
+  Signature: 'חתימה',
+  Initial: 'ראשי תיבות',
+  Required: 'חובה',
+  Optional: 'אופציונלי',
 
   // Messages
-  "Please sign here": "אנא חתום כאן",
-  "Click to sign": "לחץ כדי לחתום",
-  "Signature required": "חתימה נדרשת",
-  "Document signed successfully": "המסמך נחתם בהצלחה",
-  "Please review and sign": "אנא עיין וחתום",
+  'Please sign here': 'אנא חתום כאן',
+  'Click to sign': 'לחץ כדי לחתום',
+  'Signature required': 'חתימה נדרשת',
+  'Document signed successfully': 'המסמך נחתם בהצלחה',
+  'Please review and sign': 'אנא עיין וחתום',
 
   // Status messages
-  "Waiting for signature": "ממתין לחתימה",
-  Completed: "הושלם",
-  "In progress": "בתהליך",
-  Pending: "ממתין",
+  'Waiting for signature': 'ממתין לחתימה',
+  Completed: 'הושלם',
+  'In progress': 'בתהליך',
+  Pending: 'ממתין',
 };
 
 /**
@@ -133,35 +133,35 @@ export function createHebrewCSSInjection(): string {
 export function injectHebrewStyles(iframe: HTMLIFrameElement): boolean {
   try {
     if (!iframe.contentDocument) {
-      console.warn("Cannot access iframe content - likely CORS restricted");
+      console.warn('Cannot access iframe content - likely CORS restricted');
       return false;
     }
 
     const existingStyle = iframe.contentDocument.querySelector(
-      "#hebrew-translations"
+      '#hebrew-translations'
     );
     if (existingStyle) {
       return true; // Already injected
     }
 
-    const styleElement = iframe.contentDocument.createElement("style");
-    styleElement.id = "hebrew-translations";
+    const styleElement = iframe.contentDocument.createElement('style');
+    styleElement.id = 'hebrew-translations';
     styleElement.textContent = createHebrewCSSInjection();
 
     iframe.contentDocument.head.appendChild(styleElement);
 
     // Mark elements as translated to avoid double translation
     const elements = iframe.contentDocument.querySelectorAll(
-      "button, [data-test], .btn"
+      'button, [data-test], .btn'
     );
-    elements.forEach((el) => {
-      (el as HTMLElement).setAttribute("data-hebrew-translated", "true");
+    elements.forEach(el => {
+      (el as HTMLElement).setAttribute('data-hebrew-translated', 'true');
     });
 
-    console.log("Hebrew styles injected successfully");
+    console.log('Hebrew styles injected successfully');
     return true;
   } catch (error) {
-    console.warn("Failed to inject Hebrew styles:", error);
+    console.warn('Failed to inject Hebrew styles:', error);
     return false;
   }
 }
@@ -175,11 +175,11 @@ export function setupHebrewObserver(
   try {
     if (!iframe.contentDocument) return null;
 
-    const observer = new MutationObserver((mutations) => {
+    const observer = new MutationObserver(mutations => {
       let needsUpdate = false;
 
-      mutations.forEach((mutation) => {
-        if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
+      mutations.forEach(mutation => {
+        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
           needsUpdate = true;
         }
       });
@@ -196,7 +196,7 @@ export function setupHebrewObserver(
 
     return observer;
   } catch (error) {
-    console.warn("Failed to setup Hebrew observer:", error);
+    console.warn('Failed to setup Hebrew observer:', error);
     return null;
   }
 }
@@ -222,7 +222,7 @@ export function setupHebrewSigning(
 
       if (success) {
         setupHebrewObserver(iframe);
-        console.log("Hebrew localization setup completed");
+        console.log('Hebrew localization setup completed');
         return;
       }
     }
@@ -231,9 +231,9 @@ export function setupHebrewSigning(
       setTimeout(tryInjectStyles, retryInterval);
     } else {
       console.warn(
-        "Failed to setup Hebrew localization after",
+        'Failed to setup Hebrew localization after',
         maxRetries,
-        "attempts"
+        'attempts'
       );
     }
   };

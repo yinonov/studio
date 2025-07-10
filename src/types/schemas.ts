@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const UserSchema = z.object({
   uid: z.string(),
@@ -6,7 +6,7 @@ export const UserSchema = z.object({
   phoneNumber: z.string().nullable().optional(),
   displayName: z.string().nullable().optional(),
   photoURL: z.string().url().nullable().optional(),
-  subscriptionTier: z.enum(["free", "premium"]).optional(),
+  subscriptionTier: z.enum(['free', 'premium']).optional(),
   createdAt: z.any().optional(), // Firestore Timestamps are tricky with Zod
 });
 

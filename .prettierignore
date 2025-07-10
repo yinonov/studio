@@ -1,0 +1,43 @@
+# Prettier ignore file
+node_modules/
+.next/
+.out/
+dist/
+build/
+coverage/
+.nyc_output/
+.cache/
+.vercel/
+.firebase/
+.vscode/
+.git/
+.DS_Store
+
+# Generated files
+*.log
+*.tsbuildinfo
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Test outputs
+test-results/
+playwright-report/
+coverage/
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.test
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Configuration files that shouldn't be formatted
+*.config.js
+*.config.ts
+*.config.mjs
+next-env.d.ts

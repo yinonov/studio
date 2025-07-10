@@ -1,4 +1,3 @@
-
 // This component was part of the original "Chetz Contracts" structure.
 // The new `ContractCreationPage` handles form rendering directly.
 // If this specific structure for a guided form is still needed, it would have to be
@@ -22,63 +21,75 @@ interface TemplateField {
   required?: boolean;
 }
 
-
 interface GuidedCreationFormProps {
   fields: TemplateField[];
   formData: Record<string, any>;
   onFormDataChange: (fieldId: string, value: any) => void;
 }
 
-export default function GuidedCreationForm({ fields, formData, onFormDataChange }: GuidedCreationFormProps) {
+export default function GuidedCreationForm({
+  fields,
+  formData,
+  onFormDataChange,
+}: GuidedCreationFormProps) {
   const handleInputChange = (fieldId: string, value: any) => {
     onFormDataChange(fieldId, value);
   };
 
   if (!fields || fields.length === 0) {
     return (
-        <Card className="shadow-lg border-primary/20">
-            <CardHeader className="bg-primary/10">
-                <CardTitle className="text-2xl font-headline text-primary-foreground/90">פרטי החוזה</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-                <p className="text-muted-foreground">לא הוגדרו שדות עבור תבנית זו.</p>
-            </CardContent>
-        </Card>
+      <Card className='border-primary/20 shadow-lg'>
+        <CardHeader className='bg-primary/10'>
+          <CardTitle className='font-headline text-2xl text-primary-foreground/90'>
+            פרטי החוזה
+          </CardTitle>
+        </CardHeader>
+        <CardContent className='p-6'>
+          <p className='text-muted-foreground'>לא הוגדרו שדות עבור תבנית זו.</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <Card className="shadow-lg border-primary/20">
-      <CardHeader className="bg-primary/10">
-        <CardTitle className="text-2xl font-headline text-primary-foreground/90">פרטי החוזה</CardTitle>
+    <Card className='border-primary/20 shadow-lg'>
+      <CardHeader className='bg-primary/10'>
+        <CardTitle className='font-headline text-2xl text-primary-foreground/90'>
+          פרטי החוזה
+        </CardTitle>
       </CardHeader>
-      <CardContent className="p-6 space-y-6">
+      <CardContent className='space-y-6 p-6'>
         {fields.map((field, index) => (
-          <div key={field.id} className="space-y-2">
-            <Label htmlFor={field.id} className="text-md font-medium text-foreground/80">
+          <div key={field.id} className='space-y-2'>
+            <Label
+              htmlFor={field.id}
+              className='text-md font-medium text-foreground/80'
+            >
               {field.label}
-              {field.required && <span className="text-destructive mr-1">*</span>}
+              {field.required && (
+                <span className='mr-1 text-destructive'>*</span>
+              )}
             </Label>
             {field.type === 'textarea' ? (
               <Textarea
                 id={field.id}
                 value={formData[field.id] || ''}
-                onChange={(e) => handleInputChange(field.id, e.target.value)}
+                onChange={e => handleInputChange(field.id, e.target.value)}
                 placeholder={field.placeholder || ''}
                 rows={3}
-                className="bg-background"
+                className='bg-background'
               />
             ) : (
               <Input
                 id={field.id}
                 type={field.type}
                 value={formData[field.id] || ''}
-                onChange={(e) => handleInputChange(field.id, e.target.value)}
+                onChange={e => handleInputChange(field.id, e.target.value)}
                 placeholder={field.placeholder || ''}
-                className="bg-background"
+                className='bg-background'
               />
             )}
-            {index < fields.length - 1 && <Separator className="my-4 !mt-6" />}
+            {index < fields.length - 1 && <Separator className='my-4 !mt-6' />}
           </div>
         ))}
       </CardContent>

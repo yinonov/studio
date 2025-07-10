@@ -2,13 +2,13 @@
 // It can be kept for local fallback or removed if templates are solely managed in Firestore.
 // For this refactor, assuming Firestore is the source of truth.
 
-import type { LucideIcon } from "lucide-react";
-import { FileText, Home } from "lucide-react";
+import type { LucideIcon } from 'lucide-react';
+import { FileText, Home } from 'lucide-react';
 
 export interface TemplateField {
   id: string;
   label: string;
-  type: "text" | "number" | "date" | "textarea" | "email";
+  type: 'text' | 'number' | 'date' | 'textarea' | 'email';
   placeholder?: string;
   required?: boolean;
 }
@@ -27,44 +27,44 @@ export interface Template {
 // The main template data should be in Firestore.
 export const localFallbackTemplates: Template[] = [
   {
-    id: "rental-agreement-local",
-    name: "הסכם שכירות (מקומי)",
+    id: 'rental-agreement-local',
+    name: 'הסכם שכירות (מקומי)',
     category: 'נדל"ן',
-    description: "חוזה שכירות סטנדרטי לנכסים בישראל.",
+    description: 'חוזה שכירות סטנדרטי לנכסים בישראל.',
     icon: Home,
     fields: [
       {
-        id: "landlordName",
-        label: "שם המשכיר/ה",
-        type: "text",
-        placeholder: "ישראל ישראלי",
+        id: 'landlordName',
+        label: 'שם המשכיר/ה',
+        type: 'text',
+        placeholder: 'ישראל ישראלי',
         required: true,
       },
       {
-        id: "tenantName",
-        label: "שם השוכר/ת",
-        type: "text",
-        placeholder: "משה כהן",
+        id: 'tenantName',
+        label: 'שם השוכר/ת',
+        type: 'text',
+        placeholder: 'משה כהן',
         required: true,
       },
     ],
     baseClauses: [
-      "שנערך ונחתם ב{{city}} ביום {{day}} לחודש {{month}} שנת {{year}}",
-      "בין: {{landlordName}} לבין: {{tenantName}}.",
+      'שנערך ונחתם ב{{city}} ביום {{day}} לחודש {{month}} שנת {{year}}',
+      'בין: {{landlordName}} לבין: {{tenantName}}.',
     ],
   },
 ];
 
 export const getLocalTemplateById = (id: string): Template | undefined => {
-  return localFallbackTemplates.find((template) => template.id === id);
+  return localFallbackTemplates.find(template => template.id === id);
 };
 
 export const getCurrentDateParts = () => {
   const now = new Date();
   return {
-    day: now.toLocaleDateString("he-IL", { day: "numeric" }),
-    month: now.toLocaleDateString("he-IL", { month: "long" }),
-    year: now.toLocaleDateString("he-IL", { year: "numeric" }),
-    city: "תל אביב",
+    day: now.toLocaleDateString('he-IL', { day: 'numeric' }),
+    month: now.toLocaleDateString('he-IL', { month: 'long' }),
+    year: now.toLocaleDateString('he-IL', { year: 'numeric' }),
+    city: 'תל אביב',
   };
 };

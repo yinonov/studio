@@ -7,39 +7,39 @@
     /* Design System: Smart Contracts IL - Light Mode */
     --background: 210 40% 98%; /* #F9FAFB (bg-gray-50) */
     --foreground: 222 47% 11%; /* #111827 (text-gray-900) */
-    
+
     --card: 0 0% 100%; /* #FFFFFF (bg-white) */
     --card-foreground: 222 47% 11%; /* #111827 (text-gray-900) */
-    
+
     --popover: 0 0% 100%; /* #FFFFFF (bg-white) */
     --popover-foreground: 222 47% 11%; /* #111827 (text-gray-900) */
-    
+
     --primary: 224 82% 56%; /* #2563EB (bg-blue-600) */
     --primary-foreground: 0 0% 100%; /* #FFFFFF (text-white) */
-    
+
     --secondary: 220 13% 91%; /* #E5E7EB (bg-gray-200) */
     --secondary-foreground: 215 25% 27%; /* #374151 (text-gray-700 for better contrast) */
-    
+
     --muted: 220 16% 95%; /* #F3F4F6 (bg-gray-100 for muted backgrounds) */
     --muted-foreground: 215 14% 47%; /* #6B7280 (text-gray-500) */
-    
+
     --accent: 145 77% 37%; /* #16A34A (bg-green-600 for success buttons/accents) */
     --accent-foreground: 0 0% 100%; /* #FFFFFF (text-white) */
-    
+
     --destructive: 0 84% 60%; /* #EF4444 (text-red-500) */
     --destructive-foreground: 0 0% 100%; /* #FFFFFF (text-white) */
-    
+
     --border: 216 15% 86%; /* #D1D5DB (border-gray-300) */
     --input: 216 15% 86%; /* #D1D5DB (border-gray-300) */
     --ring: 224 82% 56%; /* #2563EB (bg-blue-600 for rings) */
-    
+
     --radius: 0.5rem; /* 8px */
 
     /* Chart colors (can be adjusted or expanded based on spec) */
     --chart-1: 224 82% 56%; /* Primary blue */
     --chart-2: 145 77% 37%; /* Accent green */
     --chart-3: 39 100% 50%; /* Yellow/Orange for warnings - e.g., hsl(45, 90%, 55%) */
-    --chart-4: 0 84% 60%;   /* Destructive red */
+    --chart-4: 0 84% 60%; /* Destructive red */
     --chart-5: 215 14% 47%; /* Muted gray */
 
     /* Sidebar variables - kept for compatibility with shadcn/ui sidebar, adjust if not using or customize */
@@ -57,32 +57,32 @@
     /* Design System: Smart Contracts IL - Dark Mode */
     --background: 222 47% 11%; /* #111827 (text-gray-900 from light spec) */
     --foreground: 210 40% 98%; /* #F9FAFB (bg-gray-50 from light spec) */
-    
+
     --card: 215 28% 17%; /* #1F2937 (gray-800) */
     --card-foreground: 210 40% 98%; /* #F9FAFB */
-    
+
     --popover: 215 28% 17%; /* #1F2937 */
     --popover-foreground: 210 40% 98%; /* #F9FAFB */
-    
+
     --primary: 217 91% 60%; /* #3B82F6 (blue-500, lighter for dark) */
     --primary-foreground: 0 0% 100%; /* #FFFFFF */
-    
+
     --secondary: 215 25% 27%; /* #374151 (gray-700) */
     --secondary-foreground: 220 13% 91%; /* #E5E7EB (gray-200) */
-    
+
     --muted: 215 25% 27%; /* #374151 (gray-700) */
     --muted-foreground: 215 10% 65%; /* #9CA3AF (gray-400) */
-    
+
     --accent: 145 63% 49%; /* #22C55E (green-500, lighter for dark) */
     --accent-foreground: 0 0% 100%; /* #FFFFFF */
-    
+
     --destructive: 0 90% 71%; /* #F87171 (red-400, lighter for dark) */
     --destructive-foreground: 0 0% 100%; /* #FFFFFF */
-    
+
     --border: 215 25% 27%; /* #374151 (gray-700) */
     --input: 215 25% 27%; /* #374151 (gray-700) */
     --ring: 217 91% 60%; /* #3B82F6 (blue-500 for rings) */
-    
+
     /* --radius remains 0.5rem */
 
     /* Chart colors for dark mode */
@@ -112,7 +112,7 @@
     direction: rtl; /* Set default direction to RTL for Hebrew */
   }
   body {
-    @apply bg-background text-foreground font-sans; /* Apply Heebo as default sans font */
+    @apply bg-background font-sans text-foreground; /* Apply Heebo as default sans font */
   }
   /* Headings will use font-sans (Heebo) by default with Tailwind size/weight classes */
 }

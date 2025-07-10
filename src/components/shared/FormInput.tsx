@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { type ChangeEvent, type HTMLInputTypeAttribute } from 'react';
@@ -34,12 +33,19 @@ const FormInput: React.FC<FormInputProps> = ({
   labelClassName = '',
 }) => (
   <div className={`space-y-1 ${className}`}>
-    <Label htmlFor={name} className={`block text-sm font-medium text-right ${labelClassName}`}>
+    <Label
+      htmlFor={name}
+      className={`block text-right text-sm font-medium ${labelClassName}`}
+    >
       {label}
-      {required && <span className="text-destructive mr-1">*</span>}
+      {required && <span className='mr-1 text-destructive'>*</span>}
     </Label>
-    <div className="relative flex items-center">
-      {children && <div className="absolute right-3 top-1/2 -translate-y-1/2 h-full flex items-center pointer-events-none">{children}</div>}
+    <div className='relative flex items-center'>
+      {children && (
+        <div className='pointer-events-none absolute right-3 top-1/2 flex h-full -translate-y-1/2 items-center'>
+          {children}
+        </div>
+      )}
       {type === 'textarea' ? (
         <Textarea
           id={name}

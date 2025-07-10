@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { FileText, AlertCircle, CheckCircle2 } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface HebrewSigningWrapperProps {
   signUrl: string;
@@ -21,20 +21,20 @@ export function HebrewSigningWrapper({
   onCancel,
   onError,
 }: HebrewSigningWrapperProps) {
-  const [step, setStep] = useState<"instructions" | "signing" | "completed">(
-    "instructions"
+  const [step, setStep] = useState<'instructions' | 'signing' | 'completed'>(
+    'instructions'
   );
   const [isLoading, setIsLoading] = useState(false);
 
   const startSigning = () => {
-    setStep("signing");
+    setStep('signing');
     setIsLoading(true);
 
     // Open in new window with Hebrew instructions
     const newWindow = window.open(
       signUrl,
-      "hebrew-signing",
-      "width=800,height=600,scrollbars=yes,resizable=yes"
+      'hebrew-signing',
+      'width=800,height=600,scrollbars=yes,resizable=yes'
     );
 
     if (newWindow) {
@@ -43,7 +43,7 @@ export function HebrewSigningWrapper({
         if (newWindow.closed) {
           clearInterval(checkClosed);
           setIsLoading(false);
-          setStep("completed");
+          setStep('completed');
           onSign?.();
         }
       }, 1000);
@@ -71,38 +71,38 @@ export function HebrewSigningWrapper({
               </div>
             `;
             newWindow.document.body.insertAdjacentHTML(
-              "afterbegin",
+              'afterbegin',
               hebrewInstructions
             );
           }
         } catch (e) {
-          console.warn("Could not inject Hebrew instructions due to CORS");
+          console.warn('Could not inject Hebrew instructions due to CORS');
         }
       }, 2000);
     } else {
-      onError?.("לא ניתן לפתוח חלון חתימה. אנא אפשר חלונות קופצים.");
-      setStep("instructions");
+      onError?.('לא ניתן לפתוח חלון חתימה. אנא אפשר חלונות קופצים.');
+      setStep('instructions');
       setIsLoading(false);
     }
   };
 
-  if (step === "completed") {
+  if (step === 'completed') {
     return (
-      <Card className="max-w-md mx-auto">
+      <Card className='mx-auto max-w-md'>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-green-600">
-            <CheckCircle2 className="w-5 h-5" />
+          <CardTitle className='flex items-center gap-2 text-green-600'>
+            <CheckCircle2 className='h-5 w-5' />
             חתימה הושלמה
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground mb-4">
+          <p className='mb-4 text-muted-foreground'>
             תודה! החתימה שלך נשמרה בהצלחה.
           </p>
           <Button
-            onClick={() => setStep("instructions")}
-            variant="outline"
-            className="w-full"
+            onClick={() => setStep('instructions')}
+            variant='outline'
+            className='w-full'
           >
             חזור
           </Button>
@@ -111,27 +111,27 @@ export function HebrewSigningWrapper({
     );
   }
 
-  if (step === "signing") {
+  if (step === 'signing') {
     return (
-      <Card className="max-w-md mx-auto">
+      <Card className='mx-auto max-w-md'>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
+          <CardTitle className='flex items-center gap-2'>
+            <FileText className='h-5 w-5' />
             תהליך חתימה פעיל
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Alert>
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className='h-4 w-4' />
             <AlertDescription>
               חלון החתימה נפתח בטאב נפרד. אנא השלם את תהליך החתימה שם.
             </AlertDescription>
           </Alert>
-          <div className="mt-4 space-y-2">
+          <div className='mt-4 space-y-2'>
             <Button
               onClick={onCancel}
-              variant="outline"
-              className="w-full"
+              variant='outline'
+              className='w-full'
               disabled={isLoading}
             >
               ביטול
@@ -143,19 +143,19 @@ export function HebrewSigningWrapper({
   }
 
   return (
-    <Card className="max-w-md mx-auto">
+    <Card className='mx-auto max-w-md'>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="w-5 h-5" />
+        <CardTitle className='flex items-center gap-2'>
+          <FileText className='h-5 w-5' />
           חתימה על מסמך
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-sm text-muted-foreground space-y-2">
+      <CardContent className='space-y-4'>
+        <div className='space-y-2 text-sm text-muted-foreground'>
           <p>
             <strong>הוראות לחתימה:</strong>
           </p>
-          <ul className="list-disc list-inside space-y-1 mr-4">
+          <ul className='mr-4 list-inside list-disc space-y-1'>
             <li>יישמר חלון חתימה חדש</li>
             <li>בחלון החדש, חפש כפתור "Sign" או "חתימה"</li>
             <li>לחץ על המקום המיועד לחתימה במסמך</li>
@@ -165,17 +165,17 @@ export function HebrewSigningWrapper({
         </div>
 
         <Alert>
-          <AlertCircle className="h-4 w-4" />
+          <AlertCircle className='h-4 w-4' />
           <AlertDescription>
             ממשק החתימה יוצג באנגלית, אך תוכל לעקוב אחר ההוראות למעלה.
           </AlertDescription>
         </Alert>
 
-        <div className="space-y-2">
-          <Button onClick={startSigning} className="w-full">
+        <div className='space-y-2'>
+          <Button onClick={startSigning} className='w-full'>
             התחל תהליך חתימה
           </Button>
-          <Button onClick={onCancel} variant="outline" className="w-full">
+          <Button onClick={onCancel} variant='outline' className='w-full'>
             ביטול
           </Button>
         </div>

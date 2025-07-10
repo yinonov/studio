@@ -68,6 +68,7 @@ npm run test:e2e -- tests/e2e/visual-regression.spec.ts --update-snapshots
 ## Expected Quick Win
 
 After these fixes, you should see:
+
 - ✅ Unit tests: 18/18 passing (already working)
 - ✅ Basic navigation tests: should pass
 - ⚠️ Auth tests: may need app-specific tweaks

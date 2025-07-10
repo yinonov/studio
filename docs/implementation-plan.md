@@ -1,11 +1,11 @@
-❑ CONTEXT  
+❑ CONTEXT
 
-- [x] We’re building a contract-generation SaaS on Firebase Hosting + Firestore.  
-- [x] Users complete a browser-based form and see a live HTML preview (supports LTR & RTL).  
-- [x] Responses are stored as structured JSON (not raw HTML).  
-- [x] When “Generate & Sign” is clicked the system must:  
-  - [x] Send the HTML (plus embedded CSS) to **DocRaptor** and receive a pixel-perfect, immutable **PDF/A-2u** that embeds Hebrew fonts and mirrors RTL margins.  
-  - [x] Produce a low-resolution JPEG/PNG of page 1, water-marked “DRAFT”, to prevent copy-and-paste before payment/signature.  
+- [x] We’re building a contract-generation SaaS on Firebase Hosting + Firestore.
+- [x] Users complete a browser-based form and see a live HTML preview (supports LTR & RTL).
+- [x] Responses are stored as structured JSON (not raw HTML).
+- [x] When “Generate & Sign” is clicked the system must:
+  - [x] Send the HTML (plus embedded CSS) to **DocRaptor** and receive a pixel-perfect, immutable **PDF/A-2u** that embeds Hebrew fonts and mirrors RTL margins.
+  - [x] Produce a low-resolution JPEG/PNG of page 1, water-marked “DRAFT”, to prevent copy-and-paste before payment/signature.
   - [x] Initiate an embedded Dropbox Sign flow; after signing, store the signed PDF and audit trail.
 
 ❑ TASKS FOR YOU

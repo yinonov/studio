@@ -1,6 +1,6 @@
-import { getClientFunctions } from "@/lib/firebase";
-import type { SignatureRequestGetResponse } from "@dropbox/sign";
-import { httpsCallable } from "firebase/functions";
+import { getClientFunctions } from '@/lib/firebase';
+import type { SignatureRequestGetResponse } from '@dropbox/sign';
+import { httpsCallable } from 'firebase/functions';
 
 /**
  * Fetches the Dropbox Sign signature request object for a contract from the backend (using Firebase callable function).
@@ -11,7 +11,7 @@ export async function fetchDropboxSignSignatureRequest(contractId: string) {
   const functions = getClientFunctions();
   const getDropboxSignData = httpsCallable<string, SignatureRequestGetResponse>(
     functions,
-    "getContractDropboxSignData"
+    'getContractDropboxSignData'
   );
   const result = await getDropboxSignData(contractId);
   return result.data;
@@ -28,7 +28,7 @@ export async function getSignUrl(
   const functions = getClientFunctions();
   const getUrlFunction = httpsCallable(
     functions,
-    "getEmbeddedSignUrlForSigner"
+    'getEmbeddedSignUrlForSigner'
   );
   const result = await getUrlFunction({ signatureId });
   return result.data as { signUrl: string };

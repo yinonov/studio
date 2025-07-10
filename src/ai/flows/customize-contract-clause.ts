@@ -9,22 +9,26 @@
  * - CustomizeContractClauseOutput - The return type for the customizeContractClause function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const CustomizeContractClauseInputSchema = z.object({
   userDescription: z
     .string()
     .describe('A plain language description of the desired contract clause.'),
 });
-export type CustomizeContractClauseInput = z.infer<typeof CustomizeContractClauseInputSchema>;
+export type CustomizeContractClauseInput = z.infer<
+  typeof CustomizeContractClauseInputSchema
+>;
 
 const CustomizeContractClauseOutputSchema = z.object({
   legalWording: z
     .string()
     .describe('The generated legal wording for the custom contract clause.'),
 });
-export type CustomizeContractClauseOutput = z.infer<typeof CustomizeContractClauseOutputSchema>;
+export type CustomizeContractClauseOutput = z.infer<
+  typeof CustomizeContractClauseOutputSchema
+>;
 
 export async function customizeContractClause(
   input: CustomizeContractClauseInput
@@ -34,8 +38,8 @@ export async function customizeContractClause(
 
 const prompt = ai.definePrompt({
   name: 'customizeContractClausePrompt',
-  input: {schema: CustomizeContractClauseInputSchema},
-  output: {schema: CustomizeContractClauseOutputSchema},
+  input: { schema: CustomizeContractClauseInputSchema },
+  output: { schema: CustomizeContractClauseOutputSchema },
   prompt: `You are an AI assistant specialized in generating legally sound contract clauses for Israeli contracts.
 
   Based on the user's description, generate the appropriate legal wording for a custom contract clause that complies with Israeli law.
@@ -52,7 +56,7 @@ const customizeContractClauseFlow = ai.defineFlow(
     outputSchema: CustomizeContractClauseOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     return output!;
   }
 );

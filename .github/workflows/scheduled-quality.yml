@@ -1,0 +1,169 @@
+name: Code Quality & Security
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security audit
+        run: npm audit --audit-level=moderate
+
+      - name: Check for vulnerable dependencies
+        run: |
+          # Create audit report
+          npm audit --json > audit-report.json || true
+
+          # Check if there are any vulnerabilities
+          if [ -s audit-report.json ]; then
+            echo "Security vulnerabilities found:"
+            npm audit --audit-level=moderate
+            exit 1
+          else
+            echo "No security vulnerabilities found"
+          fi
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-audit-report
+          path: audit-report.json
+          retention-days: 30
+
+  dependency-updates:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Check for outdated dependencies
+        run: |
+          echo "Checking for outdated dependencies..."
+          npm outdated --json > outdated-deps.json || true
+
+          if [ -s outdated-deps.json ]; then
+            echo "Outdated dependencies found:"
+            cat outdated-deps.json
+            echo "Consider updating dependencies"
+          else
+            echo "All dependencies are up to date"
+          fi
+
+      - name: Upload outdated dependencies report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: outdated-dependencies-report
+          path: outdated-deps.json
+          retention-days: 30
+
+  code-metrics:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Generate coverage report
+        run: |
+          echo "## Test Coverage Report" > coverage-summary.md
+          echo "Date: $(date)" >> coverage-summary.md
+          echo "" >> coverage-summary.md
+          echo "### Coverage Summary" >> coverage-summary.md
+          echo '```' >> coverage-summary.md
+          npm run test:coverage -- --coverageReporters=text-summary | grep -A 10 "Coverage summary" >> coverage-summary.md
+          echo '```' >> coverage-summary.md
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-reports
+          path: |
+            coverage/
+            coverage-summary.md
+          retention-days: 30
+
+  performance-budget:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Analyze bundle size
+        run: |
+          # Check bundle size
+          echo "## Bundle Size Analysis" > bundle-analysis.md
+          echo "Date: $(date)" >> bundle-analysis.md
+          echo "" >> bundle-analysis.md
+
+          # Get build stats
+          if [ -f .next/BUILD_ID ]; then
+            echo "✅ Build completed successfully" >> bundle-analysis.md
+            echo "" >> bundle-analysis.md
+            
+            # Basic bundle size check
+            echo "### Build Directory Sizes" >> bundle-analysis.md
+            echo '```' >> bundle-analysis.md
+            du -sh .next >> bundle-analysis.md
+            echo '```' >> bundle-analysis.md
+          else
+            echo "❌ Build failed or incomplete" >> bundle-analysis.md
+          fi
+
+      - name: Upload bundle analysis
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bundle-analysis
+          path: bundle-analysis.md
+          retention-days: 30

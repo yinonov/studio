@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -8,7 +7,8 @@ import { AuthProvider } from '@/contexts/AuthContext';
 
 export const metadata: Metadata = {
   title: 'חוזים חכמים | Smart Contracts IL',
-  description: 'יצירה וניהול חוזים חכמים לעסקים ואנשים פרטיים בישראל, מותאם לשוק הישראלי.',
+  description:
+    'יצירה וניהול חוזים חכמים לעסקים ואנשים פרטיים בישראל, מותאם לשוק הישראלי.',
 };
 
 export default function RootLayout({
@@ -17,17 +17,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="he" dir="rtl">
+    <html lang='he' dir='rtl'>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel='preconnect' href='https://fonts.googleapis.com' />
+        <link
+          rel='preconnect'
+          href='https://fonts.gstatic.com'
+          crossOrigin='anonymous'
+        />
         {/* Updated to Heebo font */}
-        <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800;900&display=swap" rel="stylesheet" />
+        <link
+          href='https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800;900&display=swap'
+          rel='stylesheet'
+        />
       </head>
-      <body className="antialiased flex flex-col min-h-screen bg-background text-foreground">
+      <body className='flex min-h-screen flex-col bg-background text-foreground antialiased'>
         <AuthProvider>
           <Header />
-          <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <main className='container mx-auto flex-grow px-4 py-8 sm:px-6 sm:py-12 lg:px-8'>
             {children}
           </main>
           <Footer />

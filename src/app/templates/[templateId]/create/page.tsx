@@ -1,34 +1,34 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
-import { fetchTemplateById } from "@/firebase/templateServices";
-import type { TemplateSchema } from "@/types";
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchTemplateById } from '@/firebase/templateServices';
+import type { TemplateSchema } from '@/types';
 import {
   createDraftContract,
   updateContractData,
   fetchContractById,
-} from "@/firebase/contractServices";
-import FormInput from "@/components/shared/FormInput";
-import { Button } from "@/components/ui/button";
+} from '@/firebase/contractServices';
+import FormInput from '@/components/shared/FormInput';
+import { Button } from '@/components/ui/button';
 import {
   Loader2,
   ChevronLeft,
   ChevronRight,
   Save,
   CheckCircle,
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardFooter,
-} from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import ContractLivePreview from "@/components/contract/ContractLivePreview";
+} from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import ContractLivePreview from '@/components/contract/ContractLivePreview';
 
 // A debounced function that can be cancelled.
 interface DebouncedFunction<F extends (...args: any[]) => any> {
@@ -65,31 +65,31 @@ function debounce<F extends (...args: any[]) => any>(
 
 const STEPS_CONFIG = [
   {
-    name: "צדדים וכותרת",
+    name: 'צדדים וכותרת',
     fields: [
-      "contractTitle",
-      "signer1Name",
-      "signer1Email",
-      "signer2Name",
-      "signer2Email",
+      'contractTitle',
+      'signer1Name',
+      'signer1Email',
+      'signer2Name',
+      'signer2Email',
     ],
   },
   {
-    name: "תנאים עיקריים",
+    name: 'תנאים עיקריים',
     fields: [
-      "address",
-      "rentAmount",
-      "startDate",
-      "serviceDescription",
-      "serviceFee",
-      "effectiveDate",
-      "confidentialInformationDescription",
-      "disclosingParty",
-      "receivingParty",
-      "additionalNotes",
+      'address',
+      'rentAmount',
+      'startDate',
+      'serviceDescription',
+      'serviceFee',
+      'effectiveDate',
+      'confidentialInformationDescription',
+      'disclosingParty',
+      'receivingParty',
+      'additionalNotes',
     ],
   },
-  { name: "סקירה וסיום", fields: [] },
+  { name: 'סקירה וסיום', fields: [] },
 ];
 
 export default function ContractCreationPage() {
@@ -97,7 +97,7 @@ export default function ContractCreationPage() {
   const router = useRouter();
   const params = useParams();
   const templateId =
-    typeof params.templateId === "string" ? params.templateId : null;
+    typeof params.templateId === 'string' ? params.templateId : null;
   const { toast } = useToast();
 
   const [template, setTemplate] = useState<TemplateSchema | null>(null);
@@ -106,7 +106,7 @@ export default function ContractCreationPage() {
   const [contractId, setContractId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   // Add a ref to prevent duplicate contract creation
   const hasCreatedContract = useRef(false);
@@ -123,18 +123,18 @@ export default function ContractCreationPage() {
         setIsSaving(true);
         try {
           const contractTitle =
-            data.contractTitle || currentTemplate.title || "חוזה ללא כותרת";
+            data.contractTitle || currentTemplate.title || 'חוזה ללא כותרת';
 
           await updateContractData(cid, {
             formData: data,
             title: contractTitle,
-            status: "draft",
+            status: 'draft',
           });
         } catch (err) {
-          console.error("Error auto-saving draft:", err);
+          console.error('Error auto-saving draft:', err);
           toast({
-            title: "שגיאה בשמירת טיוטה אוטומטית",
-            variant: "destructive",
+            title: 'שגיאה בשמירת טיוטה אוטומטית',
+            variant: 'destructive',
           });
         } finally {
           setIsSaving(false);
@@ -149,12 +149,12 @@ export default function ContractCreationPage() {
     if (!currentUser) {
       const redirectPath = templateId
         ? `/templates/${templateId}/create`
-        : "/templates";
+        : '/templates';
       const queryParams =
-        typeof window !== "undefined"
+        typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search)
-          : new URLSearchParams("");
-      const existingContractId = queryParams.get("contractId");
+          : new URLSearchParams('');
+      const existingContractId = queryParams.get('contractId');
       const finalRedirect = existingContractId
         ? `${redirectPath}?contractId=${existingContractId}`
         : redirectPath;
@@ -163,11 +163,11 @@ export default function ContractCreationPage() {
     }
     if (!templateId) {
       toast({
-        title: "שגיאה",
-        description: "מזהה תבנית חסר.",
-        variant: "destructive",
+        title: 'שגיאה',
+        description: 'מזהה תבנית חסר.',
+        variant: 'destructive',
       });
-      router.push("/templates");
+      router.push('/templates');
       return;
     }
 
@@ -177,20 +177,20 @@ export default function ContractCreationPage() {
         const fetchedTemplate = await fetchTemplateById(templateId);
         if (!fetchedTemplate) {
           toast({
-            title: "שגיאה",
-            description: "תבנית לא נמצאה.",
-            variant: "destructive",
+            title: 'שגיאה',
+            description: 'תבנית לא נמצאה.',
+            variant: 'destructive',
           });
-          router.push("/templates");
+          router.push('/templates');
           return;
         }
         setTemplate(fetchedTemplate);
 
         const queryParams =
-          typeof window !== "undefined"
+          typeof window !== 'undefined'
             ? new URLSearchParams(window.location.search)
-            : new URLSearchParams("");
-        const existingContractId = queryParams.get("contractId");
+            : new URLSearchParams('');
+        const existingContractId = queryParams.get('contractId');
 
         let initialData: Record<string, string> = {};
         (fetchedTemplate.fields || []).forEach(
@@ -208,7 +208,7 @@ export default function ContractCreationPage() {
             ) {
               initialData[field.id] = fetchedTemplate.defaultValues[field.id];
             } else if (field.id) {
-              initialData[field.id] = "";
+              initialData[field.id] = '';
             }
           }
         );
@@ -223,7 +223,7 @@ export default function ContractCreationPage() {
             existingContract.ownerId === currentUser.uid
           ) {
             setContractId(existingContractId);
-            setFormData((prev) => ({
+            setFormData(prev => ({
               ...initialData,
               ...existingContract.formData,
               contractTitle:
@@ -232,21 +232,21 @@ export default function ContractCreationPage() {
                 fetchedTemplate.title,
             }));
             toast({
-              title: "טיוטה נטענה",
-              description: "ממשיך עריכת טיוטה קיימת.",
+              title: 'טיוטה נטענה',
+              description: 'ממשיך עריכת טיוטה קיימת.',
             });
           } else if (existingContract) {
-            setError("אין לך הרשאה לערוך טיוטה זו.");
+            setError('אין לך הרשאה לערוך טיוטה זו.');
             toast({
-              title: "שגיאת הרשאה",
-              description: "אינך מורשה לערוך טיוטה זו.",
-              variant: "destructive",
+              title: 'שגיאת הרשאה',
+              description: 'אינך מורשה לערוך טיוטה זו.',
+              variant: 'destructive',
             });
           } else {
             toast({
-              title: "שגיאה",
-              description: "טיוטה קיימת לא נמצאה.",
-              variant: "destructive",
+              title: 'שגיאה',
+              description: 'טיוטה קיימת לא נמצאה.',
+              variant: 'destructive',
             });
             // Only create if we haven't already created one
             if (!hasCreatedContract.current && !contractId) {
@@ -261,7 +261,7 @@ export default function ContractCreationPage() {
 
               // Update URL to include the new contract ID
               const newUrl = `${window.location.pathname}?contractId=${newContractId}`;
-              window.history.replaceState({}, "", newUrl);
+              window.history.replaceState({}, '', newUrl);
             }
           }
         } else {
@@ -278,15 +278,15 @@ export default function ContractCreationPage() {
 
             // Update URL to include the new contract ID without triggering navigation
             const newUrl = `${window.location.pathname}?contractId=${newContractId}`;
-            window.history.replaceState({}, "", newUrl);
+            window.history.replaceState({}, '', newUrl);
           }
         }
       } catch (err: any) {
-        setError("שגיאה בטעינת תבנית או יצירת טיוטה.");
+        setError('שגיאה בטעינת תבנית או יצירת טיוטה.');
         toast({
-          title: "שגיאה",
-          description: err.message || "לא ניתן היה לטעון את הדף.",
-          variant: "destructive",
+          title: 'שגיאה',
+          description: err.message || 'לא ניתן היה לטעון את הדף.',
+          variant: 'destructive',
         });
         console.error(err);
       } finally {
@@ -321,15 +321,15 @@ export default function ContractCreationPage() {
         (f: any) =>
           f.required &&
           currentStepConfig.fields.includes(f.id) &&
-          (!formData[f.id] || String(formData[f.id]).trim() === "")
+          (!formData[f.id] || String(formData[f.id]).trim() === '')
       );
       if (missingRequired && missingRequired.length > 0) {
         toast({
-          title: "שדות חובה חסרים",
+          title: 'שדות חובה חסרים',
           description: `אנא מלא: ${missingRequired
             .map((f: any) => f.label)
-            .join(", ")}`,
-          variant: "destructive",
+            .join(', ')}`,
+          variant: 'destructive',
         });
         return;
       }
@@ -343,9 +343,9 @@ export default function ContractCreationPage() {
   const handleFinalizeAndSave = async () => {
     if (!contractId || !template) {
       toast({
-        title: "שגיאה",
-        description: "מזהה חוזה או תבנית לא קיימים.",
-        variant: "destructive",
+        title: 'שגיאה',
+        description: 'מזהה חוזה או תבנית לא קיימים.',
+        variant: 'destructive',
       });
       return;
     }
@@ -353,24 +353,24 @@ export default function ContractCreationPage() {
     debouncedSaveRef.current.cancel(); // Cancel any pending auto-save before final save
 
     setIsSaving(true);
-    setError("");
+    setError('');
     try {
       const contractTitle =
-        formData.contractTitle || template.title || "חוזה ללא כותרת";
+        formData.contractTitle || template.title || 'חוזה ללא כותרת';
 
       await updateContractData(contractId, {
         formData,
         title: contractTitle,
-        status: "draft",
+        status: 'draft',
       });
-      toast({ title: "טיוטה נשמרה!", description: "החוזה נשמר כטיוטה." });
+      toast({ title: 'טיוטה נשמרה!', description: 'החוזה נשמר כטיוטה.' });
       router.push(`/contracts/${contractId}`);
     } catch (err: any) {
-      setError("שמירת החוזה הסופית נכשלה.");
+      setError('שמירת החוזה הסופית נכשלה.');
       toast({
-        title: "שגיאה בשמירת החוזה",
+        title: 'שגיאה בשמירת החוזה',
         description: err.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
       console.error(err);
     } finally {
@@ -380,33 +380,33 @@ export default function ContractCreationPage() {
 
   const renderStepContent = () => {
     if (!template)
-      return <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />;
+      return <Loader2 className='mx-auto h-8 w-8 animate-spin text-primary' />;
 
     const currentStepConfig = STEPS_CONFIG[currentStep - 1];
 
     if (currentStep === STEPS_CONFIG.length) {
       return (
-        <div className="text-center space-y-6">
-          <h3 className="text-2xl font-bold">סקירה ושמירת טיוטה</h3>
-          <p className="text-muted-foreground">
+        <div className='space-y-6 text-center'>
+          <h3 className='text-2xl font-bold'>סקירה ושמירת טיוטה</h3>
+          <p className='text-muted-foreground'>
             אנא בדוק/י את כל הפרטים שהזנת בתצוגה המקדימה. לחיצה על הכפתור תשמור
             את החוזה כטיוטה ותעביר אותך לדף פרטי החוזה.
           </p>
           <Button
             onClick={handleFinalizeAndSave}
-            size="lg"
-            variant="accent"
-            className="font-semibold"
+            size='lg'
+            variant='accent'
+            className='font-semibold'
             disabled={isSaving}
           >
             {isSaving ? (
-              <Loader2 className="animate-spin ml-2" />
+              <Loader2 className='ml-2 animate-spin' />
             ) : (
-              <Save className="ml-2 h-5 w-5" />
+              <Save className='ml-2 h-5 w-5' />
             )}
-            {isSaving ? "שומר..." : "שמור טיוטה ועבור לפרטים"}
+            {isSaving ? 'שומר...' : 'שמור טיוטה ועבור לפרטים'}
           </Button>
-          {error && <p className="text-destructive text-sm mt-4">{error}</p>}
+          {error && <p className='mt-4 text-sm text-destructive'>{error}</p>}
         </div>
       );
     }
@@ -419,55 +419,55 @@ export default function ContractCreationPage() {
     if (currentStep === 1) {
       const signerFieldsConfig = [
         {
-          id: "contractTitle",
-          label: "כותרת החוזה (פנימי)",
-          type: "text",
-          placeholder: "לדוגמה: הסכם שכירות הרצל 1",
+          id: 'contractTitle',
+          label: 'כותרת החוזה (פנימי)',
+          type: 'text',
+          placeholder: 'לדוגמה: הסכם שכירות הרצל 1',
           required: true,
-          group: "כותרת",
+          group: 'כותרת',
         },
         {
-          id: "signer1Name",
+          id: 'signer1Name',
           label: "שם חותם א'",
-          type: "text",
-          placeholder: "ישראל ישראלי",
+          type: 'text',
+          placeholder: 'ישראל ישראלי',
           required: true,
           group: "חותם א'",
         },
         {
-          id: "signer1Email",
+          id: 'signer1Email',
           label: "אימייל חותם א'",
-          type: "email",
-          placeholder: "israel@example.com",
+          type: 'email',
+          placeholder: 'israel@example.com',
           required: true,
           group: "חותם א'",
         },
         {
-          id: "signer2Name",
+          id: 'signer2Name',
           label: "שם חותם ב'",
-          type: "text",
-          placeholder: "שרה לוי",
+          type: 'text',
+          placeholder: 'שרה לוי',
           required:
-            template.fields?.find((f: any) => f.id === "signer2Name")
+            template.fields?.find((f: any) => f.id === 'signer2Name')
               ?.required || false,
           group: "חותם ב'",
         },
         {
-          id: "signer2Email",
+          id: 'signer2Email',
           label: "אימייל חותם ב'",
-          type: "email",
-          placeholder: "sarah@example.com",
+          type: 'email',
+          placeholder: 'sarah@example.com',
           required:
-            template.fields?.find((f) => f.id === "signer2Email")?.required ||
+            template.fields?.find(f => f.id === 'signer2Email')?.required ||
             false,
           group: "חותם ב'",
         },
       ];
 
-      let lastGroup = "";
+      let lastGroup = '';
       return (
-        <div className="space-y-6">
-          {signerFieldsConfig.map((field) => {
+        <div className='space-y-6'>
+          {signerFieldsConfig.map(field => {
             const templateFieldDefinition = template.fields?.find(
               (f: any) => f.id === field.id
             );
@@ -481,15 +481,15 @@ export default function ContractCreationPage() {
             return (
               <React.Fragment key={field.id}>
                 {showGroupHeader && (
-                  <h3 className="text-xl font-bold border-b pb-2 pt-4">
+                  <h3 className='border-b pb-2 pt-4 text-xl font-bold'>
                     {field.group}
                   </h3>
                 )}
                 <FormInput
                   label={field.label}
                   name={field.id}
-                  type={field.type as "text" | "email"}
-                  value={formData[field.id] || ""}
+                  type={field.type as 'text' | 'email'}
+                  value={formData[field.id] || ''}
                   onChange={handleDataChange}
                   placeholder={field.placeholder}
                   required={isRequired}
@@ -502,14 +502,14 @@ export default function ContractCreationPage() {
     }
 
     return (
-      <div className="space-y-6">
+      <div className='space-y-6'>
         {fieldsForCurrentStep.map((field: any) => (
           <FormInput
             key={field.id}
             label={field.label}
             name={field.id}
-            type={field.type as "text" | "number" | "date" | "textarea"}
-            value={formData[field.id] || ""}
+            type={field.type as 'text' | 'number' | 'date' | 'textarea'}
+            value={formData[field.id] || ''}
             onChange={handleDataChange}
             placeholder={field.placeholder}
             required={field.required}
@@ -517,7 +517,7 @@ export default function ContractCreationPage() {
         ))}
         {fieldsForCurrentStep.length === 0 &&
           currentStep !== STEPS_CONFIG.length && (
-            <p className="text-muted-foreground">
+            <p className='text-muted-foreground'>
               אין שדות מוגדרים לשלב זה בתבנית. לחץ על "הבא" כדי להמשיך.
             </p>
           )}
@@ -527,23 +527,23 @@ export default function ContractCreationPage() {
 
   if (isPageLoading || (!currentUser && !isFirebaseLoading)) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
-        <Loader2 className="w-12 h-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">טוען...</p>
+      <div className='flex min-h-[calc(100vh-200px)] flex-col items-center justify-center'>
+        <Loader2 className='h-12 w-12 animate-spin text-primary' />
+        <p className='mt-4 text-muted-foreground'>טוען...</p>
       </div>
     );
   }
 
   if (!template && !isPageLoading) {
     return (
-      <div className="text-center py-10">
-        <p className="text-xl text-destructive mb-4">
-          {error || "שגיאה: לא ניתן היה לטעון את תבנית החוזה."}
+      <div className='py-10 text-center'>
+        <p className='mb-4 text-xl text-destructive'>
+          {error || 'שגיאה: לא ניתן היה לטעון את תבנית החוזה.'}
         </p>
         <Button
-          onClick={() => router.push("/templates")}
-          variant="outline"
-          className="mt-4"
+          onClick={() => router.push('/templates')}
+          variant='outline'
+          className='mt-4'
         >
           חזור למאגר התבניות
         </Button>
@@ -553,12 +553,12 @@ export default function ContractCreationPage() {
 
   if (error && !template && currentUser) {
     return (
-      <div className="text-center py-10">
-        <p className="text-xl text-destructive mb-4">{error}</p>
+      <div className='py-10 text-center'>
+        <p className='mb-4 text-xl text-destructive'>{error}</p>
         <Button
-          onClick={() => router.push("/templates")}
-          variant="outline"
-          className="mt-4"
+          onClick={() => router.push('/templates')}
+          variant='outline'
+          className='mt-4'
         >
           חזור למאגר התבניות
         </Button>
@@ -569,55 +569,53 @@ export default function ContractCreationPage() {
   const progressPercentage = (currentStep / STEPS_CONFIG.length) * 100;
 
   return (
-    <section className="space-y-8">
-      <div className="text-center">
-        <h1 className="text-3xl md:text-4xl font-extrabold">
-          יצירת: {formData.contractTitle || template?.title || "טעינת כותרת..."}
+    <section className='space-y-8'>
+      <div className='text-center'>
+        <h1 className='text-3xl font-extrabold md:text-4xl'>
+          יצירת: {formData.contractTitle || template?.title || 'טעינת כותרת...'}
         </h1>
-        <p className="mt-2 text-md text-muted-foreground">
+        <p className='text-md mt-2 text-muted-foreground'>
           מלא/י את הפרטים הבאים ליצירת החוזה. הטיוטה נשמרת אוטומטית.
         </p>
       </div>
 
       <Progress
         value={progressPercentage}
-        className="w-full h-2.5 mb-8 rounded-full"
+        className='mb-8 h-2.5 w-full rounded-full'
       />
 
-      <div className="max-w-full lg:max-w-screen-xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-        <div className="lg:col-span-3 order-1 lg:sticky lg:top-28 self-start h-fit">
-          <Card className="shadow-md rounded-2xl">
+      <div className='mx-auto grid max-w-full grid-cols-1 gap-6 md:gap-8 lg:max-w-screen-xl lg:grid-cols-12'>
+        <div className='order-1 h-fit self-start lg:sticky lg:top-28 lg:col-span-3'>
+          <Card className='rounded-2xl shadow-md'>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">
+              <CardTitle className='text-lg font-semibold'>
                 שלבי יצירה
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-3">
+              <ul className='space-y-3'>
                 {STEPS_CONFIG.map((s, index) => (
                   <li
                     key={index}
-                    className={`flex items-center p-3 rounded-lg transition-all cursor-default
-                                            ${
-                                              currentStep === index + 1
-                                                ? "bg-primary/10 text-primary font-semibold border-r-4 border-primary"
-                                                : currentStep > index + 1
-                                                ? "text-accent/80"
-                                                : "text-muted-foreground hover:bg-muted/50"
-                                            }`}
+                    className={`flex cursor-default items-center rounded-lg p-3 transition-all ${
+                      currentStep === index + 1
+                        ? 'border-r-4 border-primary bg-primary/10 font-semibold text-primary'
+                        : currentStep > index + 1
+                          ? 'text-accent/80'
+                          : 'text-muted-foreground hover:bg-muted/50'
+                    }`}
                   >
                     <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center ml-3 flex-shrink-0 text-xs
-                                            ${
-                                              currentStep === index + 1
-                                                ? "bg-primary text-primary-foreground"
-                                                : currentStep > index + 1
-                                                ? "bg-accent text-accent-foreground"
-                                                : "bg-secondary border"
-                                            }`}
+                      className={`ml-3 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs ${
+                        currentStep === index + 1
+                          ? 'bg-primary text-primary-foreground'
+                          : currentStep > index + 1
+                            ? 'bg-accent text-accent-foreground'
+                            : 'border bg-secondary'
+                      }`}
                     >
                       {currentStep > index + 1 ? (
-                        <CheckCircle className="w-4 h-4" />
+                        <CheckCircle className='h-4 w-4' />
                       ) : (
                         index + 1
                       )}
@@ -629,69 +627,69 @@ export default function ContractCreationPage() {
             </CardContent>
           </Card>
           {isSaving && (
-            <p className="text-xs text-muted-foreground text-center mt-2">
+            <p className='mt-2 text-center text-xs text-muted-foreground'>
               שומר טיוטה...
             </p>
           )}
         </div>
 
-        <div className="lg:col-span-5 order-3 lg:order-2">
-          <Card className="rounded-2xl shadow-lg">
+        <div className='order-3 lg:order-2 lg:col-span-5'>
+          <Card className='rounded-2xl shadow-lg'>
             <CardHeader>
-              <CardTitle className="text-2xl">
-                {STEPS_CONFIG[currentStep - 1]?.name || "טוען שלב..."}
+              <CardTitle className='text-2xl'>
+                {STEPS_CONFIG[currentStep - 1]?.name || 'טוען שלב...'}
               </CardTitle>
             </CardHeader>
-            <CardContent className="min-h-[300px] md:min-h-[400px]">
+            <CardContent className='min-h-[300px] md:min-h-[400px]'>
               {template && renderStepContent()}
             </CardContent>
-            <CardFooter className="flex justify-between items-center mt-6 pt-6 border-t">
+            <CardFooter className='mt-6 flex items-center justify-between border-t pt-6'>
               <Button
                 onClick={prevStep}
-                variant="outline"
-                className="font-semibold"
+                variant='outline'
+                className='font-semibold'
                 disabled={currentStep === 1 || isSaving}
               >
-                <ChevronRight className="ml-2 w-5 h-5" />
+                <ChevronRight className='ml-2 h-5 w-5' />
                 הקודם
               </Button>
               {currentStep < STEPS_CONFIG.length ? (
                 <Button
                   onClick={nextStep}
-                  className="font-semibold"
+                  className='font-semibold'
                   disabled={isSaving}
                   variant={
                     currentStep === STEPS_CONFIG.length - 1
-                      ? "accent"
-                      : "default"
+                      ? 'accent'
+                      : 'default'
                   }
                 >
                   {currentStep === STEPS_CONFIG.length - 1
-                    ? "סקירה וסיום"
-                    : "הבא"}
-                  <ChevronLeft className="mr-2 w-5 h-5" />
+                    ? 'סקירה וסיום'
+                    : 'הבא'}
+                  <ChevronLeft className='mr-2 h-5 w-5' />
                 </Button>
               ) : (
                 <Button
                   onClick={handleFinalizeAndSave}
-                  size="lg"
-                  variant="accent"
-                  className="font-semibold"
+                  size='lg'
+                  variant='accent'
+                  className='font-semibold'
                   disabled={isSaving}
                 >
                   {isSaving ? (
-                    <Loader2 className="animate-spin ml-2" />
+                    <Loader2 className='ml-2 animate-spin' />
                   ) : (
-                    <Save className="ml-2 h-5 w-5" />
+                    <Save className='ml-2 h-5 w-5' />
                   )}
-                  {isSaving ? "שומר..." : "שמור טיוטה ועבור לפרטים"}
+                  {isSaving ? 'שומר...' : 'שמור טיוטה ועבור לפרטים'}
                 </Button>
               )}
             </CardFooter>
           </Card>
         </div>
 
-        <div className="lg:col-span-4 order-2 lg:order-3 lg:sticky lg:top-28 self-start h-fit">
+        <div className='order-2 h-fit self-start lg:sticky lg:top-28 lg:order-3 lg:col-span-4'>
           <ContractLivePreview
             template={template}
             formData={formData}

@@ -1,5 +1,5 @@
 // src/app/templates/[templateId]/page.tsx
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation';
 
 // No 'use client' here - this is a Server Component
 
@@ -23,7 +23,7 @@ export default async function TemplateRedirectPage({
   } else {
     // This case should ideally not happen if templateId is always present in the route.
     // Redirect to the general templates page as a fallback.
-    redirect("/templates");
+    redirect('/templates');
   }
 
   // This component will not actually render anything visible because the redirect occurs before rendering.

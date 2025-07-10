@@ -1,4 +1,10 @@
-import { doc, setDoc, getDoc, serverTimestamp, type Timestamp } from 'firebase/firestore';
+import {
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp,
+  type Timestamp,
+} from 'firebase/firestore';
 import { getClientDb } from '@/lib/firebase';
 import type { User as FirebaseUser } from 'firebase/auth';
 
@@ -9,12 +15,15 @@ interface UserProfileData {
   photoURL: string | null;
   createdAt: Timestamp;
   subscriptionTier: string;
-  [key: string]: any; 
+  [key: string]: any;
 }
 
-export const createUserProfileDocument = async (userAuth: FirebaseUser, additionalData: Record<string, any> = {}) => {
+export const createUserProfileDocument = async (
+  userAuth: FirebaseUser,
+  additionalData: Record<string, any> = {}
+) => {
   if (!userAuth) return;
-  
+
   const db = getClientDb();
   const userRef = doc(db, `users/${userAuth.uid}`);
   const snapshot = await getDoc(userRef);
@@ -33,7 +42,7 @@ export const createUserProfileDocument = async (userAuth: FirebaseUser, addition
     try {
       await setDoc(userRef, profileData);
     } catch (error) {
-      console.error("Error creating user document", error);
+      console.error('Error creating user document', error);
       throw error; // Re-throw to be caught by caller
     }
   }

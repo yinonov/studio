@@ -1,4 +1,3 @@
-
 // This component was part of the original "Chetz Contracts" structure.
 // The new provided code does not include an AI Clause Generator.
 // If this functionality is still desired, it would need to be integrated
@@ -11,9 +10,16 @@ import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 // Assuming customizeContractClause is still relevant and available
-// import { customizeContractClause } from '@/ai/flows/customize-contract-clause'; 
+// import { customizeContractClause } from '@/ai/flows/customize-contract-clause';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle, RefreshCw } from 'lucide-react';
 
@@ -21,7 +27,9 @@ interface AiClauseGeneratorProps {
   onAddClause: (description: string, legalWording: string) => void;
 }
 
-export default function AiClauseGenerator({ onAddClause }: AiClauseGeneratorProps) {
+export default function AiClauseGenerator({
+  onAddClause,
+}: AiClauseGeneratorProps) {
   const [userDescription, setUserDescription] = useState('');
   const [generatedClause, setGeneratedClause] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -42,10 +50,16 @@ export default function AiClauseGenerator({ onAddClause }: AiClauseGeneratorProp
       // const result = await customizeContractClause({ userDescription });
       // setGeneratedClause(result.legalWording);
       // Mocking AI response for now as customizeContractClause might not be set up
-      setGeneratedClause(`ניסוח משפטי לדוגמה עבור: "${userDescription}". זהו טקסט פלייסהולדר.`);
-       toast({ title: 'הדגמה', description: 'סעיף נוצר (הדגמה).', variant: 'default' });
+      setGeneratedClause(
+        `ניסוח משפטי לדוגמה עבור: "${userDescription}". זהו טקסט פלייסהולדר.`
+      );
+      toast({
+        title: 'הדגמה',
+        description: 'סעיף נוצר (הדגמה).',
+        variant: 'default',
+      });
     } catch (error) {
-      console.error("AI clause generation error:", error);
+      console.error('AI clause generation error:', error);
       toast({
         title: 'שגיאה ביצירת סעיף',
         description: 'לא ניתן היה ליצור את הסעיף המבוקש. אנא נסו שוב.',
@@ -60,7 +74,7 @@ export default function AiClauseGenerator({ onAddClause }: AiClauseGeneratorProp
     if (generatedClause && userDescription) {
       onAddClause(userDescription, generatedClause);
       setGeneratedClause('');
-      setUserDescription(''); 
+      setUserDescription('');
       toast({
         title: 'הצלחה',
         description: 'הסעיף המותאם אישית נוסף לחוזה.',
@@ -69,41 +83,63 @@ export default function AiClauseGenerator({ onAddClause }: AiClauseGeneratorProp
   };
 
   return (
-    <Card className="shadow-lg border-primary/20">
-      <CardHeader className="bg-primary/10">
-        <CardTitle className="text-2xl font-headline text-primary-foreground/90">הוספת סעיף מותאם אישית (AI)</CardTitle>
-        <CardDescription className="text-muted-foreground">
+    <Card className='border-primary/20 shadow-lg'>
+      <CardHeader className='bg-primary/10'>
+        <CardTitle className='font-headline text-2xl text-primary-foreground/90'>
+          הוספת סעיף מותאם אישית (AI)
+        </CardTitle>
+        <CardDescription className='text-muted-foreground'>
           (הדגמה) תארו בשפה פשוטה את הסעיף, והמערכת תיצור ניסוח משפטי.
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-6 space-y-4">
+      <CardContent className='space-y-4 p-6'>
         <div>
-          <Label htmlFor="clauseDescription" className="text-md font-medium text-foreground/80">תיאור הסעיף:</Label>
+          <Label
+            htmlFor='clauseDescription'
+            className='text-md font-medium text-foreground/80'
+          >
+            תיאור הסעיף:
+          </Label>
           <Textarea
-            id="clauseDescription"
+            id='clauseDescription'
             value={userDescription}
-            onChange={(e) => setUserDescription(e.target.value)}
-            placeholder="לדוגמה: איסור על הכנסת בעלי חיים..."
+            onChange={e => setUserDescription(e.target.value)}
+            placeholder='לדוגמה: איסור על הכנסת בעלי חיים...'
             rows={3}
-            className="mt-1"
+            className='mt-1'
           />
         </div>
-        <Button onClick={handleGenerateClause} disabled={isLoading || !userDescription.trim()} className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
-          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+        <Button
+          onClick={handleGenerateClause}
+          disabled={isLoading || !userDescription.trim()}
+          className='w-full bg-accent text-accent-foreground hover:bg-accent/90 md:w-auto'
+        >
+          {isLoading ? (
+            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+          ) : (
+            <RefreshCw className='mr-2 h-4 w-4' />
+          )}
           {isLoading ? 'יוצר סעיף...' : 'צור סעיף (הדגמה)'}
         </Button>
-        
+
         {generatedClause && (
-          <div className="mt-4 p-4 border border-dashed border-accent rounded-md bg-accent/5">
-            <Label className="text-md font-medium text-foreground/80">הסעיף שנוצר:</Label>
-            <p className="mt-1 text-sm whitespace-pre-wrap">{generatedClause}</p>
+          <div className='mt-4 rounded-md border border-dashed border-accent bg-accent/5 p-4'>
+            <Label className='text-md font-medium text-foreground/80'>
+              הסעיף שנוצר:
+            </Label>
+            <p className='mt-1 whitespace-pre-wrap text-sm'>
+              {generatedClause}
+            </p>
           </div>
         )}
       </CardContent>
       {generatedClause && (
-        <CardFooter className="p-6">
-          <Button onClick={handleAddClauseToContract} className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white">
-            <PlusCircle className="mr-2 h-4 w-4" />
+        <CardFooter className='p-6'>
+          <Button
+            onClick={handleAddClauseToContract}
+            className='w-full bg-green-600 text-white hover:bg-green-700 md:w-auto'
+          >
+            <PlusCircle className='mr-2 h-4 w-4' />
             הוסף סעיף זה לחוזה
           </Button>
         </CardFooter>

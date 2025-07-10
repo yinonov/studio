@@ -5,6 +5,7 @@ This project uses Playwright for end-to-end testing, providing comprehensive cov
 ## Test Structure
 
 ### 🎭 Playwright E2E Tests
+
 Located in `tests/e2e/`, these tests cover:
 
 - **Navigation & UI** (`navigation.spec.ts`)
@@ -80,7 +81,7 @@ import { AuthHelper, ContractHelper, TestData } from './helpers';
 test('should create contract after login', async ({ page }) => {
   const auth = new AuthHelper(page);
   const contract = new ContractHelper(page);
-  
+
   await auth.loginWithEmail(TestData.user.email, TestData.user.password);
   await contract.createRentalContract(TestData.contract.rental);
   await contract.expectContractCreated();
@@ -95,19 +96,20 @@ Tests use Hebrew text and realistic Israeli data:
 const testData = {
   user: {
     email: 'test@example.com',
-    name: 'משתמש בדיקה'
+    name: 'משתמש בדיקה',
   },
   contract: {
     party1Name: 'ישראל ישראלי',
     party2Name: 'שרה לוי',
-    address: 'הרצל 1, תל אביב'
-  }
+    address: 'הרצל 1, תל אביב',
+  },
 };
 ```
 
 ## CI/CD Integration
 
 Tests run automatically on:
+
 - Push to `main` or `develop` branches
 - Pull requests
 - Uses GitHub Actions with Ubuntu runners
@@ -123,18 +125,21 @@ Tests run automatically on:
 ## Best Practices
 
 ### 🎯 Test Strategy
+
 - Focus on user journeys, not implementation details
 - Test critical paths: auth, contract creation, signing
 - Use data-testid attributes for stable selectors
 - Handle loading states and async operations
 
 ### 🔧 Writing Tests
+
 - Use Hebrew text matching for UI elements
 - Handle authentication states properly
 - Test both success and error scenarios
 - Keep tests independent and isolated
 
 ### 📱 Cross-Browser Testing
+
 - Test on multiple browsers (Chrome, Firefox, Safari)
 - Include mobile viewports
 - Verify responsive design
@@ -142,34 +147,41 @@ Tests run automatically on:
 ## Recommended Next Steps
 
 ### 1. Add Unit Tests (Jest + RTL)
+
 ```bash
 npm install -D jest @testing-library/react @testing-library/jest-dom
 ```
 
 For testing:
+
 - Individual React components
 - Utility functions
 - Form validation logic
 - Firebase service functions
 
 ### 2. Add Integration Tests
+
 For testing:
+
 - API endpoints
 - Firebase Functions
 - Database operations
 - External service integrations
 
 ### 3. Add Visual Regression Tests
+
 ```bash
 npm install -D @playwright/test
 ```
 
 For testing:
+
 - UI consistency
 - Design system compliance
 - Cross-browser visual differences
 
 ### 4. Performance Testing
+
 - Lighthouse CI integration
 - Core Web Vitals monitoring
 - Load testing for contract generation
@@ -190,6 +202,7 @@ NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID=your_client_id
 ### Test Database
 
 Consider using Firebase Emulator Suite for:
+
 - Isolated test environment
 - Consistent test data
 - Faster test execution
