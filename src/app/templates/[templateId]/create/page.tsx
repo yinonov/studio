@@ -193,17 +193,25 @@ export default function ContractCreationPage() {
         const existingContractId = queryParams.get("contractId");
 
         let initialData: Record<string, string> = {};
-        (fetchedTemplate.fields || []).forEach((field: { id: string; label: string; type: string; placeholder?: string; required?: boolean }) => {
-          if (
-            field.id &&
-            fetchedTemplate.defaultValues &&
-            fetchedTemplate.defaultValues[field.id]
-          ) {
-            initialData[field.id] = fetchedTemplate.defaultValues[field.id];
-          } else if (field.id) {
-            initialData[field.id] = "";
+        (fetchedTemplate.fields || []).forEach(
+          (field: {
+            id: string;
+            label: string;
+            type: string;
+            placeholder?: string;
+            required?: boolean;
+          }) => {
+            if (
+              field.id &&
+              fetchedTemplate.defaultValues &&
+              fetchedTemplate.defaultValues[field.id]
+            ) {
+              initialData[field.id] = fetchedTemplate.defaultValues[field.id];
+            } else if (field.id) {
+              initialData[field.id] = "";
+            }
           }
-        });
+        );
         if (!initialData.contractTitle && fetchedTemplate.title) {
           initialData.contractTitle = fetchedTemplate.title;
         }
