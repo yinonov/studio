@@ -9,11 +9,13 @@
 ## 📊 Current Test Status
 
 ### ✅ **PASSING Tests (All Green)**
+
 - **Unit Tests**: 18/18 ✅ (100% pass rate)
 - **Navigation Tests**: 24/24 ✅ (Basic UI navigation)
 - **Investigation Tests**: 6/6 ✅ (Page content debugging)
 
 ### ⏸️ **DISABLED Tests (Temporarily Skipped)**
+
 - **Authentication Tests**: 32 tests skipped
 - **Template Management**: 33 tests skipped  
 - **Contract Management**: 40 tests skipped
@@ -26,6 +28,7 @@
 ## 🚀 Test Scripts Available
 
 ### Core Tests (Recommended for CI)
+
 ```bash
 npm run test:core        # Unit + Basic E2E (All passing)
 npm run test:unit        # Just unit tests
@@ -33,6 +36,7 @@ npm run test:e2e:core    # Just basic E2E tests
 ```
 
 ### Full Test Suite (Contains disabled tests)
+
 ```bash
 npm run test:all         # All tests (170 skipped, 30 pass)
 npm run test:e2e         # All E2E tests (mostly skipped)
@@ -47,7 +51,8 @@ Tests are disabled with `test.describe.skip()` and clear TODO comments:
 test.describe.skip("Authentication Flow", () => {
 ```
 
-### Re-enable Process:
+### Re-enable Process
+
 1. **Implement the feature** (e.g., authentication UI)
 2. **Change** `test.describe.skip` → `test.describe`
 3. **Run tests** to verify they pass
@@ -56,7 +61,8 @@ test.describe.skip("Authentication Flow", () => {
 
 ## 📁 Files Modified
 
-### Test Files (Disabled):
+### Test Files (Disabled)
+
 - `tests/e2e/auth.spec.ts` - Authentication flow tests
 - `tests/e2e/templates.spec.ts` - Template management tests  
 - `tests/e2e/contracts.spec.ts` - Contract management tests
@@ -64,18 +70,21 @@ test.describe.skip("Authentication Flow", () => {
 - `tests/e2e/performance.spec.ts` - Performance tests
 - `tests/e2e/full-workflow.spec.ts` - End-to-end workflow tests
 
-### Config Files Updated:
+### Config Files Updated
+
 - `package.json` - Added `test:core` and `test:e2e:core` scripts
 - `.gitignore` - Added test artifacts (`/test-results`, `/playwright-report`)
 
 ## 🎯 CI/CD Impact
 
 ### ✅ **Deployment Workflow Now Works**
+
 - Tests pass consistently ✅
 - CI pipeline won't be blocked ✅  
 - Can deploy when features are ready ✅
 
 ### 🔄 **Development Workflow**
+
 1. Develop features incrementally
 2. Re-enable tests as features complete
 3. Maintain green CI throughout development
