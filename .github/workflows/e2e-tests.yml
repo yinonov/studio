@@ -5,6 +5,7 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  workflow_call:
 
 jobs:
   unit-tests:
@@ -34,6 +35,8 @@ jobs:
   e2e-tests:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.40.0-jammy
     
     steps:
     - uses: actions/checkout@v4
@@ -47,9 +50,6 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-    
     - name: Build application
       run: npm run build
     
@@ -57,6 +57,7 @@ jobs:
       run: npm run test:e2e
       env:
         CI: true
+        HOME: /root
     
     - name: Upload Playwright Report
       uses: actions/upload-artifact@v4
