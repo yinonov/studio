@@ -421,7 +421,10 @@ export default function ContractViewPage() {
       client.on('error', (err: any) => {
         toast({
           title: 'שגיאה בתהליך החתימה',
-          description: typeof err === 'string' ? err : err?.message || 'אירעה שגיאה בתהליך החתימה',
+          description:
+            typeof err === 'string'
+              ? err
+              : err?.message || 'אירעה שגיאה בתהליך החתימה',
           variant: 'destructive',
         });
       });
