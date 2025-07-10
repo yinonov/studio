@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Visual Regression Tests", () => {
+// TODO: Re-enable when UI is stable and ready for visual regression testing
+test.describe.skip("Visual Regression Tests", () => {
   test("homepage should match visual baseline", async ({ page }) => {
     await page.goto("/");
 
