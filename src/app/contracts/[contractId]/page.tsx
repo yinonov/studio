@@ -37,6 +37,7 @@ import {
   PenSquare,
   Clock,
   CheckCircle,
+  Download,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -564,6 +565,16 @@ export default function ContractViewPage() {
                       הכן ושלח לחתימה
                     </Button>
                   </>
+                )}
+                {signatureRequest?.filesUrl && (
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => window.open(signatureRequest.filesUrl, '_blank')}
+                  >
+                    <Download className='ml-2 h-4 w-4' />
+                    הורד גרסה נוכחית
+                  </Button>
                 )}
                 <Button variant='outline' size='sm' onClick={handleCopyLink}>
                   <Copy className='ml-2 h-4 w-4' />

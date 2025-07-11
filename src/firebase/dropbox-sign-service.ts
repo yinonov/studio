@@ -7,9 +7,9 @@ import { httpsCallable } from 'firebase/functions';
  * @param contractId The contract ID
  * @returns The Dropbox Sign signature request object
  */
-export async function fetchDropboxSignSignatureRequest(contractId: string) {
+export async function fetchDropboxSignSignatureRequest(contractId: string): Promise<{ signatureRequest: SignatureRequestGetResponse['signatureRequest'] }> {
   const functions = getClientFunctions();
-  const getDropboxSignData = httpsCallable<string, SignatureRequestGetResponse>(
+  const getDropboxSignData = httpsCallable<string, { signatureRequest: SignatureRequestGetResponse['signatureRequest'] }>(
     functions,
     'getContractDropboxSignData'
   );

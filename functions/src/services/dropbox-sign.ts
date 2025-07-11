@@ -55,12 +55,14 @@ export const createDropboxSignSignatureRequest: () => Promise<
     name: 'Jack',
     emailAddress: 'jack@example.com',
     order: 0,
+    role: 'signer1',
   };
 
   const signers2: SubSignatureRequestSigner = {
     name: 'Jill',
     emailAddress: 'jill@example.com',
     order: 1,
+    role: 'signer2',
   };
 
   functions.logger.info('Signers defined', {
@@ -134,6 +136,7 @@ export const createDropboxSignSignatureRequest: () => Promise<
       files: [fs.createReadStream(tempHtmlPath)],
       signingOptions: signingOptions,
       signers: signers,
+      useTextTags: true,
     };
 
   functions.logger.info('About to call signatureRequestCreateEmbedded', {
