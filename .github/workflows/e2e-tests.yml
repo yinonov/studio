@@ -95,15 +95,37 @@ jobs:
       - name: Build application
         run: npm run build
 
-      - name: Start application
-        run: npm start &
+      - name: Install wait-on globally
+        run: npm install -g wait-on
 
-      - name: Wait for server
-        run: npx wait-on http://localhost:3000
+      - name: Start application in background
+        run: |
+          nohup npm start > server.log 2>&1 &
+          echo $! > server.pid
+
+      - name: Wait for server to be ready
+        run: wait-on http://localhost:3000 --timeout 60000
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.12.x
 
       - name: Run Lighthouse CI
-        run: |
-          npm install -g @lhci/cli@0.12.x
-          lhci autorun
+        run: lhci autorun
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill $(cat server.pid) || true
+            rm server.pid
+          fi
+
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: server.log
+          retention-days: 7
