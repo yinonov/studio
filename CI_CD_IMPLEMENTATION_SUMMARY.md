@@ -37,14 +37,6 @@
 - **Coverage Strategy**: Focused approach documentation
 - **CI/CD Guide**: Comprehensive workflow explanation
 
-### 6. **Server Management & CI Fixes** 🆕
-
-- **Playwright Configuration**: Automatic server startup for E2E tests
-- **Production Build Testing**: CI uses `npm start` for production testing
-- **Server Lifecycle Management**: Proper server start/stop in Lighthouse tests
-- **Wait-on Dependency**: Added for reliable server readiness checks
-- **Improved Timeouts**: Extended server startup timeout to 2 minutes
-
 ## 📊 **Current Status**
 
 ### ✅ **Working & Tested**
@@ -54,19 +46,18 @@
 - **Build Process**: Next.js + Functions build successfully
 - **CI Workflows**: All 4 workflows created and ready
 
-### ⚠️ **Known Issues - RESOLVED** ✅
+### ⚠️ **Known Issues**
 
-- ~~**Server Management**: Fixed server startup issues in CI~~
-- ~~**TypeScript Errors**: Fixed HelloSign error handling~~
+- **Playwright Browsers**: Need installation for local E2E testing
 - **ESLint Warnings**: 60+ existing code quality issues (non-breaking)
+- **E2E Testing**: Works in CI containers, needs browser setup locally
 
 ### 🔄 **Next Steps**
 
-1. ~~Complete Playwright browser installation~~ ✅ Done
-2. ~~Fix server startup issues in CI~~ ✅ Done
-3. Address ESLint warnings gradually
-4. Re-enable tests as features are completed
-5. Set up GitHub repository secrets for deployment
+1. Complete Playwright browser installation
+2. Address ESLint warnings gradually
+3. Re-enable tests as features are completed
+4. Set up GitHub repository secrets for deployment
 
 ## 🛠️ **Available Commands**
 

@@ -7,26 +7,20 @@
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
-    "start": "next start -p 3000 -H 0.0.0.0",
+    "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "quality": "npm run typecheck && npm run lint && npm run format:check",
-    "quality:fix": "npm run typecheck && npm run lint:fix && npm run format",
     "emu": "firebase emulators:start",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:unit": "jest tests/unit",
     "test:e2e": "playwright test",
-    "test:e2e:core": "playwright test tests/e2e/navigation.spec.ts tests/e2e/investigate.spec.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "playwright test --debug",
-    "test:all": "npm run test:unit && npm run test:e2e",
-    "test:core": "npm run test:unit && npm run test:e2e:core"
+    "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
     "@genkit-ai/googleai": "1.7.0",
@@ -91,7 +85,6 @@
     "prettier-plugin-tailwindcss": "^0.6.14",
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5",
-    "wait-on": "^8.0.3"
+    "typescript": "^5"
   }
 }

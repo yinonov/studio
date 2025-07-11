@@ -20,14 +20,7 @@ const config: Config = {
     "<rootDir>/src/**/*.test.{js,jsx,ts,tsx}",
   ],
   collectCoverageFrom: [
-    "src/components/ui/button.tsx",
-    "src/components/ui/input.tsx", 
-    "src/components/ui/label.tsx",
-    "src/components/ui/textarea.tsx",
-    "src/components/shared/FormInput.tsx",
-    "src/lib/utils.ts",
-    // TODO: Add more files as tests are written
-    // "src/**/*.{js,jsx,ts,tsx}",
+    "src/**/*.{js,jsx,ts,tsx}",
     "!src/**/*.d.ts",
     "!src/app/**/layout.tsx",
     "!src/app/**/loading.tsx",
@@ -35,10 +28,10 @@ const config: Config = {
   ],
   coverageThreshold: {
     global: {
-      branches: 60,
-      functions: 100,
-      lines: 100,
-      statements: 100,
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
     },
   },
 };
