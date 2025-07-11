@@ -91,9 +91,7 @@ export const getContractDropboxSignData = onCall(async (data, _context) => {
     const signatureRequestGetResponse = await getDropboxSignSignatureRequest(
       dropboxSignSignatureRequestId
     );
-    return {
-      signatureRequest: signatureRequestGetResponse.signatureRequest,
-    };
+    return signatureRequestGetResponse;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : error;
     throw new functions.https.HttpsError(
