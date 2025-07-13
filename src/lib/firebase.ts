@@ -36,12 +36,12 @@ function getClientApp() {
   }
 
   const firebaseConfig = {
-    apiKey: "AIzaSyD8SkiPGIznzCAu5tc60jx3kpXLydbLi6A",
-    authDomain: "smart-contracts-254e8.firebaseapp.com",
-    projectId: "smart-contracts-254e8",
-    storageBucket: "smart-contracts-254e8.firebasestorage.app",
-    messagingSenderId: "424761640128",
-    appId: "1:424761640128:web:ae3aaa134ccf03fcafd925",
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   };
 
   app = initializeApp(firebaseConfig);
