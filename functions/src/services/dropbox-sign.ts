@@ -15,20 +15,33 @@ import { EmbeddedApi } from "@dropbox/sign";
 const dropboxSignApiKeyParam = defineString("DROPBOX_SIGN_API_KEY");
 const dropboxSignClientIdParam = defineString("DROPBOX_SIGN_CLIENT_ID");
 
+interface CreateSignatureRequestParams {
+  contractTitle: string;
+  contractHtml: string;
+  signers: Array<{
+    name: string;
+    email: string;
+    order: number;
+  }>;
+}
+
 /**
  * Creates a Dropbox Sign signature request and returns its ID.
  *
+ * @param params Contract parameters including HTML content and signers
  * @returns The Dropbox Sign signature request ID or null.
  */
-export const createDropboxSignSignatureRequest: () => Promise<
-  SignatureRequestResponse["signatureRequestId"]
-> = async () => {
+export const createDropboxSignSignatureRequest = async (
+  params: CreateSignatureRequestParams
+): Promise<SignatureRequestResponse["signatureRequestId"]> => {
   const dropboxSignApiKey = dropboxSignApiKeyParam.value();
   const dropboxSignClientId = dropboxSignClientIdParam.value();
 
-  functions.logger.info("getEmbeddedSignUrl called", {
+  functions.logger.info("createDropboxSignSignatureRequest called", {
     dropboxSignApiKeyPresent: !!dropboxSignApiKey,
     dropboxSignClientIdPresent: !!dropboxSignClientId,
+    contractTitle: params.contractTitle,
+    signersCount: params.signers.length,
   });
 
   functions.logger.info("Initializing Dropbox Sign API client", {
@@ -51,73 +64,27 @@ export const createDropboxSignSignatureRequest: () => Promise<
     upload: true,
   };
 
-  const signers1: SubSignatureRequestSigner = {
-    name: "Jack",
-    emailAddress: "jack@example.com",
-    order: 0,
-  };
-
-  const signers2: SubSignatureRequestSigner = {
-    name: "Jill",
-    emailAddress: "jill@example.com",
-    order: 1,
-  };
+  // Convert the signers to Dropbox Sign format
+  const dropboxSignSigners: SubSignatureRequestSigner[] = params.signers.map((signer) => ({
+    name: signer.name,
+    emailAddress: signer.email,
+    order: signer.order,
+  }));
 
   functions.logger.info("Signers defined", {
-    signers1: { name: signers1.name, email: signers1.emailAddress },
-    signers2: { name: signers2.name, email: signers2.emailAddress },
+    signers: dropboxSignSigners.map((s) => ({ name: s.name, email: s.emailAddress, order: s.order })),
   });
 
-  const signers = [signers1, signers2];
-
-  // Create a dummy HTML file in the temp directory
-  const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Dummy Test Contract for Signing</title>
-  <style>
-    body { font-family: 'Helvetica', 'Arial', sans-serif; padding: 40px; text-align: right; direction: rtl;}
-    h1 { font-size: 24px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-    p { line-height: 1.6; }
-    .sig-container {
-      border: 1px solid #ccc;
-      padding: 15px;
-      margin-top: 20px;
-      margin-bottom: 20px;
-      width: 250px;
-      background-color: #f9f9f9;
-    }
-  </style>
-</head>
-<body>
-  <h1>Dummy Test Contract for Signing</h1>
-  <p>זהו חוזה בדיקה שנוצר למטרות ניפוי שגיאות.</p>
-  <p><strong>נתוני בדיקה:</strong> {"testField": "Some test data for the contract body."}</p>
-  <br/><br/><br/><br/>
-  <p><strong>חתימה עבור צד א':</strong></p>
-  <div class="sig-container">
-    [sig|req|signer1|נא לחתום כאן]
-  </div>
-  <p><strong>חתימה עבור צד ב':</strong></p>
-   <div class="sig-container">
-    [sig|req|signer2|נא לחתום כאן]
-  </div>
-</body>
-</html>`;
-
-  functions.logger.info("Creating dummy HTML content for Dropbox Sign", {
-    htmlContent: htmlContent.slice(0, 100) + "...", // Log only the first 100 characters
-  });
-  const tempHtmlPath = os.tmpdir() + "/dummy-contract-" + Date.now() + ".html";
-  fs.writeFileSync(tempHtmlPath, htmlContent, "utf-8");
-  functions.logger.info("Created dummy HTML file for Dropbox Sign", {
+  // Create HTML file with the actual contract content in the temp directory
+  const tempHtmlPath = os.tmpdir() + "/contract-" + Date.now() + ".html";
+  fs.writeFileSync(tempHtmlPath, params.contractHtml, "utf-8");
+  functions.logger.info("Created contract HTML file for Dropbox Sign", {
     tempHtmlPath,
     fileExists: fs.existsSync(tempHtmlPath),
+    htmlLength: params.contractHtml.length,
   });
 
   functions.logger.info("HTML created", {
-    htmlContent: htmlContent.slice(0, 100) + "...", // Log only the first 100 characters
     tempHtmlPath,
     fileExists: fs.existsSync(tempHtmlPath),
   });
@@ -126,20 +93,19 @@ export const createDropboxSignSignatureRequest: () => Promise<
     {
       clientId: dropboxSignClientId,
       message:
-        "Please sign this NDA and then we can discuss more. Let me know if you\nhave any questions.",
-      subject: "The NDA we talked about",
+        "Please sign this contract. Let me know if you have any questions.",
+      subject: params.contractTitle,
       testMode: true,
-      title: "NDA with Acme Co.",
-      ccEmailAddresses: ["lawyer1@dropboxsign.com", "lawyer2@dropboxsign.com"],
+      title: params.contractTitle,
       files: [fs.createReadStream(tempHtmlPath)],
       signingOptions: signingOptions,
-      signers: signers,
+      signers: dropboxSignSigners,
     };
 
   functions.logger.info("About to call signatureRequestCreateEmbedded", {
     request: {
       clientId: dropboxSignClientId,
-      signers,
+      signers: dropboxSignSigners,
       fileExists: fs.existsSync(tempHtmlPath),
     },
   });
