@@ -1,19 +1,19 @@
-import { defineString } from 'firebase-functions/params';
-import * as fs from 'fs';
+import { defineString } from "firebase-functions/params";
+import * as fs from "fs";
 import {
   SignatureRequestApi,
   SignatureRequestCreateEmbeddedRequest,
   type SignatureRequestResponse,
   SubSignatureRequestSigner,
   SubSigningOptions,
-} from '@dropbox/sign';
-import * as functions from 'firebase-functions';
-import * as os from 'os';
-import { EmbeddedApi } from '@dropbox/sign';
+} from "@dropbox/sign";
+import * as functions from "firebase-functions";
+import * as os from "os";
+import { EmbeddedApi } from "@dropbox/sign";
 
 // Define Firebase params for security
-const dropboxSignApiKeyParam = defineString('DROPBOX_SIGN_API_KEY');
-const dropboxSignClientIdParam = defineString('DROPBOX_SIGN_CLIENT_ID');
+const dropboxSignApiKeyParam = defineString("DROPBOX_SIGN_API_KEY");
+const dropboxSignClientIdParam = defineString("DROPBOX_SIGN_CLIENT_ID");
 
 /**
  * Creates a Dropbox Sign signature request and returns its ID.
@@ -21,17 +21,17 @@ const dropboxSignClientIdParam = defineString('DROPBOX_SIGN_CLIENT_ID');
  * @returns The Dropbox Sign signature request ID or null.
  */
 export const createDropboxSignSignatureRequest: () => Promise<
-  SignatureRequestResponse['signatureRequestId']
+  SignatureRequestResponse["signatureRequestId"]
 > = async () => {
   const dropboxSignApiKey = dropboxSignApiKeyParam.value();
   const dropboxSignClientId = dropboxSignClientIdParam.value();
 
-  functions.logger.info('getEmbeddedSignUrl called', {
+  functions.logger.info("getEmbeddedSignUrl called", {
     dropboxSignApiKeyPresent: !!dropboxSignApiKey,
     dropboxSignClientIdPresent: !!dropboxSignClientId,
   });
 
-  functions.logger.info('Initializing Dropbox Sign API client', {
+  functions.logger.info("Initializing Dropbox Sign API client", {
     dropboxSignApiKey: dropboxSignApiKey,
     dropboxSignClientId: dropboxSignClientId,
   });
@@ -39,7 +39,7 @@ export const createDropboxSignSignatureRequest: () => Promise<
   const apiCaller = new SignatureRequestApi();
   apiCaller.username = dropboxSignApiKey;
 
-  functions.logger.info('Dropbox Sign API initialized', {
+  functions.logger.info("Dropbox Sign API initialized", {
     username: apiCaller.username,
   });
 
@@ -52,18 +52,18 @@ export const createDropboxSignSignatureRequest: () => Promise<
   };
 
   const signers1: SubSignatureRequestSigner = {
-    name: 'Jack',
-    emailAddress: 'jack@example.com',
+    name: "Jack",
+    emailAddress: "jack@example.com",
     order: 0,
   };
 
   const signers2: SubSignatureRequestSigner = {
-    name: 'Jill',
-    emailAddress: 'jill@example.com',
+    name: "Jill",
+    emailAddress: "jill@example.com",
     order: 1,
   };
 
-  functions.logger.info('Signers defined', {
+  functions.logger.info("Signers defined", {
     signers1: { name: signers1.name, email: signers1.emailAddress },
     signers2: { name: signers2.name, email: signers2.emailAddress },
   });
@@ -106,18 +106,18 @@ export const createDropboxSignSignatureRequest: () => Promise<
 </body>
 </html>`;
 
-  functions.logger.info('Creating dummy HTML content for Dropbox Sign', {
-    htmlContent: htmlContent.slice(0, 100) + '...', // Log only the first 100 characters
+  functions.logger.info("Creating dummy HTML content for Dropbox Sign", {
+    htmlContent: htmlContent.slice(0, 100) + "...", // Log only the first 100 characters
   });
-  const tempHtmlPath = os.tmpdir() + '/dummy-contract-' + Date.now() + '.html';
-  fs.writeFileSync(tempHtmlPath, htmlContent, 'utf-8');
-  functions.logger.info('Created dummy HTML file for Dropbox Sign', {
+  const tempHtmlPath = os.tmpdir() + "/dummy-contract-" + Date.now() + ".html";
+  fs.writeFileSync(tempHtmlPath, htmlContent, "utf-8");
+  functions.logger.info("Created dummy HTML file for Dropbox Sign", {
     tempHtmlPath,
     fileExists: fs.existsSync(tempHtmlPath),
   });
 
-  functions.logger.info('HTML created', {
-    htmlContent: htmlContent.slice(0, 100) + '...', // Log only the first 100 characters
+  functions.logger.info("HTML created", {
+    htmlContent: htmlContent.slice(0, 100) + "...", // Log only the first 100 characters
     tempHtmlPath,
     fileExists: fs.existsSync(tempHtmlPath),
   });
@@ -126,17 +126,17 @@ export const createDropboxSignSignatureRequest: () => Promise<
     {
       clientId: dropboxSignClientId,
       message:
-        'Please sign this NDA and then we can discuss more. Let me know if you\nhave any questions.',
-      subject: 'The NDA we talked about',
+        "Please sign this NDA and then we can discuss more. Let me know if you\nhave any questions.",
+      subject: "The NDA we talked about",
       testMode: true,
-      title: 'NDA with Acme Co.',
-      ccEmailAddresses: ['lawyer1@dropboxsign.com', 'lawyer2@dropboxsign.com'],
+      title: "NDA with Acme Co.",
+      ccEmailAddresses: ["lawyer1@dropboxsign.com", "lawyer2@dropboxsign.com"],
       files: [fs.createReadStream(tempHtmlPath)],
       signingOptions: signingOptions,
       signers: signers,
     };
 
-  functions.logger.info('About to call signatureRequestCreateEmbedded', {
+  functions.logger.info("About to call signatureRequestCreateEmbedded", {
     request: {
       clientId: dropboxSignClientId,
       signers,
@@ -148,17 +148,17 @@ export const createDropboxSignSignatureRequest: () => Promise<
     const response = await apiCaller.signatureRequestCreateEmbedded(
       signatureRequestCreateEmbeddedRequest
     );
-    functions.logger.info('Dropbox Sign API response', {
+    functions.logger.info("Dropbox Sign API response", {
       response: response.body,
     });
     // Clean up temp file with error handling
     try {
       fs.unlinkSync(tempHtmlPath);
-      functions.logger.info('Temp HTML file deleted successfully', {
+      functions.logger.info("Temp HTML file deleted successfully", {
         tempHtmlPath,
       });
     } catch (unlinkErr) {
-      functions.logger.error('Failed to delete temp HTML file', {
+      functions.logger.error("Failed to delete temp HTML file", {
         tempHtmlPath,
         error: unlinkErr,
       });
@@ -168,14 +168,14 @@ export const createDropboxSignSignatureRequest: () => Promise<
       response.body?.signatureRequest?.signatureRequestId;
     if (!signatureRequestId) {
       functions.logger.error(
-        'Dropbox Sign response missing signatureRequestId',
+        "Dropbox Sign response missing signatureRequestId",
         {
           response: response.body,
         }
       );
-      throw new Error('Dropbox Sign did not return a signatureRequestId');
+      throw new Error("Dropbox Sign did not return a signatureRequestId");
     }
-    functions.logger.info('Returning signatureRequestId', {
+    functions.logger.info("Returning signatureRequestId", {
       signatureRequestId,
     });
     return signatureRequestId;
@@ -183,14 +183,14 @@ export const createDropboxSignSignatureRequest: () => Promise<
     // Type guard for error with 'body' property
     let errorBody = error;
     if (
-      typeof error === 'object' &&
+      typeof error === "object" &&
       error !== null &&
-      Object.prototype.hasOwnProperty.call(error, 'body')
+      Object.prototype.hasOwnProperty.call(error, "body")
     ) {
       errorBody = (error as { body: unknown }).body;
     }
     functions.logger.error(
-      'Exception when calling SignatureRequestApi#signatureRequestCreateEmbedded:',
+      "Exception when calling SignatureRequestApi#signatureRequestCreateEmbedded:",
       errorBody
     );
     if (fs.existsSync(tempHtmlPath)) {
@@ -215,7 +215,7 @@ export const getDropboxSignSignatureRequest = async (
     const response = await apiCaller.signatureRequestGet(signatureRequestId);
     return response.body;
   } catch (error) {
-    functions.logger.error('Error fetching Dropbox Sign signature request', {
+    functions.logger.error("Error fetching Dropbox Sign signature request", {
       signatureRequestId,
       error,
     });
@@ -237,7 +237,7 @@ export const getEmbeddedSignUrl = async (signatureId: string) => {
     // The URL is in response.body.embedded.signUrl
     return response.body.embedded.signUrl;
   } catch (error) {
-    functions.logger.error('Error fetching embedded sign URL', {
+    functions.logger.error("Error fetching embedded sign URL", {
       signatureId,
       error,
     });

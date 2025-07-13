@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
 
 const HeroSection = () => (
   <section className='py-16 text-center sm:py-24'>

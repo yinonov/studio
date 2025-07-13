@@ -45,7 +45,7 @@ export class TestFirebaseHelper {
         });
         connectFirestoreEmulator(this.db, 'localhost', 8080);
         this.isEmulatorConnected = true;
-      } catch (error) {
+      } catch {
         console.warn('Firebase emulators not available, using real Firebase');
       }
     }

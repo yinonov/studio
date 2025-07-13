@@ -94,7 +94,7 @@ export default function DashboardPage() {
     try {
       const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
       return format(date, 'd בMMMM yyyy, HH:mm', { locale: he });
-    } catch (e) {
+    } catch {
       return 'תאריך לא תקין';
     }
   };

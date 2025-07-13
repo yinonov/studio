@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -75,7 +75,7 @@ export function HebrewSigningWrapper({
               hebrewInstructions
             );
           }
-        } catch (e) {
+        } catch {
           console.warn('Could not inject Hebrew instructions due to CORS');
         }
       }, 2000);
@@ -157,7 +157,7 @@ export function HebrewSigningWrapper({
           </p>
           <ul className='mr-4 list-inside list-disc space-y-1'>
             <li>יישמר חלון חתימה חדש</li>
-            <li>בחלון החדש, חפש כפתור "Sign" או "חתימה"</li>
+            <li>בחלון החדש, חפש כפתור &quot;Sign&quot; או &quot;חתימה&quot;</li>
             <li>לחץ על המקום המיועד לחתימה במסמך</li>
             <li>השלם את תהליך החתימה לפי ההוראות</li>
             <li>סגור את החלון כשתסיים</li>

@@ -192,7 +192,7 @@ export default function ContractCreationPage() {
             : new URLSearchParams('');
         const existingContractId = queryParams.get('contractId');
 
-        let initialData: Record<string, string> = {};
+        const initialData: Record<string, string> = {};
         (fetchedTemplate.fields || []).forEach(
           (field: {
             id: string;
@@ -223,7 +223,7 @@ export default function ContractCreationPage() {
             existingContract.ownerId === currentUser.uid
           ) {
             setContractId(existingContractId);
-            setFormData(prev => ({
+            setFormData(() => ({
               ...initialData,
               ...existingContract.formData,
               contractTitle:
@@ -518,7 +518,8 @@ export default function ContractCreationPage() {
         {fieldsForCurrentStep.length === 0 &&
           currentStep !== STEPS_CONFIG.length && (
             <p className='text-muted-foreground'>
-              אין שדות מוגדרים לשלב זה בתבנית. לחץ על "הבא" כדי להמשיך.
+              אין שדות מוגדרים לשלב זה בתבנית. לחץ על &quot;הבא&quot; כדי
+              להמשיך.
             </p>
           )}
       </div>

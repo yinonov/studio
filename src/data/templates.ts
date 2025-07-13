@@ -3,7 +3,7 @@
 // For this refactor, assuming Firestore is the source of truth.
 
 import type { LucideIcon } from 'lucide-react';
-import { FileText, Home } from 'lucide-react';
+import { Home } from 'lucide-react';
 
 export interface TemplateField {
   id: string;

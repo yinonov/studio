@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
@@ -104,7 +103,9 @@ export default function LoginPage() {
               if (recaptchaVerifierRef.current) {
                 try {
                   (recaptchaVerifierRef.current as any).clear();
-                } catch (e) {}
+                } catch {
+                  // Ignore clear errors
+                }
                 recaptchaVerifierRef.current = null;
               }
             },
@@ -126,7 +127,9 @@ export default function LoginPage() {
               // Attempt to clear if render fails
               try {
                 (recaptchaVerifierRef.current as any).clear();
-              } catch (e) {}
+              } catch {
+                // Ignore clear errors
+              }
             }
             recaptchaVerifierRef.current = null;
           });

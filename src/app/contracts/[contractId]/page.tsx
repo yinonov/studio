@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -233,7 +233,7 @@ export default function ContractViewPage() {
     try {
       const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
       return format(date, 'd בMMMM yyyy, HH:mm', { locale: he });
-    } catch (e) {
+    } catch {
       return 'תאריך לא תקין';
     }
   };
@@ -485,10 +485,6 @@ export default function ContractViewPage() {
     },
     // Future audit log items can be added here
   ];
-
-  const isReadyForSigning = ['out-for-signature', 'partially-signed'].includes(
-    contract.status
-  );
 
   // Heuristic: extract planned signers from formData
   function getPlannedSigners(formData: Record<string, any>) {

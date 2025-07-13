@@ -3,7 +3,9 @@ import { AuthHelper, ContractHelper, TestData } from './helpers';
 
 // TODO: Re-enable when full workflow features are implemented
 test.describe.skip('Full Contract Workflow', () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let authHelper: AuthHelper;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let contractHelper: ContractHelper;
 
   test.beforeEach(async ({ page }) => {
