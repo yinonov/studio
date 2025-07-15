@@ -8,6 +8,13 @@ export const UserSchema = z.object({
   photoURL: z.string().url().nullable().optional(),
   subscriptionTier: z.enum(['free', 'premium']).optional(),
   createdAt: z.any().optional(), // Firestore Timestamps are tricky with Zod
+  // Custom claims for roles
+  customClaims: z
+    .object({
+      admin: z.boolean().optional(),
+      role: z.enum(['admin', 'user']).optional(),
+    })
+    .optional(),
 });
 
 export type UserSchema = z.infer<typeof UserSchema>;

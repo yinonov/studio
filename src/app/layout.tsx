@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AdminProvider } from '@/contexts/AdminContext';
 
 export const metadata: Metadata = {
   title: 'חוזים חכמים | Smart Contracts IL',
@@ -33,12 +34,14 @@ export default function RootLayout({
       </head>
       <body className='flex min-h-screen flex-col bg-background text-foreground antialiased'>
         <AuthProvider>
-          <Header />
-          <main className='container mx-auto flex-grow px-4 py-8 sm:px-6 sm:py-12 lg:px-8'>
-            {children}
-          </main>
-          <Footer />
-          <Toaster />
+          <AdminProvider>
+            <Header />
+            <main className='container mx-auto flex-grow px-4 py-8 sm:px-6 sm:py-12 lg:px-8'>
+              {children}
+            </main>
+            <Footer />
+            <Toaster />
+          </AdminProvider>
         </AuthProvider>
       </body>
     </html>

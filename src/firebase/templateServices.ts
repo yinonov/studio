@@ -255,3 +255,6 @@ export const fetchTemplateById = async (
     return null;
   }
 };
+
+// Export defaultTemplates for admin sync functionality
+export { defaultTemplates };

@@ -46,6 +46,12 @@ env:
   availability:
     - BUILD
     - RUNTIME
+# AI features currently disabled - uncomment when enabling AI
+# - variable: GOOGLE_GENAI_API_KEY
+#   secret: google-genai-api-key
+#   availability:
+#     - BUILD
+#     - RUNTIME
 
 # For truly sensitive secrets, use Secret Manager:
 # - variable: DROPBOX_SIGN_API_KEY

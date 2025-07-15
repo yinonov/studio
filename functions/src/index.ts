@@ -475,3 +475,23 @@ export const getEmbeddedSignUrlForSigner = onCall(async (data, _context) => {
     );
   }
 });
+
+// Export admin role management functions
+export { setAdminRole, getAllUsersWithRoles, initializeFirstAdmin } from "./admin-roles";
+
+// Export admin template management functions
+export {
+  createTemplate,
+  updateTemplate,
+  deleteTemplate,
+  getAllTemplatesForAdmin,
+  syncDefaultTemplates,
+} from "./admin-templates";
+
+// Export admin user management functions
+export {
+  setAdminStatus,
+  getUserDetails,
+  listUsers,
+  makeInitialAdmin,
+} from "./admin-users";
