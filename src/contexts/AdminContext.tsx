@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isUserAdmin, isUserAdminSync } from '@/lib/admin';
+import { getClientAuth } from '@/lib/firebase';
 
 interface AdminContextType {
   isAdmin: boolean;
@@ -32,8 +33,19 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
     try {
       setIsCheckingAdmin(true);
-      const adminStatus = await isUserAdmin(currentUser);
-      setIsAdmin(adminStatus);
+      
+      // Get the actual Firebase user to check token claims
+      const auth = getClientAuth();
+      const firebaseUser = auth.currentUser;
+      
+      if (firebaseUser) {
+        // Get fresh token and check claims directly
+        const tokenResult = await firebaseUser.getIdTokenResult();
+        const adminStatus = tokenResult.claims.admin === true;
+        setIsAdmin(adminStatus);
+      } else {
+        setIsAdmin(false);
+      }
     } catch (error) {
       console.error('Error checking admin status:', error);
       setIsAdmin(false);

@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { makeInitialAdmin } from '@/firebase/adminUserServices';
 import { useToast } from '@/hooks/use-toast';
+import { getClientAuth } from '@/lib/firebase';
 
 export default function DebugPage() {
   const { currentUser, isFirebaseLoading } = useAuth();
@@ -68,6 +69,29 @@ export default function DebugPage() {
     } finally {
       setIsSettingAdmin(false);
       setConfirmEmail('');
+    }
+  };
+
+  const debugToken = async () => {
+    if (!currentUser) return;
+    
+    try {
+      const auth = getClientAuth();
+      const tokenResult = await auth.currentUser?.getIdTokenResult();
+      console.log('Current Token Claims:', tokenResult?.claims);
+      
+      // Force refresh and check again
+      await auth.currentUser?.getIdToken(true);
+      const refreshedTokenResult = await auth.currentUser?.getIdTokenResult();
+      console.log('Refreshed Token Claims:', refreshedTokenResult?.claims);
+      
+      toast({
+        title: 'Token Claims',
+        description: 'בדוק את הקונסול לפרטים',
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Error getting token:', error);
     }
   };
 
@@ -229,6 +253,12 @@ export default function DebugPage() {
                   disabled={isCheckingAdmin}
                 >
                   בדוק שוב
+                </Button>
+                <Button
+                  onClick={debugToken}
+                  variant='outline'
+                >
+                  בדוק Token (קונסול)
                 </Button>
               </div>
             )}
