@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import {
   updateTemplate,
   fetchAllTemplatesForAdmin,
 } from '@/firebase/adminTemplateServices';
-import { isUserAdmin } from '@/lib/admin';
 import type { Template, TemplateField } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +45,7 @@ const FIELD_TYPES = [
 
 export default function EditTemplatePage() {
   const { currentUser, isFirebaseLoading } = useAuth();
+  const { isAdmin, isCheckingAdmin } = useAdmin();
   const router = useRouter();
   const params = useParams();
   const templateId =
@@ -63,31 +64,7 @@ export default function EditTemplatePage() {
   const [baseClauses, setBaseClauses] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check if user has admin access
-  const isAdmin = isUserAdmin(currentUser);
-
-  useEffect(() => {
-    if (isFirebaseLoading) return;
-
-    if (!currentUser || !isAdmin) {
-      router.push('/admin/templates');
-      return;
-    }
-
-    if (!templateId) {
-      toast({
-        title: 'שגיאה',
-        description: 'מזהה תבנית לא תקין',
-        variant: 'destructive',
-      });
-      router.push('/admin/templates');
-      return;
-    }
-
-    loadTemplate();
-  }, [currentUser, isFirebaseLoading, isAdmin, templateId, router, toast]);
-
-  const loadTemplate = async () => {
+  const loadTemplate = useCallback(async () => {
     try {
       setIsLoading(true);
       const templates = await fetchAllTemplatesForAdmin();
@@ -122,7 +99,28 @@ export default function EditTemplatePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [templateId, toast, router]);
+
+  useEffect(() => {
+    if (isFirebaseLoading || isCheckingAdmin) return;
+
+    if (!currentUser || !isAdmin) {
+      router.push('/admin/templates');
+      return;
+    }
+
+    if (!templateId) {
+      toast({
+        title: 'שגיאה',
+        description: 'מזהה תבנית לא תקין',
+        variant: 'destructive',
+      });
+      router.push('/admin/templates');
+      return;
+    }
+
+    loadTemplate();
+  }, [currentUser, isFirebaseLoading, isAdmin, isCheckingAdmin, templateId, router, toast, loadTemplate]);
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));

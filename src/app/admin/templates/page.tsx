@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import {
   fetchAllTemplatesForAdmin,
   deleteTemplate,
   syncDefaultTemplatesToFirestore,
 } from '@/firebase/adminTemplateServices';
-import { isUserAdmin } from '@/lib/admin';
 import type { Template } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +52,7 @@ type AdminTemplate = Template & {
 
 export default function AdminTemplatesPage() {
   const { currentUser, isFirebaseLoading } = useAuth();
+  const { isAdmin, isCheckingAdmin } = useAdmin();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -61,26 +62,7 @@ export default function AdminTemplatesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Check if user has admin access
-  const isAdmin = isUserAdmin(currentUser);
-
-  useEffect(() => {
-    if (isFirebaseLoading) return;
-
-    if (!currentUser) {
-      router.push('/login?redirect=/admin/templates');
-      return;
-    }
-
-    if (!isAdmin) {
-      router.push('/dashboard');
-      return;
-    }
-
-    loadTemplates();
-  }, [currentUser, isFirebaseLoading, isAdmin, router]);
-
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -97,7 +79,23 @@ export default function AdminTemplatesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (isFirebaseLoading || isCheckingAdmin) return;
+
+    if (!currentUser) {
+      router.push('/login?redirect=/admin/templates');
+      return;
+    }
+
+    if (!isAdmin) {
+      router.push('/dashboard');
+      return;
+    }
+
+    loadTemplates();
+  }, [currentUser, isFirebaseLoading, isAdmin, isCheckingAdmin, router, loadTemplates]);
 
   const handleDeleteTemplate = async (templateId: string) => {
     try {

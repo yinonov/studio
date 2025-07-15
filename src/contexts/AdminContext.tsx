@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   ReactNode,
+  useCallback,
 } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isUserAdmin, isUserAdminSync } from '@/lib/admin';
@@ -24,7 +25,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
-  const checkAdminStatus = async () => {
+  const checkAdminStatus = useCallback(async () => {
     if (!currentUser) {
       setIsAdmin(false);
       setIsCheckingAdmin(false);
@@ -52,12 +53,11 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsCheckingAdmin(false);
     }
-  };
+  }, [currentUser]);
 
   useEffect(() => {
     checkAdminStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser]);
+  }, [checkAdminStatus]);
 
   const refreshAdminStatus = async () => {
     await checkAdminStatus();
