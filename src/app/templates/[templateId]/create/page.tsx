@@ -63,34 +63,61 @@ function debounce<F extends (...args: any[]) => any>(
   return debouncedFunction;
 }
 
-const STEPS_CONFIG = [
-  {
-    name: 'צדדים וכותרת',
-    fields: [
-      'contractTitle',
-      'signer1Name',
-      'signer1Email',
-      'signer2Name',
-      'signer2Email',
-    ],
-  },
-  {
-    name: 'תנאים עיקריים',
-    fields: [
-      'address',
-      'rentAmount',
-      'startDate',
-      'serviceDescription',
-      'serviceFee',
-      'effectiveDate',
-      'confidentialInformationDescription',
-      'disclosingParty',
-      'receivingParty',
-      'additionalNotes',
-    ],
-  },
-  { name: 'סקירה וסיום', fields: [] },
-];
+// Helper function to generate steps from template fields
+const generateStepsFromTemplate = (template: TemplateSchema) => {
+  console.log('🔍 Template fields debug:', {
+    hasFields: !!template.fields,
+    fieldsLength: template.fields?.length,
+    fields: template.fields,
+    templateTitle: template.title,
+    hasCreationSteps: !!template.creationSteps,
+    creationSteps: template.creationSteps,
+  });
+
+  // Always include signers as first step
+  const steps = [
+    {
+      name: 'צדדים וכותרת',
+      fields: [
+        'contractTitle',
+        'signer1Name',
+        'signer1Email',
+        'signer2Name',
+        'signer2Email',
+      ],
+    },
+  ];
+
+  // Use template's predefined creation steps if available
+  if (template.creationSteps && template.creationSteps.length > 0) {
+    console.log('✅ Using template-defined creation steps');
+    template.creationSteps.forEach(step => {
+      steps.push({
+        name: step.name,
+        fields: step.fieldIds,
+      });
+    });
+  } else if (template.fields && template.fields.length > 0) {
+    // Fallback: group all template fields into one step
+    console.log('⚠️ No creation steps defined, grouping all fields');
+    const templateFieldIds = template.fields.map((field: any) => field.id).filter(Boolean);
+    
+    if (templateFieldIds.length > 0) {
+      steps.push({
+        name: 'פרטי התבנית',
+        fields: templateFieldIds,
+      });
+    }
+  } else {
+    console.log('❌ No template fields or creation steps found');
+  }
+
+  // Add review step
+  steps.push({ name: 'סקירה וסיום', fields: [] });
+
+  console.log('🏗️ Generated steps:', steps);
+  return steps;
+};
 
 export default function ContractCreationPage() {
   const { currentUser, isFirebaseLoading } = useAuth();
@@ -101,6 +128,7 @@ export default function ContractCreationPage() {
   const { toast } = useToast();
 
   const [template, setTemplate] = useState<TemplateSchema | null>(null);
+  const [stepsConfig, setStepsConfig] = useState<Array<{name: string; fields: string[]}>>([]);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [contractId, setContractId] = useState<string | null>(null);
@@ -185,6 +213,10 @@ export default function ContractCreationPage() {
           return;
         }
         setTemplate(fetchedTemplate);
+        
+        // Generate dynamic steps from template
+        const generatedSteps = generateStepsFromTemplate(fetchedTemplate);
+        setStepsConfig(generatedSteps);
 
         const queryParams =
           typeof window !== 'undefined'
@@ -315,8 +347,8 @@ export default function ContractCreationPage() {
   };
 
   const nextStep = () => {
-    if (currentStep < STEPS_CONFIG.length && template) {
-      const currentStepConfig = STEPS_CONFIG[currentStep - 1];
+    if (currentStep < stepsConfig.length && template) {
+      const currentStepConfig = stepsConfig[currentStep - 1];
       const missingRequired = template.fields?.filter(
         (f: any) =>
           f.required &&
@@ -379,12 +411,21 @@ export default function ContractCreationPage() {
   };
 
   const renderStepContent = () => {
-    if (!template)
+    if (!template || stepsConfig.length === 0)
       return <Loader2 className='mx-auto h-8 w-8 animate-spin text-primary' />;
 
-    const currentStepConfig = STEPS_CONFIG[currentStep - 1];
+    console.log('🎯 renderStepContent debug:', {
+      currentStep,
+      stepsConfigLength: stepsConfig.length,
+      stepsConfig,
+      templateFieldsLength: template.fields?.length,
+    });
 
-    if (currentStep === STEPS_CONFIG.length) {
+    const currentStepConfig = stepsConfig[currentStep - 1];
+    
+    console.log('📍 Current step config:', currentStepConfig);
+
+    if (currentStep === stepsConfig.length) {
       return (
         <div className='space-y-6 text-center'>
           <h3 className='text-2xl font-bold'>סקירה ושמירת טיוטה</h3>
@@ -411,11 +452,7 @@ export default function ContractCreationPage() {
       );
     }
 
-    const fieldsForCurrentStep =
-      template.fields?.filter(
-        (field: any) => field.id && currentStepConfig.fields.includes(field.id)
-      ) || [];
-
+    // For step 1 (signers), use hardcoded signer fields
     if (currentStep === 1) {
       const signerFieldsConfig = [
         {
@@ -501,6 +538,11 @@ export default function ContractCreationPage() {
       );
     }
 
+    // For other steps, use template fields
+    const fieldsForCurrentStep = template.fields?.filter((field: any) => 
+      field.id && currentStepConfig.fields.includes(field.id)
+    ) || [];
+
     return (
       <div className='space-y-6'>
         {fieldsForCurrentStep.map((field: any) => (
@@ -508,7 +550,7 @@ export default function ContractCreationPage() {
             key={field.id}
             label={field.label}
             name={field.id}
-            type={field.type as 'text' | 'number' | 'date' | 'textarea'}
+            type={field.type as 'text' | 'number' | 'date' | 'textarea' | 'email'}
             value={formData[field.id] || ''}
             onChange={handleDataChange}
             placeholder={field.placeholder}
@@ -516,7 +558,7 @@ export default function ContractCreationPage() {
           />
         ))}
         {fieldsForCurrentStep.length === 0 &&
-          currentStep !== STEPS_CONFIG.length && (
+          currentStep !== stepsConfig.length && (
             <p className='text-muted-foreground'>
               אין שדות מוגדרים לשלב זה בתבנית. לחץ על &quot;הבא&quot; כדי
               להמשיך.
@@ -567,7 +609,7 @@ export default function ContractCreationPage() {
     );
   }
 
-  const progressPercentage = (currentStep / STEPS_CONFIG.length) * 100;
+  const progressPercentage = (currentStep / stepsConfig.length) * 100;
 
   return (
     <section className='space-y-8'>
@@ -595,7 +637,7 @@ export default function ContractCreationPage() {
             </CardHeader>
             <CardContent>
               <ul className='space-y-3'>
-                {STEPS_CONFIG.map((s, index) => (
+                {stepsConfig.map((s, index) => (
                   <li
                     key={index}
                     className={`flex cursor-default items-center rounded-lg p-3 transition-all ${
@@ -638,7 +680,7 @@ export default function ContractCreationPage() {
           <Card className='rounded-2xl shadow-lg'>
             <CardHeader>
               <CardTitle className='text-2xl'>
-                {STEPS_CONFIG[currentStep - 1]?.name || 'טוען שלב...'}
+                {stepsConfig[currentStep - 1]?.name || 'טוען שלב...'}
               </CardTitle>
             </CardHeader>
             <CardContent className='min-h-[300px] md:min-h-[400px]'>
@@ -654,18 +696,18 @@ export default function ContractCreationPage() {
                 <ChevronRight className='ml-2 h-5 w-5' />
                 הקודם
               </Button>
-              {currentStep < STEPS_CONFIG.length ? (
+              {currentStep < stepsConfig.length ? (
                 <Button
                   onClick={nextStep}
                   className='font-semibold'
                   disabled={isSaving}
                   variant={
-                    currentStep === STEPS_CONFIG.length - 1
+                    currentStep === stepsConfig.length - 1
                       ? 'accent'
                       : 'default'
                   }
                 >
-                  {currentStep === STEPS_CONFIG.length - 1
+                  {currentStep === stepsConfig.length - 1
                     ? 'סקירה וסיום'
                     : 'הבא'}
                   <ChevronLeft className='mr-2 h-5 w-5' />

@@ -1,40 +1,57 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
+import { z } from "zod";
 
-export interface TemplateField {
-  name: string;
-  label: string;
-  type: "text" | "number" | "date" | "email" | "tel" | "textarea" | "select";
-  required: boolean;
-  options?: string[];
-  placeholder?: string;
-}
+// Zod schemas for validation
+const TemplateFieldSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  type: z.enum(["text", "number", "date", "email", "tel", "textarea", "select"]),
+  required: z.boolean(),
+  options: z.array(z.string()).optional(),
+  placeholder: z.string().optional(),
+});
 
-export interface CreateTemplateData {
-  title: string;
-  category: string;
-  description: string;
-  fields: TemplateField[];
-  baseClauses: string[];
-  defaultValues?: Record<string, string>;
-}
+const CreationStepSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  fieldIds: z.array(z.string()),
+});
 
-export interface UpdateTemplateData extends Partial<CreateTemplateData> {
-  id: string;
-}
+const CreateTemplateDataSchema = z.object({
+  title: z.string().min(1),
+  category: z.string().min(1),
+  description: z.string().min(1),
+  fields: z.array(TemplateFieldSchema),
+  baseClauses: z.array(z.string()),
+  creationSteps: z.array(CreationStepSchema).optional(),
+  defaultValues: z.record(z.string()).optional(),
+});
 
-interface Template {
-  id: string;
-  title: string;
-  category: string;
-  description: string;
-  fields: TemplateField[];
-  baseClauses: string[];
-  defaultValues?: Record<string, string>;
-  createdAt?: Date;
-  lastUpdatedAt?: Date;
-}
+const UpdateTemplateDataSchema = CreateTemplateDataSchema.partial().extend({
+  id: z.string(),
+});
+
+const TemplateSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  category: z.string(),
+  description: z.string(),
+  fields: z.array(TemplateFieldSchema),
+  baseClauses: z.array(z.string()),
+  creationSteps: z.array(CreationStepSchema).optional(),
+  defaultValues: z.record(z.string()).optional(),
+  createdAt: z.date().optional(),
+  lastUpdatedAt: z.date().optional(),
+});
+
+// Type exports for use in other files
+export type TemplateField = z.infer<typeof TemplateFieldSchema>;
+export type CreationStep = z.infer<typeof CreationStepSchema>;
+export type CreateTemplateData = z.infer<typeof CreateTemplateDataSchema>;
+export type UpdateTemplateData = z.infer<typeof UpdateTemplateDataSchema>;
+export type Template = z.infer<typeof TemplateSchema>;
 
 // Helper function to check if user is admin
 const checkAdminAccess = async (uid: string): Promise<void> => {
@@ -70,33 +87,28 @@ export const createTemplate = onCall(
     // Check admin access
     await checkAdminAccess(request.auth.uid);
 
-    // Validate input
-    const { title, category, description, fields, baseClauses, defaultValues } = request.data as CreateTemplateData;
-    
-    if (!title || !category || !description || !fields || !baseClauses) {
-      throw new HttpsError(
-        "invalid-argument",
-        "Missing required fields: title, category, description, fields, baseClauses"
-      );
-    }
-
+    // Validate input with Zod
     try {
+      const validatedData = CreateTemplateDataSchema.parse(request.data);
+      
       const db = getFirestore();
       const templatesRef = db.collection("templates");
       
       const docRef = await templatesRef.add({
-        title,
-        category,
-        description,
-        fields,
-        baseClauses,
-        defaultValues: defaultValues || {},
+        ...validatedData,
+        defaultValues: validatedData.defaultValues || {},
         createdAt: new Date(),
         lastUpdatedAt: new Date(),
       });
       
       return { templateId: docRef.id };
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new HttpsError(
+          "invalid-argument",
+          `Validation error: ${error.errors.map((e) => e.message).join(", ")}`
+        );
+      }
       console.error("Error creating template:", error);
       throw new HttpsError("internal", "Failed to create template");
     }
@@ -114,14 +126,11 @@ export const updateTemplate = onCall(
     // Check admin access
     await checkAdminAccess(request.auth.uid);
 
-    // Validate input
-    const { id, ...updateData } = request.data as UpdateTemplateData;
-    
-    if (!id) {
-      throw new HttpsError("invalid-argument", "Template ID is required");
-    }
-
+    // Validate input with Zod
     try {
+      const validatedData = UpdateTemplateDataSchema.parse(request.data);
+      const { id, ...updateData } = validatedData;
+      
       const db = getFirestore();
       const templateRef = db.collection("templates").doc(id);
       
@@ -138,6 +147,12 @@ export const updateTemplate = onCall(
       
       return { success: true };
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new HttpsError(
+          "invalid-argument",
+          `Validation error: ${error.errors.map((e) => e.message).join(", ")}`
+        );
+      }
       if (error instanceof HttpsError) {
         throw error;
       }
@@ -158,14 +173,14 @@ export const deleteTemplate = onCall(
     // Check admin access
     await checkAdminAccess(request.auth.uid);
 
-    // Validate input
-    const { templateId } = request.data as { templateId: string };
-    
-    if (!templateId) {
-      throw new HttpsError("invalid-argument", "Template ID is required");
-    }
+    // Validate input with Zod
+    const DeleteTemplateDataSchema = z.object({
+      templateId: z.string().min(1),
+    });
 
     try {
+      const { templateId } = DeleteTemplateDataSchema.parse(request.data);
+      
       const db = getFirestore();
       const templateRef = db.collection("templates").doc(templateId);
       
@@ -179,6 +194,12 @@ export const deleteTemplate = onCall(
       
       return { success: true };
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new HttpsError(
+          "invalid-argument",
+          `Validation error: ${error.errors.map((e) => e.message).join(", ")}`
+        );
+      }
       if (error instanceof HttpsError) {
         throw error;
       }
@@ -251,12 +272,24 @@ export const syncDefaultTemplates = onCall(
           category: "עבודה",
           description: "חוזה עבודה סטנדרטי לעובד במשרה מלאה",
           fields: [
-            { name: "employeeName", label: "שם העובד", type: "text" as const, required: true },
-            { name: "employeeId", label: "ת.ז. העובד", type: "text" as const, required: true },
-            { name: "employerName", label: "שם המעסיק", type: "text" as const, required: true },
-            { name: "position", label: "תפקיד", type: "text" as const, required: true },
-            { name: "salary", label: "שכר", type: "number" as const, required: true },
-            { name: "startDate", label: "תאריך התחלה", type: "date" as const, required: true },
+            { id: "employeeName", label: "שם העובד", type: "text" as const, required: true },
+            { id: "employeeId", label: "ת.ז. העובד", type: "text" as const, required: true },
+            { id: "employerName", label: "שם המעסיק", type: "text" as const, required: true },
+            { id: "position", label: "תפקיד", type: "text" as const, required: true },
+            { id: "salary", label: "שכר", type: "number" as const, required: true },
+            { id: "startDate", label: "תאריך התחלה", type: "date" as const, required: true },
+          ],
+          creationSteps: [
+            {
+              name: "פרטי העובד",
+              description: "מידע בסיסי על העובד",
+              fieldIds: ["employeeName", "employeeId"],
+            },
+            {
+              name: "פרטי העבודה",
+              description: "תנאי העבודה והתפקיד",
+              fieldIds: ["employerName", "position", "salary", "startDate"],
+            },
           ],
           baseClauses: [
             "העובד יעבוד במשרה מלאה",
@@ -270,13 +303,25 @@ export const syncDefaultTemplates = onCall(
           category: "נדלן",
           description: "חוזה שכירות דירה לטווח ארוך",
           fields: [
-            { name: "tenantName", label: "שם השוכר", type: "text" as const, required: true },
-            { name: "landlordName", label: "שם המשכיר", type: "text" as const, required: true },
-            { name: "propertyAddress", label: "כתובת הנכס", type: "text" as const, required: true },
-            { name: "monthlyRent", label: "שכר דירה חודשי", type: "number" as const, required: true },
-            { name: "deposit", label: "פיקדון", type: "number" as const, required: true },
-            { name: "leaseStart", label: "תחילת השכירות", type: "date" as const, required: true },
-            { name: "leaseDuration", label: "משך השכירות (חודשים)", type: "number" as const, required: true },
+            { id: "tenantName", label: "שם השוכר", type: "text" as const, required: true },
+            { id: "landlordName", label: "שם המשכיר", type: "text" as const, required: true },
+            { id: "propertyAddress", label: "כתובת הנכס", type: "text" as const, required: true },
+            { id: "monthlyRent", label: "שכר דירה חודשי", type: "number" as const, required: true },
+            { id: "deposit", label: "פיקדון", type: "number" as const, required: true },
+            { id: "leaseStart", label: "תחילת השכירות", type: "date" as const, required: true },
+            { id: "leaseDuration", label: "משך השכירות (חודשים)", type: "number" as const, required: true },
+          ],
+          creationSteps: [
+            {
+              name: "פרטי הנכס",
+              description: "מידע על הנכס ובעליו",
+              fieldIds: ["propertyAddress", "landlordName"],
+            },
+            {
+              name: "פרטי השכירות",
+              description: "תנאי השכירות והתמורה",
+              fieldIds: ["tenantName", "monthlyRent", "deposit", "leaseStart", "leaseDuration"],
+            },
           ],
           baseClauses: [
             "השוכר יתחייב לשלם את שכר הדירה במועד",

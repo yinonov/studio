@@ -62,6 +62,11 @@ export default function EditTemplatePage() {
 
   const [fields, setFields] = useState<TemplateField[]>([]);
   const [baseClauses, setBaseClauses] = useState<string[]>([]);
+  const [creationSteps, setCreationSteps] = useState<Array<{
+    name: string;
+    description?: string;
+    fieldIds: string[];
+  }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadTemplate = useCallback(async () => {
@@ -88,6 +93,7 @@ export default function EditTemplatePage() {
       });
       setFields((foundTemplate.fields || []) as TemplateField[]);
       setBaseClauses(foundTemplate.baseClauses || []);
+      setCreationSteps(foundTemplate.creationSteps || []);
     } catch (error) {
       console.error('Error loading template:', error);
       toast({
@@ -126,29 +132,6 @@ export default function EditTemplatePage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const addField = () => {
-    setFields(prev => [
-      ...prev,
-      {
-        id: `field_${Date.now()}`,
-        label: '',
-        type: 'text',
-        placeholder: '',
-        required: false,
-      },
-    ]);
-  };
-
-  const removeField = (index: number) => {
-    setFields(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateField = (index: number, updates: Partial<TemplateField>) => {
-    setFields(prev =>
-      prev.map((field, i) => (i === index ? { ...field, ...updates } : field))
-    );
-  };
-
   const addClause = () => {
     setBaseClauses(prev => [...prev, '']);
   };
@@ -160,6 +143,78 @@ export default function EditTemplatePage() {
   const updateClause = (index: number, value: string) => {
     setBaseClauses(prev =>
       prev.map((clause, i) => (i === index ? value : clause))
+    );
+  };
+
+  // Creation Steps Management with nested fields
+  const addStep = () => {
+    setCreationSteps(prev => [
+      ...prev,
+      {
+        name: '',
+        description: '',
+        fieldIds: [],
+      },
+    ]);
+  };
+
+  const removeStep = (index: number) => {
+    const step = creationSteps[index];
+    // Remove fields that belong to this step
+    setFields(prev => prev.filter(field => !step.fieldIds.includes(field.id)));
+    setCreationSteps(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateStep = (index: number, updates: Partial<{
+    name: string;
+    description?: string;
+    fieldIds: string[];
+  }>) => {
+    setCreationSteps(prev =>
+      prev.map((step, i) => (i === index ? { ...step, ...updates } : step))
+    );
+  };
+
+  const addFieldToStep = (stepIndex: number) => {
+    const newFieldId = `field_${Date.now()}`;
+    const newField: TemplateField = {
+      id: newFieldId,
+      label: '',
+      type: 'text',
+      placeholder: '',
+      required: false,
+    };
+    
+    // Add field to global fields array
+    setFields(prev => [...prev, newField]);
+    
+    // Add field ID to step
+    setCreationSteps(prev =>
+      prev.map((step, i) =>
+        i === stepIndex
+          ? { ...step, fieldIds: [...step.fieldIds, newFieldId] }
+          : step
+      )
+    );
+  };
+
+  const removeFieldFromStep = (fieldId: string, stepIndex: number) => {
+    // Remove field from global fields array
+    setFields(prev => prev.filter(field => field.id !== fieldId));
+    
+    // Remove field ID from step
+    setCreationSteps(prev =>
+      prev.map((step, i) =>
+        i === stepIndex
+          ? { ...step, fieldIds: step.fieldIds.filter(id => id !== fieldId) }
+          : step
+      )
+    );
+  };
+
+  const updateFieldInStep = (fieldId: string, updates: Partial<TemplateField>) => {
+    setFields(prev =>
+      prev.map(field => (field.id === fieldId ? { ...field, ...updates } : field))
     );
   };
 
@@ -188,6 +243,29 @@ export default function EditTemplatePage() {
         variant: 'destructive',
       });
       return;
+    }
+
+    // Validate creation steps
+    if (creationSteps.length === 0) {
+      toast({
+        title: 'שגיאה',
+        description: 'אנא הוסף לפחות שלב אחד',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate that all steps have names
+    for (let i = 0; i < creationSteps.length; i++) {
+      const step = creationSteps[i];
+      if (!step.name.trim()) {
+        toast({
+          title: 'שגיאה',
+          description: `שלב ${i + 1}: שם השלב הוא שדה חובה`,
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     // Validate fields
@@ -227,6 +305,7 @@ export default function EditTemplatePage() {
           id: field.id.trim(),
         })),
         baseClauses: validClauses,
+        creationSteps: creationSteps.length > 0 ? creationSteps : undefined,
       };
 
       await updateTemplate(templateData);
@@ -348,35 +427,39 @@ export default function EditTemplatePage() {
           </CardContent>
         </Card>
 
-        {/* Template Fields */}
+        {/* Creation Steps with Nested Fields */}
         <Card>
           <CardHeader>
             <CardTitle className='flex items-center justify-between'>
-              שדות התבנית
+              שלבי יצירת חוזה ושדות
               <Button
                 type='button'
-                onClick={addField}
+                onClick={addStep}
                 variant='outline'
                 size='sm'
               >
                 <Plus className='ml-2 h-4 w-4' />
-                הוסף שדה
+                הוסף שלב
               </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className='space-y-4'>
-            {fields.length === 0 ? (
+          <CardContent className='space-y-6'>
+            {creationSteps.length === 0 ? (
               <p className='py-8 text-center text-muted-foreground'>
-                עדיין לא הוספת שדות. לחץ על "הוסף שדה" כדי להתחיל.
+                עדיין לא הוספת שלבים. לחץ על &quot;הוסף שלב&quot; כדי להתחיל.
+                כל שלב יכיל שדות משלו.
               </p>
             ) : (
-              fields.map((field, index) => (
-                <div key={index} className='space-y-3 rounded-lg border p-4'>
+              creationSteps.map((step, stepIndex) => (
+                <div key={stepIndex} className='space-y-4 rounded-lg border p-6 bg-gray-50'>
+                  {/* Step Header */}
                   <div className='flex items-center justify-between'>
-                    <Badge variant='outline'>שדה {index + 1}</Badge>
+                    <Badge variant='outline' className='text-lg px-3 py-1'>
+                      שלב {stepIndex + 1}
+                    </Badge>
                     <Button
                       type='button'
-                      onClick={() => removeField(index)}
+                      onClick={() => removeStep(stepIndex)}
                       variant='ghost'
                       size='sm'
                     >
@@ -384,73 +467,143 @@ export default function EditTemplatePage() {
                     </Button>
                   </div>
 
+                  {/* Step Details */}
                   <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
                     <div>
-                      <Label>תווית השדה *</Label>
+                      <Label>שם השלב *</Label>
                       <Input
-                        value={field.label}
+                        value={step.name}
                         onChange={e =>
-                          updateField(index, { label: e.target.value })
+                          updateStep(stepIndex, { name: e.target.value })
                         }
-                        placeholder='לדוגמה: שם המשכיר'
+                        placeholder='לדוגמה: פרטי הנכס'
                       />
                     </div>
 
                     <div>
-                      <Label>מזהה השדה *</Label>
+                      <Label>תיאור השלב</Label>
                       <Input
-                        value={field.id}
+                        value={step.description || ''}
                         onChange={e =>
-                          updateField(index, { id: e.target.value })
+                          updateStep(stepIndex, { description: e.target.value })
                         }
-                        placeholder='לדוגמה: landlordName'
-                      />
-                    </div>
-
-                    <div>
-                      <Label>סוג השדה</Label>
-                      <Select
-                        value={field.type}
-                        onValueChange={value =>
-                          updateField(index, { type: value as any })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {FIELD_TYPES.map(type => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label>טקסט עזר</Label>
-                      <Input
-                        value={field.placeholder || ''}
-                        onChange={e =>
-                          updateField(index, { placeholder: e.target.value })
-                        }
-                        placeholder='טקסט עזר למשתמש'
+                        placeholder='תיאור קצר של השלב'
                       />
                     </div>
                   </div>
 
-                  <div className='flex items-center space-x-2'>
-                    <input
-                      type='checkbox'
-                      id={`required-${index}`}
-                      checked={field.required || false}
-                      onChange={e =>
-                        updateField(index, { required: e.target.checked })
-                      }
-                      className='h-4 w-4'
-                    />
-                    <Label htmlFor={`required-${index}`}>שדה חובה</Label>
+                  {/* Fields in this Step */}
+                  <div className='space-y-4'>
+                    <div className='flex items-center justify-between'>
+                      <Label className='text-base font-medium'>שדות בשלב זה</Label>
+                      <Button
+                        type='button'
+                        onClick={() => addFieldToStep(stepIndex)}
+                        variant='outline'
+                        size='sm'
+                      >
+                        <Plus className='ml-2 h-4 w-4' />
+                        הוסף שדה
+                      </Button>
+                    </div>
+
+                    {step.fieldIds.length === 0 ? (
+                      <p className='py-4 text-center text-muted-foreground text-sm'>
+                        אין שדות בשלב זה. לחץ על &quot;הוסף שדה&quot; כדי להוסיף.
+                      </p>
+                    ) : (
+                      <div className='space-y-4'>
+                        {step.fieldIds.map(fieldId => {
+                          const field = fields.find(f => f.id === fieldId);
+                          if (!field) return null;
+
+                          return (
+                            <div key={fieldId} className='space-y-3 rounded-lg border bg-white p-4'>
+                              <div className='flex items-center justify-between'>
+                                <Badge variant='secondary'>שדה</Badge>
+                                <Button
+                                  type='button'
+                                  onClick={() => removeFieldFromStep(fieldId, stepIndex)}
+                                  variant='ghost'
+                                  size='sm'
+                                >
+                                  <Trash2 className='h-4 w-4' />
+                                </Button>
+                              </div>
+
+                              <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+                                <div>
+                                  <Label>תווית השדה *</Label>
+                                  <Input
+                                    value={field.label}
+                                    onChange={e =>
+                                      updateFieldInStep(fieldId, { label: e.target.value })
+                                    }
+                                    placeholder='לדוגמה: שם המשכיר'
+                                  />
+                                </div>
+
+                                <div>
+                                  <Label>מזהה השדה *</Label>
+                                  <Input
+                                    value={field.id}
+                                    onChange={e =>
+                                      updateFieldInStep(fieldId, { id: e.target.value })
+                                    }
+                                    placeholder='לדוגמה: landlordName'
+                                  />
+                                </div>
+
+                                <div>
+                                  <Label>סוג השדה</Label>
+                                  <Select
+                                    value={field.type}
+                                    onValueChange={value =>
+                                      updateFieldInStep(fieldId, { type: value as any })
+                                    }
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {FIELD_TYPES.map(type => (
+                                        <SelectItem key={type.value} value={type.value}>
+                                          {type.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                <div>
+                                  <Label>טקסט עזר</Label>
+                                  <Input
+                                    value={field.placeholder || ''}
+                                    onChange={e =>
+                                      updateFieldInStep(fieldId, { placeholder: e.target.value })
+                                    }
+                                    placeholder='טקסט עזר למשתמש'
+                                  />
+                                </div>
+                              </div>
+
+                              <div className='flex items-center space-x-2'>
+                                <input
+                                  type='checkbox'
+                                  id={`required-${fieldId}`}
+                                  checked={field.required || false}
+                                  onChange={e =>
+                                    updateFieldInStep(fieldId, { required: e.target.checked })
+                                  }
+                                  className='h-4 w-4'
+                                />
+                                <Label htmlFor={`required-${fieldId}`}>שדה חובה</Label>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))

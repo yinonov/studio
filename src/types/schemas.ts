@@ -38,6 +38,16 @@ export const TemplateSchema = z.object({
     .optional(),
   defaultValues: z.record(z.string()).optional(),
   baseClauses: z.array(z.string()).optional(),
+  // NEW: Define creation steps for better UX
+  creationSteps: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().optional(),
+        fieldIds: z.array(z.string()),
+      })
+    )
+    .optional(),
 });
 
 export type TemplateSchema = z.infer<typeof TemplateSchema>;
