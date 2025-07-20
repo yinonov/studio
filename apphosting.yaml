@@ -8,44 +8,44 @@ runConfig:
   # memoryMiB: 512
 # Environment variables and secrets.
 env:
-# Firebase public configuration (safe to commit - these are public values)
-- variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-  value: smart-contracts-254e8
-  availability:
-    - BUILD
-    - RUNTIME
+  # Firebase public configuration (safe to commit - these are public values)
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: smart-contracts-254e8
+    availability:
+      - BUILD
+      - RUNTIME
 
-# Firebase configuration from SDK config (public values)
-- variable: NEXT_PUBLIC_FIREBASE_API_KEY
-  value: AIzaSyD8SkiPGIznzCAu5tc60jx3kpXLydbLi6A
-  availability:
-    - BUILD
-    - RUNTIME
-- variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-  value: smart-contracts-254e8.firebaseapp.com
-  availability:
-    - BUILD
-    - RUNTIME
-- variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-  value: smart-contracts-254e8.firebasestorage.app
-  availability:
-    - BUILD
-    - RUNTIME
-- variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-  value: "424761640128"
-  availability:
-    - BUILD
-    - RUNTIME
-- variable: NEXT_PUBLIC_FIREBASE_APP_ID
-  value: 1:424761640128:web:ae3aaa134ccf03fcafd925
-  availability:
-    - BUILD
-    - RUNTIME
-- variable: NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID
-  value: 4262410fcebd42ec93acaeee7843cdb4
-  availability:
-    - BUILD
-    - RUNTIME
+  # Firebase configuration from SDK config (public values)
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyD8SkiPGIznzCAu5tc60jx3kpXLydbLi6A
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: smart-contracts-254e8.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: smart-contracts-254e8.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: '424761640128'
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:424761640128:web:ae3aaa134ccf03fcafd925
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_DROPBOX_SIGN_CLIENT_ID
+    value: 4262410fcebd42ec93acaeee7843cdb4
+    availability:
+      - BUILD
+      - RUNTIME
 # AI features currently disabled - uncomment when enabling AI
 # - variable: GOOGLE_GENAI_API_KEY
 #   secret: google-genai-api-key

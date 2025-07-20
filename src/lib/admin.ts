@@ -39,13 +39,13 @@ export const isUserAdmin = async (
  */
 export const isUserAdminSync = (user: any): boolean => {
   if (!user) return false;
-  
+
   // Check if user has custom claims already loaded
   if (user.customClaims?.admin === true) return true;
-  
+
   // Fallback: check if this is a token result with claims
   if (user.claims?.admin === true) return true;
-  
+
   return false;
 };
 
@@ -75,7 +75,7 @@ export const setUserAdminRole = async (
 ): Promise<void> => {
   const functions = getFunctions();
   const setAdminRole = httpsCallable(functions, 'setAdminRole');
-  
+
   try {
     await setAdminRole({ uid, isAdmin });
   } catch (error) {
@@ -90,7 +90,7 @@ export const setUserAdminRole = async (
 export const getAllUsersWithRoles = async (): Promise<any[]> => {
   const functions = getFunctions();
   const getAllUsers = httpsCallable(functions, 'getAllUsersWithRoles');
-  
+
   try {
     const result = await getAllUsers();
     return (result.data as any).users;
@@ -109,7 +109,7 @@ export const initializeFirstAdmin = async (
 ): Promise<void> => {
   const functions = getFunctions();
   const initAdmin = httpsCallable(functions, 'initializeFirstAdmin');
-  
+
   try {
     await initAdmin({ adminEmail });
   } catch (error) {

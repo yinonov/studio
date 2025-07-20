@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const CustomClauseSchema = z.object({
   description: z.string(),
@@ -14,14 +14,14 @@ export const StoredContractDataSchema = z.object({
   formData: z.record(z.any()),
   customClauses: z.array(CustomClauseSchema).optional(),
   status: z.enum([
-    "draft",
-    "generating-pdf",
-    "out-for-signature",
-    "partially-signed",
-    "completed",
-    "voided",
-    "declined",
-    "error",
+    'draft',
+    'generating-pdf',
+    'out-for-signature',
+    'partially-signed',
+    'completed',
+    'voided',
+    'declined',
+    'error',
   ]),
   createdAt: z.any(), // Firestore Timestamps
   lastUpdatedAt: z.any(), // Firestore Timestamps
@@ -29,7 +29,7 @@ export const StoredContractDataSchema = z.object({
 });
 
 export const RequestDataSchema = z.object({
-  contractId: z.string().min(1, { message: "contractId is required" }),
+  contractId: z.string().min(1, { message: 'contractId is required' }),
 });
 
 export type StoredContractDataSchema = z.infer<typeof StoredContractDataSchema>;

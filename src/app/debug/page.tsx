@@ -74,17 +74,17 @@ export default function DebugPage() {
 
   const debugToken = async () => {
     if (!currentUser) return;
-    
+
     try {
       const auth = getClientAuth();
       const tokenResult = await auth.currentUser?.getIdTokenResult();
       console.log('Current Token Claims:', tokenResult?.claims);
-      
+
       // Force refresh and check again
       await auth.currentUser?.getIdToken(true);
       const refreshedTokenResult = await auth.currentUser?.getIdTokenResult();
       console.log('Refreshed Token Claims:', refreshedTokenResult?.claims);
-      
+
       toast({
         title: 'Token Claims',
         description: 'בדוק את הקונסול לפרטים',
@@ -254,10 +254,7 @@ export default function DebugPage() {
                 >
                   בדוק שוב
                 </Button>
-                <Button
-                  onClick={debugToken}
-                  variant='outline'
-                >
+                <Button onClick={debugToken} variant='outline'>
                   בדוק Token (קונסול)
                 </Button>
               </div>

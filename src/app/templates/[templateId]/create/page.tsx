@@ -100,8 +100,10 @@ const generateStepsFromTemplate = (template: TemplateSchema) => {
   } else if (template.fields && template.fields.length > 0) {
     // Fallback: group all template fields into one step
     console.log('⚠️ No creation steps defined, grouping all fields');
-    const templateFieldIds = template.fields.map((field: any) => field.id).filter(Boolean);
-    
+    const templateFieldIds = template.fields
+      .map((field: any) => field.id)
+      .filter(Boolean);
+
     if (templateFieldIds.length > 0) {
       steps.push({
         name: 'פרטי התבנית',
@@ -128,7 +130,9 @@ export default function ContractCreationPage() {
   const { toast } = useToast();
 
   const [template, setTemplate] = useState<TemplateSchema | null>(null);
-  const [stepsConfig, setStepsConfig] = useState<Array<{name: string; fields: string[]}>>([]);
+  const [stepsConfig, setStepsConfig] = useState<
+    Array<{ name: string; fields: string[] }>
+  >([]);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [contractId, setContractId] = useState<string | null>(null);
@@ -213,7 +217,7 @@ export default function ContractCreationPage() {
           return;
         }
         setTemplate(fetchedTemplate);
-        
+
         // Generate dynamic steps from template
         const generatedSteps = generateStepsFromTemplate(fetchedTemplate);
         setStepsConfig(generatedSteps);
@@ -422,7 +426,7 @@ export default function ContractCreationPage() {
     });
 
     const currentStepConfig = stepsConfig[currentStep - 1];
-    
+
     console.log('📍 Current step config:', currentStepConfig);
 
     if (currentStep === stepsConfig.length) {
@@ -539,9 +543,10 @@ export default function ContractCreationPage() {
     }
 
     // For other steps, use template fields
-    const fieldsForCurrentStep = template.fields?.filter((field: any) => 
-      field.id && currentStepConfig.fields.includes(field.id)
-    ) || [];
+    const fieldsForCurrentStep =
+      template.fields?.filter(
+        (field: any) => field.id && currentStepConfig.fields.includes(field.id)
+      ) || [];
 
     return (
       <div className='space-y-6'>
@@ -550,7 +555,9 @@ export default function ContractCreationPage() {
             key={field.id}
             label={field.label}
             name={field.id}
-            type={field.type as 'text' | 'number' | 'date' | 'textarea' | 'email'}
+            type={
+              field.type as 'text' | 'number' | 'date' | 'textarea' | 'email'
+            }
             value={formData[field.id] || ''}
             onChange={handleDataChange}
             placeholder={field.placeholder}

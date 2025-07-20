@@ -105,7 +105,7 @@ Templates are stored in the `templates` collection with the following structure:
 {
   id: "auto-generated-id",
   title: "Template Title",
-  category: "Category Name", 
+  category: "Category Name",
   description: "Template description",
   fields: [
     {

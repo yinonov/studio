@@ -7,8 +7,9 @@ AI features including contract clause customization are currently disabled in th
 ## Future AI Features
 
 When AI features are re-enabled in the future, they will include:
+
 - AI-powered contract clause customization
-- Intelligent contract suggestions  
+- Intelligent contract suggestions
 - Automated legal text generation
 
 ## Re-enabling AI Features
@@ -39,6 +40,7 @@ npm run genkit:dev
 ```
 
 This will start the Genkit management interface where you can:
+
 - Test AI flows
 - Monitor model usage
 - Debug AI responses
@@ -47,6 +49,7 @@ This will start the Genkit management interface where you can:
 ### Step 4: Access Model Management
 
 Once the API key is configured and the server is running:
+
 1. The "Manage Models" feature should work without errors
 2. You can access it through the Genkit dev UI (usually at http://localhost:4000)
 3. Or through any AI features in your application
@@ -54,6 +57,7 @@ Once the API key is configured and the server is running:
 ### Available AI Features
 
 Currently configured:
+
 - **Model**: Google Gemini 2.0 Flash
 - **Flow**: Contract clause customization (`customize-contract-clause`)
 
@@ -69,6 +73,7 @@ If you still see "Invalid API Key" errors:
 ### Production Deployment
 
 For production, make sure to:
+
 1. Add the API key to Firebase Secret Manager
 2. Update the `apphosting.yaml` configuration
 3. The key is already configured to use `google-genai-api-key` secret

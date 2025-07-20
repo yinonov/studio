@@ -5,6 +5,7 @@
 Successfully removed all AI-related features and dependencies from the project to simplify the codebase and eliminate external AI service dependencies.
 
 ### Files Removed
+
 - `/src/ai/` directory (entire AI module)
   - `genkit.ts` - AI configuration
   - `dev.ts` - Development setup
@@ -13,6 +14,7 @@ Successfully removed all AI-related features and dependencies from the project t
 - `/src/components/contract/AiClauseGenerator.tsx` - UI component for AI clause generation
 
 ### Configuration Updated
+
 - `package.json` - Removed AI dependencies:
   - `@genkit-ai/googleai`
   - `@genkit-ai/next`
@@ -25,6 +27,7 @@ Successfully removed all AI-related features and dependencies from the project t
 - `apphosting.yaml` - Commented out AI environment variables
 
 ### Documentation Updated
+
 - `docs/ai-setup.md` - Updated to reflect disabled status with future re-enabling instructions
 
 ## Benefits
@@ -38,6 +41,7 @@ Successfully removed all AI-related features and dependencies from the project t
 ## Current Feature Set
 
 The application now focuses on core contract management features:
+
 - ✅ Template management (CRUD operations with Firebase Admin SDK)
 - ✅ Contract creation and editing
 - ✅ Digital signature integration (Dropbox Sign)
@@ -51,6 +55,7 @@ The application now focuses on core contract management features:
 When ready to add AI features back:
 
 1. **Restore dependencies**:
+
    ```bash
    npm install @genkit-ai/googleai @genkit-ai/next genkit genkit-cli
    ```

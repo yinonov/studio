@@ -86,7 +86,7 @@ export default function Header() {
                     </Link>
                   </Button>
                 )}
-                
+
                 {/* User Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -111,26 +111,32 @@ export default function Header() {
                       פרטי משתמש
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    
+
                     {/* User Details */}
                     <div className='px-2 py-2 text-sm'>
                       <div className='space-y-2'>
                         {currentUser.displayName && (
                           <div className='flex items-center gap-2'>
                             <User className='h-3 w-3 text-muted-foreground' />
-                            <span className='truncate'>{currentUser.displayName}</span>
+                            <span className='truncate'>
+                              {currentUser.displayName}
+                            </span>
                           </div>
                         )}
                         {currentUser.email && (
                           <div className='flex items-center gap-2'>
                             <Mail className='h-3 w-3 text-muted-foreground' />
-                            <span className='truncate text-xs'>{currentUser.email}</span>
+                            <span className='truncate text-xs'>
+                              {currentUser.email}
+                            </span>
                           </div>
                         )}
                         {currentUser.phoneNumber && (
                           <div className='flex items-center gap-2'>
                             <Phone className='h-3 w-3 text-muted-foreground' />
-                            <span className='truncate text-xs'>{currentUser.phoneNumber}</span>
+                            <span className='truncate text-xs'>
+                              {currentUser.phoneNumber}
+                            </span>
                           </div>
                         )}
                         {isAdmin && (
@@ -143,19 +149,22 @@ export default function Header() {
                         )}
                       </div>
                     </div>
-                    
+
                     <DropdownMenuSeparator />
-                    
+
                     {/* Debug Link */}
                     <DropdownMenuItem asChild>
-                      <Link href='/debug' className='flex w-full items-center gap-2'>
+                      <Link
+                        href='/debug'
+                        className='flex w-full items-center gap-2'
+                      >
                         <Bug className='h-4 w-4' />
                         מידע משתמש ואדמין
                       </Link>
                     </DropdownMenuItem>
-                    
+
                     <DropdownMenuSeparator />
-                    
+
                     {/* Logout */}
                     <DropdownMenuItem
                       onClick={logout}

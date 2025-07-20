@@ -95,7 +95,14 @@ export default function AdminTemplatesPage() {
     }
 
     loadTemplates();
-  }, [currentUser, isFirebaseLoading, isAdmin, isCheckingAdmin, router, loadTemplates]);
+  }, [
+    currentUser,
+    isFirebaseLoading,
+    isAdmin,
+    isCheckingAdmin,
+    router,
+    loadTemplates,
+  ]);
 
   const handleDeleteTemplate = async (templateId: string) => {
     try {

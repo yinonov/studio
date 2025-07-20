@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchContractsForUser, deleteContractById } from '@/firebase/contractServices';
+import {
+  fetchContractsForUser,
+  deleteContractById,
+} from '@/firebase/contractServices';
 import type { StoredContractData } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,7 +30,9 @@ export default function DashboardPage() {
   const [contracts, setContracts] = useState<StoredContractData[]>([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
+  const [selectedContracts, setSelectedContracts] = useState<Set<string>>(
+    new Set()
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -123,17 +128,17 @@ export default function DashboardPage() {
 
   const handleBulkDelete = async () => {
     if (selectedContracts.size === 0) return;
-    
+
     const confirmed = window.confirm(
       `האם אתה בטוח שברצונך למחוק ${selectedContracts.size} חוזים? פעולה זו לא ניתנת לביטול.`
     );
-    
+
     if (!confirmed) return;
-    
+
     setIsDeleting(true);
     try {
       await Promise.all(
-        Array.from(selectedContracts).map(contractId => 
+        Array.from(selectedContracts).map(contractId =>
           deleteContractById(contractId)
         )
       );
@@ -146,8 +151,10 @@ export default function DashboardPage() {
     }
   };
 
-  const isAllSelected = contracts.length > 0 && selectedContracts.size === contracts.length;
-  const isIndeterminate = selectedContracts.size > 0 && selectedContracts.size < contracts.length;
+  const isAllSelected =
+    contracts.length > 0 && selectedContracts.size === contracts.length;
+  const isIndeterminate =
+    selectedContracts.size > 0 && selectedContracts.size < contracts.length;
 
   // Helper to extract signers from formData
   function getSignersFromFormData(formData: Record<string, any>) {
@@ -237,7 +244,11 @@ export default function DashboardPage() {
                       <Checkbox
                         checked={isAllSelected}
                         onCheckedChange={handleSelectAll}
-                        className={isIndeterminate ? 'data-[state=indeterminate]:bg-primary' : ''}
+                        className={
+                          isIndeterminate
+                            ? 'data-[state=indeterminate]:bg-primary'
+                            : ''
+                        }
                       />
                     </TableHead>
                     <TableHead className='text-right font-semibold text-gray-600'>
@@ -256,28 +267,28 @@ export default function DashboardPage() {
                 </TableHeader>
                 <TableBody>
                   {contracts.map(contract => (
-                    <TableRow
-                      key={contract.id}
-                      className='hover:bg-muted/50'
-                    >
-                      <TableCell 
-                        onClick={(e) => e.stopPropagation()}
+                    <TableRow key={contract.id} className='hover:bg-muted/50'>
+                      <TableCell
+                        onClick={e => e.stopPropagation()}
                         className='w-12'
                       >
                         <Checkbox
                           checked={selectedContracts.has(contract.id)}
-                          onCheckedChange={(checked) =>
-                            handleSelectContract(contract.id, checked as boolean)
+                          onCheckedChange={checked =>
+                            handleSelectContract(
+                              contract.id,
+                              checked as boolean
+                            )
                           }
                         />
                       </TableCell>
-                      <TableCell 
+                      <TableCell
                         className='cursor-pointer font-medium text-gray-900'
                         onClick={() => router.push(`/contracts/${contract.id}`)}
                       >
                         {contract.title || 'ללא כותרת'}
                       </TableCell>
-                      <TableCell 
+                      <TableCell
                         className='cursor-pointer'
                         onClick={() => router.push(`/contracts/${contract.id}`)}
                       >
@@ -290,13 +301,13 @@ export default function DashboardPage() {
                           {getStatusText(contract.status)}
                         </Badge>
                       </TableCell>
-                      <TableCell 
+                      <TableCell
                         className='cursor-pointer text-sm text-gray-600'
                         onClick={() => router.push(`/contracts/${contract.id}`)}
                       >
                         {formatDate(contract.lastUpdatedAt)}
                       </TableCell>
-                      <TableCell 
+                      <TableCell
                         className='hidden cursor-pointer text-sm text-gray-600 sm:table-cell'
                         onClick={() => router.push(`/contracts/${contract.id}`)}
                       >

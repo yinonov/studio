@@ -24,10 +24,10 @@ export const createTemplate = async (
   try {
     const functions = getClientFunctions();
     const createTemplateFn = httpsCallable(functions, 'createTemplate');
-    
+
     const result = await createTemplateFn(templateData);
     const data = result.data as { templateId: string };
-    
+
     return data.templateId;
   } catch (error) {
     console.error('Error creating template:', error);
@@ -44,7 +44,7 @@ export const updateTemplate = async (
   try {
     const functions = getClientFunctions();
     const updateTemplateFn = httpsCallable(functions, 'updateTemplate');
-    
+
     await updateTemplateFn(templateData);
   } catch (error) {
     console.error('Error updating template:', error);
@@ -59,7 +59,7 @@ export const deleteTemplate = async (templateId: string): Promise<void> => {
   try {
     const functions = getClientFunctions();
     const deleteTemplateFn = httpsCallable(functions, 'deleteTemplate');
-    
+
     await deleteTemplateFn({ templateId });
   } catch (error) {
     console.error('Error deleting template:', error);
@@ -82,7 +82,7 @@ export const fetchAllTemplatesForAdmin = async (): Promise<
       functions,
       'getAllTemplatesForAdmin'
     );
-    
+
     const result = await getAllTemplatesFn();
     const data = result.data as {
       templates: (Template & {
@@ -90,7 +90,7 @@ export const fetchAllTemplatesForAdmin = async (): Promise<
         lastUpdatedAt?: Date;
       })[];
     };
-    
+
     return data.templates;
   } catch (error) {
     console.error('Error fetching templates for admin:', error);
@@ -108,10 +108,10 @@ export const syncDefaultTemplatesToFirestore = async (): Promise<number> => {
       functions,
       'syncDefaultTemplates'
     );
-    
+
     const result = await syncDefaultTemplatesFn();
     const data = result.data as { syncedCount: number };
-    
+
     console.log(`Synced ${data.syncedCount} default templates to Firestore`);
     return data.syncedCount;
   } catch (error) {

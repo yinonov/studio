@@ -62,11 +62,13 @@ export default function EditTemplatePage() {
 
   const [fields, setFields] = useState<TemplateField[]>([]);
   const [baseClauses, setBaseClauses] = useState<string[]>([]);
-  const [creationSteps, setCreationSteps] = useState<Array<{
-    name: string;
-    description?: string;
-    fieldIds: string[];
-  }>>([]);
+  const [creationSteps, setCreationSteps] = useState<
+    Array<{
+      name: string;
+      description?: string;
+      fieldIds: string[];
+    }>
+  >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadTemplate = useCallback(async () => {
@@ -126,7 +128,16 @@ export default function EditTemplatePage() {
     }
 
     loadTemplate();
-  }, [currentUser, isFirebaseLoading, isAdmin, isCheckingAdmin, templateId, router, toast, loadTemplate]);
+  }, [
+    currentUser,
+    isFirebaseLoading,
+    isAdmin,
+    isCheckingAdmin,
+    templateId,
+    router,
+    toast,
+    loadTemplate,
+  ]);
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -165,11 +176,14 @@ export default function EditTemplatePage() {
     setCreationSteps(prev => prev.filter((_, i) => i !== index));
   };
 
-  const updateStep = (index: number, updates: Partial<{
-    name: string;
-    description?: string;
-    fieldIds: string[];
-  }>) => {
+  const updateStep = (
+    index: number,
+    updates: Partial<{
+      name: string;
+      description?: string;
+      fieldIds: string[];
+    }>
+  ) => {
     setCreationSteps(prev =>
       prev.map((step, i) => (i === index ? { ...step, ...updates } : step))
     );
@@ -184,10 +198,10 @@ export default function EditTemplatePage() {
       placeholder: '',
       required: false,
     };
-    
+
     // Add field to global fields array
     setFields(prev => [...prev, newField]);
-    
+
     // Add field ID to step
     setCreationSteps(prev =>
       prev.map((step, i) =>
@@ -201,7 +215,7 @@ export default function EditTemplatePage() {
   const removeFieldFromStep = (fieldId: string, stepIndex: number) => {
     // Remove field from global fields array
     setFields(prev => prev.filter(field => field.id !== fieldId));
-    
+
     // Remove field ID from step
     setCreationSteps(prev =>
       prev.map((step, i) =>
@@ -212,9 +226,14 @@ export default function EditTemplatePage() {
     );
   };
 
-  const updateFieldInStep = (fieldId: string, updates: Partial<TemplateField>) => {
+  const updateFieldInStep = (
+    fieldId: string,
+    updates: Partial<TemplateField>
+  ) => {
     setFields(prev =>
-      prev.map(field => (field.id === fieldId ? { ...field, ...updates } : field))
+      prev.map(field =>
+        field.id === fieldId ? { ...field, ...updates } : field
+      )
     );
   };
 
@@ -446,15 +465,18 @@ export default function EditTemplatePage() {
           <CardContent className='space-y-6'>
             {creationSteps.length === 0 ? (
               <p className='py-8 text-center text-muted-foreground'>
-                עדיין לא הוספת שלבים. לחץ על &quot;הוסף שלב&quot; כדי להתחיל.
-                כל שלב יכיל שדות משלו.
+                עדיין לא הוספת שלבים. לחץ על &quot;הוסף שלב&quot; כדי להתחיל. כל
+                שלב יכיל שדות משלו.
               </p>
             ) : (
               creationSteps.map((step, stepIndex) => (
-                <div key={stepIndex} className='space-y-4 rounded-lg border p-6 bg-gray-50'>
+                <div
+                  key={stepIndex}
+                  className='space-y-4 rounded-lg border bg-gray-50 p-6'
+                >
                   {/* Step Header */}
                   <div className='flex items-center justify-between'>
-                    <Badge variant='outline' className='text-lg px-3 py-1'>
+                    <Badge variant='outline' className='px-3 py-1 text-lg'>
                       שלב {stepIndex + 1}
                     </Badge>
                     <Button
@@ -495,7 +517,9 @@ export default function EditTemplatePage() {
                   {/* Fields in this Step */}
                   <div className='space-y-4'>
                     <div className='flex items-center justify-between'>
-                      <Label className='text-base font-medium'>שדות בשלב זה</Label>
+                      <Label className='text-base font-medium'>
+                        שדות בשלב זה
+                      </Label>
                       <Button
                         type='button'
                         onClick={() => addFieldToStep(stepIndex)}
@@ -508,8 +532,9 @@ export default function EditTemplatePage() {
                     </div>
 
                     {step.fieldIds.length === 0 ? (
-                      <p className='py-4 text-center text-muted-foreground text-sm'>
-                        אין שדות בשלב זה. לחץ על &quot;הוסף שדה&quot; כדי להוסיף.
+                      <p className='py-4 text-center text-sm text-muted-foreground'>
+                        אין שדות בשלב זה. לחץ על &quot;הוסף שדה&quot; כדי
+                        להוסיף.
                       </p>
                     ) : (
                       <div className='space-y-4'>
@@ -518,12 +543,17 @@ export default function EditTemplatePage() {
                           if (!field) return null;
 
                           return (
-                            <div key={fieldId} className='space-y-3 rounded-lg border bg-white p-4'>
+                            <div
+                              key={fieldId}
+                              className='space-y-3 rounded-lg border bg-white p-4'
+                            >
                               <div className='flex items-center justify-between'>
                                 <Badge variant='secondary'>שדה</Badge>
                                 <Button
                                   type='button'
-                                  onClick={() => removeFieldFromStep(fieldId, stepIndex)}
+                                  onClick={() =>
+                                    removeFieldFromStep(fieldId, stepIndex)
+                                  }
                                   variant='ghost'
                                   size='sm'
                                 >
@@ -537,7 +567,9 @@ export default function EditTemplatePage() {
                                   <Input
                                     value={field.label}
                                     onChange={e =>
-                                      updateFieldInStep(fieldId, { label: e.target.value })
+                                      updateFieldInStep(fieldId, {
+                                        label: e.target.value,
+                                      })
                                     }
                                     placeholder='לדוגמה: שם המשכיר'
                                   />
@@ -548,7 +580,9 @@ export default function EditTemplatePage() {
                                   <Input
                                     value={field.id}
                                     onChange={e =>
-                                      updateFieldInStep(fieldId, { id: e.target.value })
+                                      updateFieldInStep(fieldId, {
+                                        id: e.target.value,
+                                      })
                                     }
                                     placeholder='לדוגמה: landlordName'
                                   />
@@ -559,7 +593,9 @@ export default function EditTemplatePage() {
                                   <Select
                                     value={field.type}
                                     onValueChange={value =>
-                                      updateFieldInStep(fieldId, { type: value as any })
+                                      updateFieldInStep(fieldId, {
+                                        type: value as any,
+                                      })
                                     }
                                   >
                                     <SelectTrigger>
@@ -567,7 +603,10 @@ export default function EditTemplatePage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       {FIELD_TYPES.map(type => (
-                                        <SelectItem key={type.value} value={type.value}>
+                                        <SelectItem
+                                          key={type.value}
+                                          value={type.value}
+                                        >
                                           {type.label}
                                         </SelectItem>
                                       ))}
@@ -580,7 +619,9 @@ export default function EditTemplatePage() {
                                   <Input
                                     value={field.placeholder || ''}
                                     onChange={e =>
-                                      updateFieldInStep(fieldId, { placeholder: e.target.value })
+                                      updateFieldInStep(fieldId, {
+                                        placeholder: e.target.value,
+                                      })
                                     }
                                     placeholder='טקסט עזר למשתמש'
                                   />
@@ -593,11 +634,15 @@ export default function EditTemplatePage() {
                                   id={`required-${fieldId}`}
                                   checked={field.required || false}
                                   onChange={e =>
-                                    updateFieldInStep(fieldId, { required: e.target.checked })
+                                    updateFieldInStep(fieldId, {
+                                      required: e.target.checked,
+                                    })
                                   }
                                   className='h-4 w-4'
                                 />
-                                <Label htmlFor={`required-${fieldId}`}>שדה חובה</Label>
+                                <Label htmlFor={`required-${fieldId}`}>
+                                  שדה חובה
+                                </Label>
                               </div>
                             </div>
                           );

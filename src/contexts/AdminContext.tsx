@@ -34,11 +34,11 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
     try {
       setIsCheckingAdmin(true);
-      
+
       // Get the actual Firebase user to check token claims
       const auth = getClientAuth();
       const firebaseUser = auth.currentUser;
-      
+
       if (firebaseUser) {
         // Get fresh token and check claims directly
         const tokenResult = await firebaseUser.getIdTokenResult();
@@ -85,9 +85,9 @@ export function useAdmin() {
 // Hook for components that need immediate admin check (without async)
 export function useAdminSync() {
   const { currentUser } = useAuth();
-  
+
   // Use synchronous check for immediate feedback
   const isAdmin = currentUser ? isUserAdminSync(currentUser) : false;
-  
+
   return { isAdmin };
 }

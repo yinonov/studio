@@ -214,23 +214,29 @@ export const fetchTemplates = async (): Promise<Template[]> => {
     const db = getClientDb();
     const querySnapshot = await getDocs(collection(db, 'templates'));
     if (querySnapshot.empty) {
-      console.log('📋 No templates in Firestore, using defaults with creationSteps');
+      console.log(
+        '📋 No templates in Firestore, using defaults with creationSteps'
+      );
       return defaultTemplates.map(t => ({
         ...t,
         icon: getIconForCategory(t.category),
       }));
     }
-    
+
     const firestoreTemplates = querySnapshot.docs.map(doc => {
       const data = doc.data();
-      let template = {
+      const template = {
         id: doc.id,
         ...data,
         icon: getIconForCategory(data.category),
       } as Template;
-      
+
       // Enhance template with creationSteps if missing
-      if (!template.creationSteps && template.fields && template.fields.length > 0) {
+      if (
+        !template.creationSteps &&
+        template.fields &&
+        template.fields.length > 0
+      ) {
         // Generate basic creation steps for templates that don't have them
         const fieldIds = template.fields.map(f => f.id).filter(Boolean);
         if (fieldIds.length > 0) {
@@ -241,20 +247,25 @@ export const fetchTemplates = async (): Promise<Template[]> => {
               fieldIds: fieldIds,
             },
           ];
-          console.log(`📝 Enhanced template ${template.title} with auto-generated creation steps`);
+          console.log(
+            `📝 Enhanced template ${template.title} with auto-generated creation steps`
+          );
         }
       }
-      
+
       return template;
     });
-    
-    console.log('📋 Found Firestore templates:', firestoreTemplates.map(t => ({
-      id: t.id,
-      title: t.title,
-      hasCreationSteps: !!t.creationSteps,
-      fieldsCount: t.fields?.length || 0
-    })));
-    
+
+    console.log(
+      '📋 Found Firestore templates:',
+      firestoreTemplates.map(t => ({
+        id: t.id,
+        title: t.title,
+        hasCreationSteps: !!t.creationSteps,
+        fieldsCount: t.fields?.length || 0,
+      }))
+    );
+
     return firestoreTemplates;
   } catch (error) {
     console.error('Error fetching templates: ', error);
@@ -274,14 +285,18 @@ export const fetchTemplateById = async (
     const docSnap = await getDoc(templateRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
-      let template = {
+      const template = {
         id: docSnap.id,
         ...data,
         icon: getIconForCategory(data.category),
       } as Template;
-      
+
       // Enhance template with creationSteps if missing
-      if (!template.creationSteps && template.fields && template.fields.length > 0) {
+      if (
+        !template.creationSteps &&
+        template.fields &&
+        template.fields.length > 0
+      ) {
         const fieldIds = template.fields.map(f => f.id).filter(Boolean);
         if (fieldIds.length > 0) {
           template.creationSteps = [
@@ -291,10 +306,12 @@ export const fetchTemplateById = async (
               fieldIds: fieldIds,
             },
           ];
-          console.log(`📝 Enhanced template ${template.title} with auto-generated creation steps`);
+          console.log(
+            `📝 Enhanced template ${template.title} with auto-generated creation steps`
+          );
         }
       }
-      
+
       return template;
     } else {
       // Fallback to local defaultTemplates if not found in Firestore
