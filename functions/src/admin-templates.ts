@@ -329,6 +329,37 @@ export const syncDefaultTemplates = onCall(
             "המשכיר יתחייב לתחזק את הנכס",
           ],
         },
+        {
+          id: "nda",
+          title: "הסכם סודיות (NDA)",
+          category: "עסקי",
+          description: "הסכם לשמירה על מידע רגיש בין צדדים",
+          fields: [
+            { id: "disclosingParty", label: "צד מגלה מידע", type: "text" as const, required: true },
+            { id: "receivingParty", label: "צד מקבל מידע", type: "text" as const, required: true },
+            { id: "effectiveDate", label: "תאריך תחולה", type: "date" as const, required: true },
+            { id: "confidentialInformationDescription", label: "תיאור המידע הסודי", type: "textarea" as const, required: true },
+          ],
+          creationSteps: [
+            {
+              name: "פרטי הצדדים",
+              description: "הגדרת הצדדים להסכם הסודיות",
+              fieldIds: ["disclosingParty", "receivingParty"],
+            },
+            {
+              name: "פרטי ההסכם",
+              description: "תנאי הסודיות והמידע המוגן",
+              fieldIds: ["effectiveDate", "confidentialInformationDescription"],
+            },
+          ],
+          baseClauses: [
+            "שנערך ונחתם ביום {{effectiveDate}}",
+            "בין: {{disclosingParty}} (להלן: \"הצד המגלה\")",
+            "לבין: {{receivingParty}} (להלן: \"הצד המקבל\")",
+            "הואיל והצד המגלה מתכוון לגלות לצד המקבל מידע סודי (כהגדרתו להלן) למטרת {{purpose||בחינת שיתוף פעולה עסקי}}.",
+            "להלן תיאור המידע הסודי: {{confidentialInformationDescription}}",
+          ],
+        },
       ];
       
       let syncedCount = 0;
