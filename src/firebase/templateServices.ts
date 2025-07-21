@@ -111,6 +111,18 @@ const defaultTemplates: Template[] = [
     category: 'נדל"ן',
     description: 'חוזה סטנדרטי למשכירים ושוכרים למגורים.',
     fields: defaultRentalFields,
+    creationSteps: [
+      {
+        name: 'פרטי הנכס',
+        description: 'מידע בסיסי על הנכס והתנאים',
+        fieldIds: ['address', 'rentAmount', 'startDate'],
+      },
+      {
+        name: 'הערות נוספות',
+        description: 'פרטים מיוחדים או תנאים נוספים',
+        fieldIds: ['additionalNotes'],
+      },
+    ],
     baseClauses: [
       // Example base clauses
       'שנערך ונחתם ב{{city||תל אביב}} ביום {{day}} לחודש {{month}} שנת {{year}}',
@@ -128,6 +140,13 @@ const defaultTemplates: Template[] = [
     category: 'שירותים',
     description: 'חוזה לפרילנסרים המספקים שירותים ללקוחות.',
     fields: defaultServiceFields,
+    creationSteps: [
+      {
+        name: 'פרטי השירות',
+        description: 'תיאור השירות והתמורה',
+        fieldIds: ['serviceDescription', 'serviceFee'],
+      },
+    ],
     baseClauses: [
       'שנערך ונחתם ביום {{day}} לחודש {{month}} שנת {{year}}',
       'בין: {{party1Name}} (להלן: "נותן השירותים")',
@@ -168,6 +187,18 @@ const defaultTemplates: Template[] = [
         required: true,
       },
     ],
+    creationSteps: [
+      {
+        name: 'פרטי הצדדים',
+        description: 'הגדרת הצדדים להסכם הסודיות',
+        fieldIds: ['disclosingParty', 'receivingParty'],
+      },
+      {
+        name: 'פרטי ההסכם',
+        description: 'תנאי הסודיות והמידע המוגן',
+        fieldIds: ['effectiveDate', 'confidentialInformationDescription'],
+      },
+    ],
     baseClauses: [
       'שנערך ונחתם ביום {{effectiveDate}}',
       'בין: {{disclosingParty}} (להלן: "הצד המגלה")',
@@ -183,20 +214,59 @@ export const fetchTemplates = async (): Promise<Template[]> => {
     const db = getClientDb();
     const querySnapshot = await getDocs(collection(db, 'templates'));
     if (querySnapshot.empty) {
+      console.log(
+        '📋 No templates in Firestore, using defaults with creationSteps'
+      );
       return defaultTemplates.map(t => ({
         ...t,
         icon: getIconForCategory(t.category),
       }));
     }
-    const templatesData = querySnapshot.docs.map(doc => {
+
+    const firestoreTemplates = querySnapshot.docs.map(doc => {
       const data = doc.data();
-      return {
+      const template = {
         id: doc.id,
         ...data,
         icon: getIconForCategory(data.category),
       } as Template;
+
+      // Enhance template with creationSteps if missing
+      if (
+        !template.creationSteps &&
+        template.fields &&
+        template.fields.length > 0
+      ) {
+        // Generate basic creation steps for templates that don't have them
+        const fieldIds = template.fields.map(f => f.id).filter(Boolean);
+        if (fieldIds.length > 0) {
+          template.creationSteps = [
+            {
+              name: 'פרטי התבנית',
+              description: 'מילוי פרטי התבנית',
+              fieldIds: fieldIds,
+            },
+          ];
+          console.log(
+            `📝 Enhanced template ${template.title} with auto-generated creation steps`
+          );
+        }
+      }
+
+      return template;
     });
-    return templatesData;
+
+    console.log(
+      '📋 Found Firestore templates:',
+      firestoreTemplates.map(t => ({
+        id: t.id,
+        title: t.title,
+        hasCreationSteps: !!t.creationSteps,
+        fieldsCount: t.fields?.length || 0,
+      }))
+    );
+
+    return firestoreTemplates;
   } catch (error) {
     console.error('Error fetching templates: ', error);
     return defaultTemplates.map(t => ({
@@ -215,11 +285,34 @@ export const fetchTemplateById = async (
     const docSnap = await getDoc(templateRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
-      return {
+      const template = {
         id: docSnap.id,
         ...data,
         icon: getIconForCategory(data.category),
       } as Template;
+
+      // Enhance template with creationSteps if missing
+      if (
+        !template.creationSteps &&
+        template.fields &&
+        template.fields.length > 0
+      ) {
+        const fieldIds = template.fields.map(f => f.id).filter(Boolean);
+        if (fieldIds.length > 0) {
+          template.creationSteps = [
+            {
+              name: 'פרטי התבנית',
+              description: 'מילוי פרטי התבנית',
+              fieldIds: fieldIds,
+            },
+          ];
+          console.log(
+            `📝 Enhanced template ${template.title} with auto-generated creation steps`
+          );
+        }
+      }
+
+      return template;
     } else {
       // Fallback to local defaultTemplates if not found in Firestore
       const localTemplate = defaultTemplates.find(t => t.id === templateId);
@@ -255,3 +348,6 @@ export const fetchTemplateById = async (
     return null;
   }
 };
+
+// Export defaultTemplates for admin sync functionality
+export { defaultTemplates };

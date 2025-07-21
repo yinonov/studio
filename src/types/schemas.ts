@@ -8,6 +8,13 @@ export const UserSchema = z.object({
   photoURL: z.string().url().nullable().optional(),
   subscriptionTier: z.enum(['free', 'premium']).optional(),
   createdAt: z.any().optional(), // Firestore Timestamps are tricky with Zod
+  // Custom claims for roles
+  customClaims: z
+    .object({
+      admin: z.boolean().optional(),
+      role: z.enum(['admin', 'user']).optional(),
+    })
+    .optional(),
 });
 
 export type UserSchema = z.infer<typeof UserSchema>;
@@ -31,6 +38,16 @@ export const TemplateSchema = z.object({
     .optional(),
   defaultValues: z.record(z.string()).optional(),
   baseClauses: z.array(z.string()).optional(),
+  // NEW: Define creation steps for better UX
+  creationSteps: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().optional(),
+        fieldIds: z.array(z.string()),
+      })
+    )
+    .optional(),
 });
 
 export type TemplateSchema = z.infer<typeof TemplateSchema>;
