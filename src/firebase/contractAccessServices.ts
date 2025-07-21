@@ -101,7 +101,10 @@ export const fetchContractsForUserWithAccess = async (
                 accessLevel: userAccess.accessLevel,
                 permissions: userAccess.permissions,
               }
-            : { accessLevel: 'viewer' as AccessLevel, permissions: ['view'] as Permission[] },
+            : {
+                accessLevel: 'viewer' as AccessLevel,
+                permissions: ['view'] as Permission[],
+              },
         };
       });
 

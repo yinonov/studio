@@ -1,8 +1,8 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { getAuth } from "firebase-admin/auth";
-import { z } from "zod";
-import * as logger from "firebase-functions/logger";
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
+import { z } from 'zod';
+import * as logger from 'firebase-functions/logger';
 
 // Import the access control schemas from shared
 import {
@@ -10,7 +10,7 @@ import {
   PermissionSchema,
   type AccessLevel,
   type Permission,
-} from "../../shared/types/access-control";
+} from '../../shared/types/access-control';
 
 // Helper function to check if user has access to a contract
 async function checkContractAccess(
@@ -70,7 +70,7 @@ async function auditLog(
 /**
  * Grant access to a contract for specific users
  */
-export const grantContractAccess = onCall(async (request) => {
+export const grantContractAccess = onCall(async request => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
@@ -90,8 +90,9 @@ export const grantContractAccess = onCall(async (request) => {
     const granterId = request.auth.uid;
 
     // Check if granter has 'manage' or 'share' permission on the contract
-    const canShare = await checkContractAccess(granterId, contractId, 'manage') ||
-                     await checkContractAccess(granterId, contractId, 'share');
+    const canShare =
+      (await checkContractAccess(granterId, contractId, 'manage')) ||
+      (await checkContractAccess(granterId, contractId, 'share'));
 
     if (!canShare) {
       throw new HttpsError(
@@ -156,15 +157,17 @@ export const grantContractAccess = onCall(async (request) => {
           { targetEmail: email, accessLevel, permissions },
           request
         );
-
       } catch (error) {
         logger.error(`Error granting access to ${email}:`, error);
-        results.push({ email, status: 'error', error: (error as Error).message });
+        results.push({
+          email,
+          status: 'error',
+          error: (error as Error).message,
+        });
       }
     }
 
     return { success: true, results };
-
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw new HttpsError(
@@ -172,14 +175,17 @@ export const grantContractAccess = onCall(async (request) => {
         `Validation error: ${error.errors.map(e => e.message).join(', ')}`
       );
     }
-    throw new HttpsError('internal', `Failed to grant access: ${(error as Error).message}`);
+    throw new HttpsError(
+      'internal',
+      `Failed to grant access: ${(error as Error).message}`
+    );
   }
 });
 
 /**
  * Revoke access to a contract for specific users
  */
-export const revokeContractAccess = onCall(async (request) => {
+export const revokeContractAccess = onCall(async request => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
@@ -194,7 +200,11 @@ export const revokeContractAccess = onCall(async (request) => {
     const revokerId = request.auth.uid;
 
     // Check if revoker has 'manage' permission
-    const canManage = await checkContractAccess(revokerId, contractId, 'manage');
+    const canManage = await checkContractAccess(
+      revokerId,
+      contractId,
+      'manage'
+    );
     if (!canManage) {
       throw new HttpsError(
         'permission-denied',
@@ -208,7 +218,10 @@ export const revokeContractAccess = onCall(async (request) => {
     // Revoke access for each user
     for (const userId of userIds) {
       // Don't allow revoking owner access
-      const contractDoc = await db.collection('contracts').doc(contractId).get();
+      const contractDoc = await db
+        .collection('contracts')
+        .doc(contractId)
+        .get();
       if (contractDoc.exists) {
         const contract = contractDoc.data();
         if (contract?.ownerId === userId) {
@@ -239,7 +252,6 @@ export const revokeContractAccess = onCall(async (request) => {
     await batch.commit();
 
     return { success: true, revokedCount: userIds.length };
-
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw new HttpsError(
@@ -247,14 +259,17 @@ export const revokeContractAccess = onCall(async (request) => {
         `Validation error: ${error.errors.map(e => e.message).join(', ')}`
       );
     }
-    throw new HttpsError('internal', `Failed to revoke access: ${(error as Error).message}`);
+    throw new HttpsError(
+      'internal',
+      `Failed to revoke access: ${(error as Error).message}`
+    );
   }
 });
 
 /**
  * Get list of users who have access to a contract
  */
-export const getContractAccessList = onCall(async (request) => {
+export const getContractAccessList = onCall(async request => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
@@ -305,20 +320,29 @@ export const getContractAccessList = onCall(async (request) => {
       const ownerAccess = {
         userId: contract?.ownerId,
         accessLevel: 'owner',
-        permissions: ['view', 'edit', 'sign', 'download', 'manage', 'share', 'delete'],
+        permissions: [
+          'view',
+          'edit',
+          'sign',
+          'download',
+          'manage',
+          'share',
+          'delete',
+        ],
         grantedAt: contract?.createdAt,
         isOwner: true,
       };
-      
+
       // Add owner to list if not already present
-      const hasOwnerInList = accessList.some(access => access.userId === contract?.ownerId);
+      const hasOwnerInList = accessList.some(
+        access => access.userId === contract?.ownerId
+      );
       if (!hasOwnerInList) {
         accessList.unshift(ownerAccess);
       }
     }
 
     return { accessList };
-
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw new HttpsError(
@@ -336,7 +360,7 @@ export const getContractAccessList = onCall(async (request) => {
 /**
  * Update user's access level and permissions for a contract
  */
-export const updateContractAccess = onCall(async (request) => {
+export const updateContractAccess = onCall(async request => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
@@ -355,7 +379,11 @@ export const updateContractAccess = onCall(async (request) => {
     const updaterId = request.auth.uid;
 
     // Check if updater has 'manage' permission
-    const canManage = await checkContractAccess(updaterId, contractId, 'manage');
+    const canManage = await checkContractAccess(
+      updaterId,
+      contractId,
+      'manage'
+    );
     if (!canManage) {
       throw new HttpsError(
         'permission-denied',
@@ -393,7 +421,6 @@ export const updateContractAccess = onCall(async (request) => {
     );
 
     return { success: true };
-
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw new HttpsError(
@@ -411,7 +438,7 @@ export const updateContractAccess = onCall(async (request) => {
 /**
  * Enhanced contract listing with access control
  */
-export const listContractsWithAccess = onCall(async (request) => {
+export const listContractsWithAccess = onCall(async request => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
@@ -421,7 +448,9 @@ export const listContractsWithAccess = onCall(async (request) => {
     limit: z.number().min(1).max(100).default(20),
     status: z.array(z.string()).optional(),
     accessLevel: z.array(AccessLevelSchema).optional(),
-    sortBy: z.enum(['createdAt', 'lastUpdatedAt', 'title']).default('lastUpdatedAt'),
+    sortBy: z
+      .enum(['createdAt', 'lastUpdatedAt', 'title'])
+      .default('lastUpdatedAt'),
     sortOrder: z.enum(['asc', 'desc']).default('desc'),
   });
 
@@ -437,7 +466,11 @@ export const listContractsWithAccess = onCall(async (request) => {
       .where('userId', '==', userId);
 
     if (queryParams.accessLevel && queryParams.accessLevel.length > 0) {
-      accessQuery = accessQuery.where('accessLevel', 'in', queryParams.accessLevel);
+      accessQuery = accessQuery.where(
+        'accessLevel',
+        'in',
+        queryParams.accessLevel
+      );
     }
 
     const accessSnapshot = await accessQuery.get();
@@ -463,7 +496,11 @@ export const listContractsWithAccess = onCall(async (request) => {
         .where('__name__', 'in', batch);
 
       if (queryParams.status && queryParams.status.length > 0) {
-        contractsQuery = contractsQuery.where('status', 'in', queryParams.status);
+        contractsQuery = contractsQuery.where(
+          'status',
+          'in',
+          queryParams.status
+        );
       }
 
       const contractsSnapshot = await contractsQuery.get();
@@ -480,7 +517,10 @@ export const listContractsWithAccess = onCall(async (request) => {
       const aValue = a[queryParams.sortBy];
       const bValue = b[queryParams.sortBy];
 
-      if (queryParams.sortBy === 'createdAt' || queryParams.sortBy === 'lastUpdatedAt') {
+      if (
+        queryParams.sortBy === 'createdAt' ||
+        queryParams.sortBy === 'lastUpdatedAt'
+      ) {
         const aTime = aValue?.seconds || 0;
         const bTime = bValue?.seconds || 0;
         return queryParams.sortOrder === 'desc' ? bTime - aTime : aTime - bTime;
@@ -504,7 +544,6 @@ export const listContractsWithAccess = onCall(async (request) => {
       page: queryParams.page,
       totalPages,
     };
-
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw new HttpsError(

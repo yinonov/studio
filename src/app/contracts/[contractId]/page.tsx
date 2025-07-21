@@ -104,9 +104,7 @@ export default function ContractViewPage() {
     typeof params.contractId === 'string' ? params.contractId : null;
   const { toast } = useToast();
 
-  const [contract, setContract] = useState<Contract | null>(
-    null
-  );
+  const [contract, setContract] = useState<Contract | null>(null);
   const [template, setTemplate] = useState<TemplateSchema | null>(null);
   const [isLoadingContract, setIsLoadingContract] = useState(true);
   const [error, setError] = useState<string | null>(null);

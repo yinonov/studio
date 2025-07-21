@@ -7,10 +7,10 @@ export {
   CustomClauseSchema,
   ContractSchema,
   RequestDataSchema,
-} from "@shared/types/access-control";
+} from '@shared/types/access-control';
 
 export type {
   CustomClause,
   Contract,
   RequestData,
-} from "@shared/types/access-control";
+} from '@shared/types/access-control';

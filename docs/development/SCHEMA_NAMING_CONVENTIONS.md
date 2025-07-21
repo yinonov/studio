@@ -3,11 +3,13 @@
 ## ✅ Consistent Naming Pattern
 
 ### **Zod Schema → TypeScript Type Convention**:
+
 - `SomethingSchema` (runtime validation) → `Something` (compile-time type)
 - Schema name always ends with `Schema`
 - Type name is the same without `Schema` suffix
 
 ### **Examples in our codebase**:
+
 ```typescript
 // ✅ Correct pattern
 export const ContractSchema = z.object({...});
@@ -21,6 +23,7 @@ export type Permission = z.infer<typeof PermissionSchema>;
 ```
 
 ### **What we fixed**:
+
 ```typescript
 // ❌ Before: Inconsistent legacy naming
 export type StoredContractDataSchema = Contract;
@@ -32,18 +35,18 @@ export type Contract = z.infer<typeof ContractSchema>;
 
 ## 📋 Current Schema/Type Pairs
 
-| Zod Schema | TypeScript Type | Purpose |
-|------------|-----------------|---------|
-| `CustomClauseSchema` | `CustomClause` | Contract clause structure |
-| `AccessLevelSchema` | `AccessLevel` | Access hierarchy enum |
-| `PermissionSchema` | `Permission` | Granular permissions enum |
-| `GroupSchema` | `Group` | User groups for bulk access |
-| `UserSchema` | `User` | Extended user profiles |
-| `ContractAccessSchema` | `ContractAccess` | Junction table for access control |
-| `ContractSchema` | `Contract` | Core contract document |
-| `AuditLogSchema` | `AuditLog` | Security audit trail |
-| `ContractListQuerySchema` | `ContractListQuery` | Query parameters |
-| `RequestDataSchema` | `RequestData` | Cloud Function requests |
+| Zod Schema                | TypeScript Type     | Purpose                           |
+| ------------------------- | ------------------- | --------------------------------- |
+| `CustomClauseSchema`      | `CustomClause`      | Contract clause structure         |
+| `AccessLevelSchema`       | `AccessLevel`       | Access hierarchy enum             |
+| `PermissionSchema`        | `Permission`        | Granular permissions enum         |
+| `GroupSchema`             | `Group`             | User groups for bulk access       |
+| `UserSchema`              | `User`              | Extended user profiles            |
+| `ContractAccessSchema`    | `ContractAccess`    | Junction table for access control |
+| `ContractSchema`          | `Contract`          | Core contract document            |
+| `AuditLogSchema`          | `AuditLog`          | Security audit trail              |
+| `ContractListQuerySchema` | `ContractListQuery` | Query parameters                  |
+| `RequestDataSchema`       | `RequestData`       | Cloud Function requests           |
 
 ## 🎯 Benefits
 

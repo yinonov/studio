@@ -5,6 +5,7 @@ This directory contains all project documentation organized by purpose.
 ## 📁 Directory Structure
 
 ### 🛠️ **Development** (`development/`)
+
 Documentation for developers working on the codebase:
 
 - **[CONTRACT_ACCESS_REFACTOR_PLAN.md](development/CONTRACT_ACCESS_REFACTOR_PLAN.md)** - Current active work plan with detailed tasks
@@ -16,6 +17,7 @@ Documentation for developers working on the codebase:
 - **[DOCS_CLEANUP_SUMMARY.md](development/DOCS_CLEANUP_SUMMARY.md)** - Documentation organization history
 
 ### 🚀 **Deployment** (`deployment/`)
+
 Documentation for deployment and infrastructure:
 
 - **[CI_CD_IMPLEMENTATION_SUMMARY.md](deployment/CI_CD_IMPLEMENTATION_SUMMARY.md)** - CI/CD pipeline overview
@@ -23,6 +25,7 @@ Documentation for deployment and infrastructure:
 - **[DEPLOYMENT_SETUP.md](deployment/DEPLOYMENT_SETUP.md)** - Firebase deployment guide
 
 ### ⚡ **Features** (`features/`)
+
 Documentation for app features and specifications:
 
 - **[blueprint.md](features/blueprint.md)** - Core app specification and design

@@ -9,9 +9,9 @@ import {
   createDropboxSignSignatureRequest,
   getDropboxSignSignatureRequest,
   getEmbeddedSignUrl,
-} from "./services/dropbox-sign";
-import { ContractSchema } from "@shared/types/access-control";
-import type { Contract } from "@shared/types/access-control";
+} from './services/dropbox-sign';
+import { ContractSchema } from '@shared/types/access-control';
+import type { Contract } from '@shared/types/access-control';
 
 // Backend version of interpolateWithDefaults function
 function interpolateWithDefaults(
@@ -415,7 +415,7 @@ export const prepareContractForSigning = onCall(async (data, _context) => {
 
     // Update contract in Firestore
     const updateData: Partial<Contract> = {
-      status: "out-for-signature",
+      status: 'out-for-signature',
       dropboxSignSignatureRequestId,
       lastUpdatedAt: FieldValue.serverTimestamp(),
     };
