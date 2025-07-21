@@ -13,7 +13,7 @@ import {
   fetchDropboxSignSignatureRequest,
   getSignUrl,
 } from '@/firebase/dropbox-sign-service';
-import type { StoredContractDataSchema } from '@functions/types/schemas'; // Adjust the import path as needed
+import type { Contract } from '@shared/types/access-control';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
@@ -104,7 +104,7 @@ export default function ContractViewPage() {
     typeof params.contractId === 'string' ? params.contractId : null;
   const { toast } = useToast();
 
-  const [contract, setContract] = useState<StoredContractDataSchema | null>(
+  const [contract, setContract] = useState<Contract | null>(
     null
   );
   const [template, setTemplate] = useState<TemplateSchema | null>(null);
@@ -275,7 +275,7 @@ export default function ContractViewPage() {
         shareIdentifier.trim(),
       ];
       await updateContractData(contract.id, { sharedWith: updatedSharedWith });
-      setContract((prev: StoredContractDataSchema | null) =>
+      setContract((prev: Contract | null) =>
         prev ? { ...prev, sharedWith: updatedSharedWith } : null
       );
       toast({
@@ -304,7 +304,7 @@ export default function ContractViewPage() {
           (u: string) => u.toLowerCase() !== identifierToRemove.toLowerCase()
         ) || [];
       await updateContractData(contract.id, { sharedWith: updatedSharedWith });
-      setContract((prev: StoredContractDataSchema | null) =>
+      setContract((prev: Contract | null) =>
         prev ? { ...prev, sharedWith: updatedSharedWith } : null
       );
       toast({

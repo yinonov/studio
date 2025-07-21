@@ -3,6 +3,16 @@ import { z } from 'zod';
 // Access control schemas based on the report recommendations
 
 /**
+ * CustomClauseSchema - Individual contract clause structure
+ * Responsibility: Define custom legal clauses that can be added to contracts
+ * Used by: Contract creation, template management, legal review
+ */
+export const CustomClauseSchema = z.object({
+  description: z.string(),
+  legalWording: z.string(),
+});
+
+/**
  * AccessLevelSchema - Defines the hierarchy of access levels for contracts
  * - owner: Full control, can delete, share, and manage all aspects
  * - collaborator: Can edit and share, but cannot delete
@@ -106,6 +116,7 @@ export const ContractAccessSchema = z.object({
  * Responsibility: Store contract metadata, status, and content references
  * Key change: Removed sharedWith array - now uses contract_access collection
  * Status workflow: draft → generating-pdf → out-for-signature → completed/voided
+ * Migration: Includes sharedWith for backward compatibility during transition
  */
 export const ContractSchema = z.object({
   id: z.string(),
@@ -128,12 +139,13 @@ export const ContractSchema = z.object({
   organizationId: z.string().optional(),
   dropboxSignSignatureRequestId: z.string().optional(),
   formData: z.record(z.any()),
-  customClauses: z.array(z.any()).optional(),
+  customClauses: z.array(CustomClauseSchema).optional(),
   tags: z.array(z.string()).default([]),
   // Security & Audit
   createdAt: z.any(),
   lastUpdatedAt: z.any(),
-  // Note: sharedWith array is removed - replaced by contract_access collection
+  // Legacy field for backward compatibility during migration
+  sharedWith: z.array(z.string()).optional(),
 });
 
 /**
@@ -165,14 +177,50 @@ export const AuditLogSchema = z.object({
   userAgent: z.string().optional(),
 });
 
-// Type exports
+/**
+ * ContractListQuerySchema - Comprehensive query parameters for contract filtering
+ * Responsibility: Define all possible filters and sorting options for contract lists
+ * Features: Pagination, status filters, search, access level filtering, sorting
+ * Performance: Limit enforced to prevent expensive queries
+ */
+export const ContractListQuerySchema = z.object({
+  userId: z.string(),
+  page: z.number().default(1),
+  limit: z.number().min(1).max(100).default(20),
+  status: z.array(z.string()).optional(),
+  contractType: z.string().optional(),
+  accessLevel: z.array(AccessLevelSchema).optional(),
+  search: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  sortBy: z
+    .enum(['createdAt', 'lastUpdatedAt', 'title', 'effectiveDate'])
+    .default('lastUpdatedAt'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
+/**
+ * RequestDataSchema - Standard request format for contract operations
+ * Responsibility: Validate Cloud Function request parameters
+ * Used by: Contract management functions, API validation
+ */
+export const RequestDataSchema = z.object({
+  contractId: z.string().min(1, { message: 'contractId is required' }),
+});
+
+// =============================================================================
+// TYPE EXPORTS - TypeScript types inferred from Zod schemas above
+// =============================================================================
+
 export type AccessLevel = z.infer<typeof AccessLevelSchema>;
 export type Permission = z.infer<typeof PermissionSchema>;
+export type CustomClause = z.infer<typeof CustomClauseSchema>;
 export type Group = z.infer<typeof GroupSchema>;
 export type User = z.infer<typeof UserSchema>;
 export type ContractAccess = z.infer<typeof ContractAccessSchema>;
 export type Contract = z.infer<typeof ContractSchema>;
 export type AuditLog = z.infer<typeof AuditLogSchema>;
+export type ContractListQuery = z.infer<typeof ContractListQuerySchema>;
+export type RequestData = z.infer<typeof RequestDataSchema>;
 
 /**
  * ContractWithAccess - Enhanced contract type with user's access information
@@ -197,26 +245,3 @@ export type ContractListResponse = {
   totalCount: number;
   pageToken?: string;
 };
-
-/**
- * ContractListQuerySchema - Comprehensive query parameters for contract filtering
- * Responsibility: Define all possible filters and sorting options for contract lists
- * Features: Pagination, status filters, search, access level filtering, sorting
- * Performance: Limit enforced to prevent expensive queries
- */
-export const ContractListQuerySchema = z.object({
-  userId: z.string(),
-  page: z.number().default(1),
-  limit: z.number().min(1).max(100).default(20),
-  status: z.array(z.string()).optional(),
-  contractType: z.string().optional(),
-  accessLevel: z.array(AccessLevelSchema).optional(),
-  search: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  sortBy: z
-    .enum(['createdAt', 'lastUpdatedAt', 'title', 'effectiveDate'])
-    .default('lastUpdatedAt'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc'),
-});
-
-export type ContractListQuery = z.infer<typeof ContractListQuerySchema>;

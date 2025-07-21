@@ -10,9 +10,11 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
-    "rootDir": "src"
+    "baseUrl": "..",
+    "paths": {
+      "@shared/*": ["./shared/*"]
+    }
   },
   "compileOnSave": true,
-  "include": ["src"]
+  "include": ["src", "../shared"]
 }
