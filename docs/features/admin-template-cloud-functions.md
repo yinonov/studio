@@ -37,7 +37,7 @@ The admin template management system has been successfully migrated from direct 
 
 1. Client calls Cloud Function with authentication token
 2. Server verifies user authentication
-3. Server checks custom claims for admin role (`customClaims.admin`)
+3. Server checks custom claims for admin role (`customClaims.role === 'admin'`)
 4. Function executes only if admin access is confirmed
 
 ## Functions Documentation

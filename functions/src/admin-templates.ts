@@ -61,13 +61,13 @@ export type CreateTemplateData = z.infer<typeof CreateTemplateDataSchema>;
 export type UpdateTemplateData = z.infer<typeof UpdateTemplateDataSchema>;
 export type Template = z.infer<typeof TemplateSchema>;
 
-// Helper function to check if user is admin
+// Helper function to check if user has admin access
 const checkAdminAccess = async (uid: string): Promise<void> => {
   try {
     const userRecord = await getAuth().getUser(uid);
     const customClaims = userRecord.customClaims;
 
-    if (!customClaims?.admin) {
+    if (customClaims?.role !== 'admin') {
       throw new HttpsError(
         'permission-denied',
         'Access denied. Admin privileges required.'

@@ -92,6 +92,7 @@ export const useContractAccess = (): UseContractAccessReturn => {
 
       try {
         const queryParams: Partial<ContractListQuery> = {
+          userId: currentUser.uid,
           page: currentPage,
           limit: 20,
           ...filters,

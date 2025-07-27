@@ -8,8 +8,6 @@ import * as logger from 'firebase-functions/logger';
 import {
   AccessLevelSchema,
   PermissionSchema,
-  type AccessLevel,
-  type Permission,
 } from '../../shared/types/access-control';
 
 // Helper function to check if user has access to a contract
@@ -84,7 +82,7 @@ export const grantContractAccess = onCall(async request => {
   });
 
   try {
-    const { contractId, userEmails, accessLevel, permissions, message } =
+    const { contractId, userEmails, accessLevel, permissions } =
       GrantAccessSchema.parse(request.data);
 
     const granterId = request.auth.uid;
@@ -318,7 +316,10 @@ export const getContractAccessList = onCall(async request => {
     if (contractDoc.exists) {
       const contract = contractDoc.data();
       const ownerAccess = {
+        id: `owner_${contract?.ownerId}`, // Generate a synthetic ID for owner
         userId: contract?.ownerId,
+        email: contract?.ownerEmail || null,
+        name: contract?.ownerName || null,
         accessLevel: 'owner',
         permissions: [
           'view',
@@ -329,8 +330,8 @@ export const getContractAccessList = onCall(async request => {
           'share',
           'delete',
         ],
+        grantedBy: contract?.ownerId, // Owner granted access to themselves
         grantedAt: contract?.createdAt,
-        isOwner: true,
       };
 
       // Add owner to list if not already present

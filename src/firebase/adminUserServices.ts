@@ -12,6 +12,7 @@ export interface UserDetails {
   emailVerified: boolean;
   disabled: boolean;
   customClaims: Record<string, any>;
+  role?: 'admin' | 'manager' | 'member' | 'viewer';
   metadata: {
     creationTime: string;
     lastSignInTime?: string;
@@ -23,10 +24,13 @@ export interface ListUsersResponse {
   pageToken?: string;
 }
 
-// Set admin status for a user (admin only)
-export const setAdminStatus = async (targetUid: string, isAdmin: boolean) => {
-  const callable = httpsCallable(functions, 'setAdminStatus');
-  const result = await callable({ targetUid, isAdmin });
+// Set user role (admin only)
+export const setUserRole = async (
+  targetUid: string,
+  role: 'admin' | 'manager' | 'member' | 'viewer'
+) => {
+  const callable = httpsCallable(functions, 'setUserRole');
+  const result = await callable({ targetUid, role });
   return result.data;
 };
 

@@ -501,11 +501,7 @@ export const getEmbeddedSignUrlForSigner = onCall(async (data, _context) => {
 });
 
 // Export admin role management functions
-export {
-  setAdminRole,
-  getAllUsersWithRoles,
-  initializeFirstAdmin,
-} from './admin-roles';
+export { getAllUsersWithRoles, initializeFirstAdmin } from './admin-roles';
 
 // Export admin template management functions
 export {
@@ -518,8 +514,17 @@ export {
 
 // Export admin user management functions
 export {
-  setAdminStatus,
+  setUserRole,
   getUserDetails,
   listUsers,
   makeInitialAdmin,
 } from './admin-users';
+
+// Export contract access control functions
+export {
+  grantContractAccess,
+  revokeContractAccess,
+  getContractAccessList,
+  updateContractAccess,
+  listContractsWithAccess,
+} from './contract-access';

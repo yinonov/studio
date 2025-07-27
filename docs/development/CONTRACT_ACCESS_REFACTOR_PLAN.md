@@ -135,13 +135,14 @@ Transform from simple `ownerId` based contract access to a comprehensive access 
 - [ ] **Dependencies**: Tasks 2.1-2.4
 - [ ] **Note**: Functions exist in single file, need to organize or export
 
-### Task 2.6: Update Main Functions Index (15 mins)
+### Task 2.6: Update Main Functions Index (15 mins) ✅
 
-- [ ] **File**: `/functions/src/index.ts`
-- [ ] **Action**: Export contract access functions
-- [ ] **Details**: Add exports for new functions
-- [ ] **Test**: Functions are available for deployment
-- [ ] **Dependencies**: Task 2.5
+- [x] **File**: `/functions/src/index.ts`
+- [x] **Action**: Export contract access functions
+- [x] **Details**: Add exports for new functions
+- [x] **Test**: Functions are available for deployment
+- [x] **Dependencies**: Task 2.5
+- [x] **Completed**: All contract access functions exported from main index
 
 ## Phase 3: Enhanced Backend Services (2-3 hours)
 
@@ -168,16 +169,16 @@ Transform from simple `ownerId` based contract access to a comprehensive access 
 - [x] **Dependencies**: Task 3.1
 - [x] **Completed**: Real-time subscription functionality included
 
-### Task 3.3: Create Client-side Access Control Service (45 mins)
+### Task 3.3: Create Client-side Access Control Service (45 mins) ✅
 
-- [ ] **File**: `/src/firebase/contractAccessServices.client.ts`
-- [ ] **Action**: Frontend wrapper for Cloud Functions
-- [ ] **Details**:
+- [x] **File**: `/src/firebase/contractAccessServices.client.ts`
+- [x] **Action**: Frontend wrapper for Cloud Functions
+- [x] **Details**:
   - Type-safe wrappers for grant/revoke/list functions
   - Error handling and result processing
-- [ ] **Test**: Client functions work correctly
-- [ ] **Dependencies**: Phase 2 complete
-- [ ] **Note**: Hook uses import that suggests this file should exist
+- [x] **Test**: Client functions work correctly
+- [x] **Dependencies**: Phase 2 complete
+- [x] **Completed**: Client service wrapper created with proper type-safe interfaces for all Cloud Functions
 
 ## Phase 4: Frontend Integration (2-3 hours)
 

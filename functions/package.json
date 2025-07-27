@@ -3,7 +3,7 @@
   "scripts": {
     "lint": "echo 'Linting temporarily disabled'",
     "lint:fix": "eslint --ext .js,.ts . --fix",
-    "build": "tsc",
+    "build": "tsc && node fix-imports.js",
     "serve": "npm run build && firebase emulators:start --only functions",
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
@@ -26,10 +26,12 @@
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.1.1",
     "@typescript-eslint/parser": "^7.1.1",
+    "@zerollup/ts-transform-paths": "^1.7.18",
     "eslint": "^8.57.0",
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-import": "^2.29.1",
     "firebase-functions-test": "^3.1.0",
+    "ttypescript": "^1.5.15",
     "typescript": "^5.3.3"
   },
   "private": true
