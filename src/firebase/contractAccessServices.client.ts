@@ -30,12 +30,12 @@ interface GrantAccessResponse {
 
 interface RevokeAccessRequest {
   contractId: string;
-  userId: string;
+  userIds: string[];
 }
 
 interface RevokeAccessResponse {
   success: boolean;
-  message: string;
+  revokedCount: number;
 }
 
 interface GetAccessListRequest {
@@ -140,21 +140,11 @@ export async function revokeContractAccess(params: {
   userIds: string[];
 }): Promise<{ success: boolean; revokedCount: number }> {
   try {
-    // Call revoke for each user
-    let revokedCount = 0;
-    for (const userId of params.userIds) {
-      try {
-        await revokeContractAccessFunction({
-          contractId: params.contractId,
-          userId,
-        });
-        revokedCount++;
-      } catch (error) {
-        console.error(`Error revoking access for user ${userId}:`, error);
-      }
-    }
-
-    return { success: true, revokedCount };
+    const result = await revokeContractAccessFunction({
+      contractId: params.contractId,
+      userIds: params.userIds,
+    });
+    return result.data;
   } catch (error) {
     console.error('Error revoking contract access:', error);
     throw new Error(
