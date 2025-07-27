@@ -1,6 +1,6 @@
 'use client';
 
-import type { User } from '@/types'; // Your app's User type
+import type { AuthUser } from '@/types'; // Your app's User type
 import { useRouter, usePathname } from 'next/navigation';
 import React, {
   createContext,
@@ -26,7 +26,7 @@ import { createUserProfileDocument } from '@/firebase/userUtils';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
-  currentUser: User | null;
+  currentUser: AuthUser | null;
   isFirebaseLoading: boolean;
   loginWithGoogle: () => Promise<FirebaseUser | null>;
   sendOtpToPhone: (
@@ -49,7 +49,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isFirebaseLoading, setIsFirebaseLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async firebaseUser => {
       if (firebaseUser) {
         await createUserProfileDocument(firebaseUser); // Ensure profile exists
-        const appUser: User = {
+        const appUser: AuthUser = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           phoneNumber: firebaseUser.phoneNumber,
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     firebaseUser: FirebaseUser,
     redirectPath: string = '/dashboard'
   ) => {
-    const appUser: User = {
+    const appUser: AuthUser = {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
       phoneNumber: firebaseUser.phoneNumber,
