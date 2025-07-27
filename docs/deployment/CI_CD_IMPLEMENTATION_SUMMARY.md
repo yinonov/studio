@@ -5,7 +5,6 @@
 ### 1. **Comprehensive Workflow Suite**
 
 - **CI Workflow** (`.github/workflows/ci.yml`): Code quality, testing, and build validation for PRs
-- **Deployment Workflow** (`.github/workflows/deploy.yml`): Firebase deployment with pre-deploy testing
 - **Test Suite Workflow** (`.github/workflows/e2e-tests.yml`): Reusable testing with caching and container optimization
 - **Quality Monitoring** (`.github/workflows/scheduled-quality.yml`): Daily security, dependency, and performance checks
 
@@ -44,7 +43,7 @@
 - **Unit Tests**: 18/18 passing (100% coverage)
 - **Code Formatting**: All 121 files formatted with Prettier
 - **Build Process**: Next.js + Functions build successfully
-- **CI Workflows**: All 4 workflows created and ready
+- **CI Workflows**: All 3 workflows created and ready
 
 ### ⚠️ **Known Issues**
 
