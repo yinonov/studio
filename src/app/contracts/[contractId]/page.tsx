@@ -186,6 +186,16 @@ export default function ContractViewPage() {
     }
   }, [contract]);
 
+  const refreshAccessList = useCallback(async () => {
+    if (!contract) return;
+    try {
+      const list = await getAccessList(contract.id);
+      setAccessList(list);
+    } catch (err) {
+      console.error('Error loading access list:', err);
+    }
+  }, [contract, getAccessList]);
+
   useEffect(() => {
     if (contract) {
       refreshAccessList();
@@ -243,16 +253,6 @@ export default function ContractViewPage() {
       return 'תאריך לא תקין';
     }
   };
-
-  const refreshAccessList = useCallback(async () => {
-    if (!contract) return;
-    try {
-      const list = await getAccessList(contract.id);
-      setAccessList(list);
-    } catch (err) {
-      console.error('Error loading access list:', err);
-    }
-  }, [contract, getAccessList]);
 
   const handleRemoveShare = async (access: ContractAccess) => {
     if (!contract || !isOwner) return;
