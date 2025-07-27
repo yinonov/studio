@@ -21,6 +21,7 @@ import { useState } from 'react';
 import { makeInitialAdmin } from '@/firebase/adminUserServices';
 import { useToast } from '@/hooks/use-toast';
 import { getClientAuth } from '@/lib/firebase';
+import { ContractAccessTest } from '@/components/test/ContractAccessTest';
 
 export default function DebugPage() {
   const { currentUser, isFirebaseLoading } = useAuth();
@@ -340,6 +341,16 @@ export default function DebugPage() {
                 </Button>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Contract Access Control Test Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Contract Access Control Test</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ContractAccessTest />
           </CardContent>
         </Card>
       </div>

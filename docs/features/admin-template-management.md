@@ -11,21 +11,20 @@ This system provides an admin interface for managing contract templates in the a
 
 ## Admin Access
 
-Admin access is controlled through the `isUserAdmin` function in `/src/lib/admin.ts`. Currently, it checks against a list of admin email addresses:
+Admin access is controlled through Firebase custom claims using a role-based system. The `isUserAdmin` function in `/src/lib/admin.ts` checks if the user has a `role` of `'admin'` in their custom claims.
 
-```typescript
-const ADMIN_EMAILS = [
-  'admin@example.com',
-  'yinon@example.com', // Add your actual admin email here
-  // Add more admin emails as needed
-];
-```
+**Role Hierarchy:**
 
-**To add admin access:**
+- `admin` - Full administrative access
+- `manager` - Elevated permissions (future use)
+- `member` - Standard user permissions (future use)
+- `viewer` - Read-only permissions (future use)
 
-1. Edit `/src/lib/admin.ts`
-2. Add your email to the `ADMIN_EMAILS` array
-3. Sign in with that email to access admin features
+**To grant admin access:**
+
+1. Use the Firebase Admin SDK or admin panel to set custom claims
+2. Set the user's role to `'admin'`: `{ role: 'admin' }`
+3. The user will have admin access upon next login/token refresh
 
 ## Admin Routes
 

@@ -1,12 +1,12 @@
 import * as admin from 'firebase-admin';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 
-// Helper function to check if user is admin
+// Helper function to check if user has admin access
 async function checkAdminAccess(uid: string): Promise<void> {
   const userRecord = await admin.auth().getUser(uid);
   const customClaims = userRecord.customClaims;
 
-  if (!customClaims?.admin) {
+  if (customClaims?.role !== 'admin') {
     throw new HttpsError(
       'permission-denied',
       'Access denied. Admin privileges required.'
@@ -14,42 +14,44 @@ async function checkAdminAccess(uid: string): Promise<void> {
   }
 }
 
-// Set admin status for a user
-export const setAdminStatus = onCall(
-  { region: 'us-central1' },
-  async request => {
-    // Check if the caller is authenticated
-    if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'Must be authenticated');
-    }
-
-    // Check if the caller has admin privileges
-    await checkAdminAccess(request.auth.uid);
-
-    const { targetUid, isAdmin } = request.data;
-
-    if (!targetUid || typeof targetUid !== 'string') {
-      throw new HttpsError('invalid-argument', 'Target UID is required');
-    }
-
-    if (typeof isAdmin !== 'boolean') {
-      throw new HttpsError('invalid-argument', 'isAdmin must be a boolean');
-    }
-
-    try {
-      // Set custom claims
-      await admin.auth().setCustomUserClaims(targetUid, { admin: isAdmin });
-
-      return {
-        success: true,
-        message: `Admin status ${isAdmin ? 'granted' : 'revoked'} for user ${targetUid}`,
-      };
-    } catch (error) {
-      console.error('Error setting admin status:', error);
-      throw new HttpsError('internal', 'Failed to set admin status');
-    }
+// Set user role
+export const setUserRole = onCall({ region: 'us-central1' }, async request => {
+  // Check if the caller is authenticated
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Must be authenticated');
   }
-);
+
+  // Check if the caller has admin privileges
+  await checkAdminAccess(request.auth.uid);
+
+  const { targetUid, role } = request.data;
+
+  if (!targetUid || typeof targetUid !== 'string') {
+    throw new HttpsError('invalid-argument', 'Target UID is required');
+  }
+
+  // Validate role
+  const validRoles = ['admin', 'manager', 'member', 'viewer'];
+  if (!role || !validRoles.includes(role)) {
+    throw new HttpsError(
+      'invalid-argument',
+      `Role must be one of: ${validRoles.join(', ')}`
+    );
+  }
+
+  try {
+    // Set role
+    await admin.auth().setCustomUserClaims(targetUid, { role });
+
+    return {
+      success: true,
+      message: `Role set to ${role} for user ${targetUid}`,
+    };
+  } catch (error) {
+    console.error('Error setting user role:', error);
+    throw new HttpsError('internal', 'Failed to set user role');
+  }
+});
 
 // Get user details (admin only)
 export const getUserDetails = onCall(
@@ -157,8 +159,8 @@ export const makeInitialAdmin = onCall(
         );
       }
 
-      // Check if user already has admin claims
-      if (userRecord.customClaims?.admin) {
+      // Check if user already has admin role
+      if (userRecord.customClaims?.role === 'admin') {
         return {
           success: true,
           message: 'User already has admin privileges',
@@ -166,8 +168,8 @@ export const makeInitialAdmin = onCall(
         };
       }
 
-      // Set admin claims
-      await admin.auth().setCustomUserClaims(userUid, { admin: true });
+      // Set admin role
+      await admin.auth().setCustomUserClaims(userUid, { role: 'admin' });
 
       return {
         success: true,

@@ -7,51 +7,6 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-// Set admin role for a user
-export const setAdminRole = onCall(async request => {
-  // Check if the caller has admin permissions
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated');
-  }
-
-  const callerClaims = request.auth.token;
-  if (!callerClaims.admin) {
-    throw new HttpsError(
-      'permission-denied',
-      'Only admins can set admin roles'
-    );
-  }
-
-  const { uid, isAdmin } = request.data;
-
-  if (!uid || typeof isAdmin !== 'boolean') {
-    throw new HttpsError(
-      'invalid-argument',
-      'Invalid uid or isAdmin parameter'
-    );
-  }
-
-  try {
-    // Set custom claims
-    await admin.auth().setCustomUserClaims(uid, {
-      admin: isAdmin,
-      role: isAdmin ? 'admin' : 'user',
-    });
-
-    logger.info(
-      `Admin role ${isAdmin ? 'granted' : 'revoked'} for user ${uid}`
-    );
-
-    return {
-      success: true,
-      message: `Admin role ${isAdmin ? 'granted' : 'revoked'} successfully`,
-    };
-  } catch (error) {
-    logger.error('Error setting admin role:', error);
-    throw new HttpsError('internal', 'Failed to set admin role');
-  }
-});
-
 // Get all users with their roles (admin only)
 export const getAllUsersWithRoles = onCall(async request => {
   // Check if the caller has admin permissions
@@ -60,7 +15,7 @@ export const getAllUsersWithRoles = onCall(async request => {
   }
 
   const callerClaims = request.auth.token;
-  if (!callerClaims.admin) {
+  if (callerClaims.role !== 'admin') {
     throw new HttpsError('permission-denied', 'Only admins can view all users');
   }
 
@@ -76,7 +31,7 @@ export const getAllUsersWithRoles = onCall(async request => {
       creationTime: userRecord.metadata.creationTime,
       lastSignInTime: userRecord.metadata.lastSignInTime,
       customClaims: userRecord.customClaims || {},
-      isAdmin: userRecord.customClaims?.admin || false,
+      role: userRecord.customClaims?.role || 'viewer',
     }));
 
     return { users };
@@ -100,7 +55,6 @@ export const initializeFirstAdmin = onCall(async request => {
 
     // Set admin claims
     await admin.auth().setCustomUserClaims(userRecord.uid, {
-      admin: true,
       role: 'admin',
     });
 

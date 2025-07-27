@@ -18,6 +18,17 @@ coverage/
 *.tsbuildinfo
 firebase-debug.log
 firestore-debug.log
+
+# Compiled functions
+functions/lib/
+
+# Test snapshots and binary files
+tests/e2e/visual-regression.spec.ts-snapshots/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
 ui-debug.log
 
 # Test outputs

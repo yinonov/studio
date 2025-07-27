@@ -11,8 +11,7 @@ export const UserSchema = z.object({
   // Custom claims for roles
   customClaims: z
     .object({
-      admin: z.boolean().optional(),
-      role: z.enum(['admin', 'user']).optional(),
+      role: z.enum(['admin', 'manager', 'member', 'viewer']).optional(),
     })
     .optional(),
 });

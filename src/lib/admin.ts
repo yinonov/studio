@@ -4,7 +4,7 @@ import { httpsCallable } from 'firebase/functions';
 import { getFunctions } from 'firebase/functions';
 
 /**
- * Check if a user has admin privileges using Firebase custom claims
+ * Check if a user has admin privileges using Firebase custom claims (role-based)
  * @param user - Firebase user object or custom user schema
  * @returns boolean indicating if user is admin
  */
@@ -17,12 +17,12 @@ export const isUserAdmin = async (
     // For Firebase User objects, get fresh token to check custom claims
     if ('getIdTokenResult' in user) {
       const tokenResult = await user.getIdTokenResult();
-      return tokenResult.claims.admin === true;
+      return tokenResult.claims.role === 'admin';
     }
 
-    // For UserSchema objects, check customClaims
-    if ('customClaims' in user && user.customClaims) {
-      return user.customClaims.admin === true;
+    // For UserSchema objects, check role directly
+    if ('role' in user) {
+      return user.role === 'admin';
     }
 
     return false;
@@ -40,11 +40,11 @@ export const isUserAdmin = async (
 export const isUserAdminSync = (user: any): boolean => {
   if (!user) return false;
 
-  // Check if user has custom claims already loaded
-  if (user.customClaims?.admin === true) return true;
+  // Check if user has role claim
+  if (user.role === 'admin') return true;
 
   // Fallback: check if this is a token result with claims
-  if (user.claims?.admin === true) return true;
+  if (user.claims?.role === 'admin') return true;
 
   return false;
 };
@@ -65,21 +65,21 @@ export const getAdminDisplayName = (user: User | UserSchema | null): string => {
 };
 
 /**
- * Set admin role for a user (requires admin permissions)
- * @param uid - User ID to grant/revoke admin
- * @param isAdmin - Whether to grant or revoke admin role
+ * Set user role (requires admin permissions)
+ * @param uid - User ID to set role for
+ * @param role - Role to assign ('admin', 'manager', 'member', 'viewer')
  */
-export const setUserAdminRole = async (
+export const setUserRole = async (
   uid: string,
-  isAdmin: boolean
+  role: 'admin' | 'manager' | 'member' | 'viewer'
 ): Promise<void> => {
   const functions = getFunctions();
-  const setAdminRole = httpsCallable(functions, 'setAdminRole');
+  const setRole = httpsCallable(functions, 'setUserRole');
 
   try {
-    await setAdminRole({ uid, isAdmin });
+    await setRole({ uid, role });
   } catch (error) {
-    console.error('Error setting admin role:', error);
+    console.error('Error setting user role:', error);
     throw error;
   }
 };

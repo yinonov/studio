@@ -10,7 +10,8 @@ import {
   getDropboxSignSignatureRequest,
   getEmbeddedSignUrl,
 } from './services/dropbox-sign';
-import { StoredContractDataSchema } from './types/schemas';
+import { ContractSchema } from '@shared/types/access-control';
+import type { Contract } from '@shared/types/access-control';
 
 // Backend version of interpolateWithDefaults function
 function interpolateWithDefaults(
@@ -413,7 +414,7 @@ export const prepareContractForSigning = onCall(async (data, _context) => {
     }
 
     // Update contract in Firestore
-    const updateData: Partial<StoredContractDataSchema> = {
+    const updateData: Partial<Contract> = {
       status: 'out-for-signature',
       dropboxSignSignatureRequestId,
       lastUpdatedAt: FieldValue.serverTimestamp(),
@@ -421,7 +422,7 @@ export const prepareContractForSigning = onCall(async (data, _context) => {
     await db
       .collection('contracts')
       .doc(contractId)
-      .update(StoredContractDataSchema.partial().parse(updateData));
+      .update(ContractSchema.partial().parse(updateData));
 
     functions.logger.info(
       'Contract updated with Dropbox Sign signatureRequestId',
@@ -500,11 +501,7 @@ export const getEmbeddedSignUrlForSigner = onCall(async (data, _context) => {
 });
 
 // Export admin role management functions
-export {
-  setAdminRole,
-  getAllUsersWithRoles,
-  initializeFirstAdmin,
-} from './admin-roles';
+export { getAllUsersWithRoles, initializeFirstAdmin } from './admin-roles';
 
 // Export admin template management functions
 export {
@@ -517,8 +514,17 @@ export {
 
 // Export admin user management functions
 export {
-  setAdminStatus,
+  setUserRole,
   getUserDetails,
   listUsers,
   makeInitialAdmin,
 } from './admin-users';
+
+// Export contract access control functions
+export {
+  grantContractAccess,
+  revokeContractAccess,
+  getContractAccessList,
+  updateContractAccess,
+  listContractsWithAccess,
+} from './contract-access';

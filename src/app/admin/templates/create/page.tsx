@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import { createTemplate } from '@/firebase/adminTemplateServices';
-import { isUserAdmin } from '@/lib/admin';
 import type { TemplateField } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,6 +42,7 @@ const FIELD_TYPES = [
 
 export default function CreateTemplatePage() {
   const { currentUser, isFirebaseLoading } = useAuth();
+  const { isAdmin } = useAdmin();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -56,8 +57,6 @@ export default function CreateTemplatePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Check if user has admin access
-  const isAdmin = isUserAdmin(currentUser);
-
   if (isFirebaseLoading) {
     return (
       <div className='flex min-h-[calc(100vh-200px)] items-center justify-center'>

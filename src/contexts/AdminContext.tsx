@@ -9,7 +9,7 @@ import {
   useCallback,
 } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { isUserAdmin, isUserAdminSync } from '@/lib/admin';
+import { isUserAdminSync } from '@/lib/admin';
 import { getClientAuth } from '@/lib/firebase';
 
 interface AdminContextType {
@@ -42,7 +42,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         // Get fresh token and check claims directly
         const tokenResult = await firebaseUser.getIdTokenResult();
-        const adminStatus = tokenResult.claims.admin === true;
+        const adminStatus = tokenResult.claims.role === 'admin';
         setIsAdmin(adminStatus);
       } else {
         setIsAdmin(false);

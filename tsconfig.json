@@ -20,7 +20,8 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@functions/*": ["./functions/src/*"]
+      "@functions/*": ["./functions/src/*"],
+      "@shared/*": ["./shared/*"]
     }
   },
   "include": [

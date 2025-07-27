@@ -13,13 +13,13 @@ import {
 } from 'firebase/firestore';
 import { getClientDb } from '@/lib/firebase';
 import type { TemplateSchema } from '@/types';
-import type { StoredContractDataSchema } from '@functions/types/schemas';
+import type { Contract } from '@shared/types/access-control';
 import { getClientFunctions } from '@/lib/firebase';
 import { httpsCallable } from 'firebase/functions';
 
 export const fetchContractsForUser = (
   userId: string,
-  callback: (contracts: StoredContractDataSchema[]) => void,
+  callback: (contracts: Contract[]) => void,
   onError: (error: Error) => void
 ) => {
   if (!userId) {
@@ -37,7 +37,7 @@ export const fetchContractsForUser = (
           ({
             id: doc.id,
             ...doc.data(),
-          }) as StoredContractDataSchema
+          }) as Contract
       );
       callback(contractsData);
     },
@@ -85,7 +85,7 @@ export const createDraftContract = async (
 
 export const updateContractData = async (
   contractId: string,
-  dataToUpdate: Partial<StoredContractDataSchema>
+  dataToUpdate: Partial<Contract>
 ) => {
   if (!contractId) {
     console.error('Contract ID is required to update data.');
@@ -110,14 +110,14 @@ export const updateContractData = async (
 
 export const fetchContractById = async (
   contractId: string
-): Promise<StoredContractDataSchema | null> => {
+): Promise<Contract | null> => {
   if (!contractId) return null;
   try {
     const db = getClientDb();
     const contractRef = doc(db, 'contracts', contractId);
     const docSnap = await getDoc(contractRef);
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as StoredContractDataSchema;
+      return { id: docSnap.id, ...docSnap.data() } as Contract;
     }
     console.warn(`Contract with id ${contractId} not found.`);
     return null;

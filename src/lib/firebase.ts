@@ -56,8 +56,8 @@ export function getClientAuth() {
     process.env.NODE_ENV === 'development' &&
     !global.__authEmulatorConnected
   ) {
-    console.log('Connecting to Auth emulator on 127.0.0.1:9099');
-    connectAuthEmulator(auth, 'http://127.0.0.1:9099', {
+    console.log('Connecting to Auth emulator on localhost:9099');
+    connectAuthEmulator(auth, 'http://localhost:9099', {
       disableWarnings: true,
     });
     global.__authEmulatorConnected = true;
@@ -70,8 +70,8 @@ export function getClientDb() {
 
   db = getFirestore(getClientApp());
   if (process.env.NODE_ENV === 'development' && !global.__dbEmulatorConnected) {
-    console.log('Connecting to Firestore emulator on 127.0.0.1:8080');
-    connectFirestoreEmulator(db, '127.0.0.1', 8080);
+    console.log('Connecting to Firestore emulator on localhost:8080');
+    connectFirestoreEmulator(db, 'localhost', 8080);
     global.__dbEmulatorConnected = true;
   }
   return db;
@@ -85,8 +85,8 @@ export function getClientFunctions() {
     process.env.NODE_ENV === 'development' &&
     !global.__functionsEmulatorConnected
   ) {
-    console.log('Connecting to Functions emulator on 127.0.0.1:5001');
-    connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+    console.log('Connecting to Functions emulator on localhost:5001');
+    connectFunctionsEmulator(functions, 'localhost', 5001);
     global.__functionsEmulatorConnected = true;
   }
   return functions;
