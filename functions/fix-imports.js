@@ -24,7 +24,33 @@ function fixSharedImports(directory) {
             path.dirname(fullPath),
             path.join(__dirname, 'lib', 'shared', 'types', 'access-control')
           );
-          return `require("${relativePath}")`;
+          return `require("./${relativePath}")`;
+        }
+      );
+      
+      // Fix @studio/shared imports to relative paths
+      content = content.replace(
+        /require\("@studio\/shared"\)/g,
+        (match, offset) => {
+          // Calculate relative path from current file to shared/types/access-control
+          const relativePath = path.relative(
+            path.dirname(fullPath),
+            path.join(__dirname, 'lib', 'shared', 'types', 'access-control')
+          );
+          return `require("./${relativePath}")`;
+        }
+      );
+      
+      // Fix shared/types/access-control imports to relative paths
+      content = content.replace(
+        /require\("shared\/types\/access-control"\)/g,
+        (match, offset) => {
+          // Calculate relative path from current file to shared/types/access-control
+          const relativePath = path.relative(
+            path.dirname(fullPath),
+            path.join(__dirname, 'lib', 'shared', 'types', 'access-control')
+          );
+          return `require("./${relativePath}")`;
         }
       );
       
