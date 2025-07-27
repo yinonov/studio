@@ -29,10 +29,17 @@ describe('Button Component', () => {
     expect(button).toHaveClass('bg-destructive');
   });
 
-  it('is disabled when disabled prop is true', () => {
-    render(<Button disabled>Disabled Button</Button>);
+  it('is disabled when disabled prop is true', async () => {
+    const handleClick = jest.fn();
+    const user = userEvent.setup();
 
-    expect(screen.getByRole('button')).toBeDisabled();
+    render(<Button disabled onClick={handleClick}>Disabled Button</Button>);
+
+    const button = screen.getByRole('button');
+    expect(button).toBeDisabled();
+
+    await user.click(button);
+    expect(handleClick).not.toHaveBeenCalled();
   });
 
   it('renders with different sizes', () => {
