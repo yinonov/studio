@@ -15,18 +15,7 @@ Runs on every Pull Request and push to `develop` branch.
 - **Dependency Review**: Security scanning of new dependencies (PR only)
 - **Build Validation**: Ensures application and functions build successfully
 
-### 2. **Deployment** - `.github/workflows/deploy.yml`
-
-Runs on push to `main` branch and can be triggered manually.
-
-**Jobs:**
-
-- **Pre-deployment Tests**: Runs all tests before deployment
-- **Firebase Deployment**: Deploys to Firebase App Hosting and Cloud Functions
-- **Multi-service Deploy**: App Hosting, Functions, Firestore rules, Storage rules
-- **Cleanup**: Secure cleanup of sensitive files
-
-### 3. **Test Suite** - `.github/workflows/e2e-tests.yml`
+### 2. **Test Suite** - `.github/workflows/e2e-tests.yml`
 
 Reusable workflow for comprehensive testing.
 
@@ -36,7 +25,7 @@ Reusable workflow for comprehensive testing.
 - **E2E Tests**: Core user flow testing (non-breaking tests only)
 - **Lighthouse**: Performance and accessibility auditing
 
-### 4. **Quality Monitoring** - `.github/workflows/scheduled-quality.yml`
+### 3. **Quality Monitoring** - `.github/workflows/scheduled-quality.yml`
 
 Runs daily at 2 AM UTC and on-demand.
 
