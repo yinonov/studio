@@ -2,12 +2,12 @@
 
 ## Core Features:
 
-- Template Library: Template Library: Provide a library of pre-built, legally sound contract templates specific to Israeli law, covering common needs like rental agreements, service contracts, and employment agreements.
-- Guided Creation: Guided Creation Wizard: Offer a step-by-step wizard in Hebrew that asks simple questions to guide users through the contract creation process.
-- AI Customization: AI-Powered Clause Customization tool: Allow users to add custom clauses to contracts by describing their needs in plain language, with the AI generating appropriate legal wording.
-- Real-Time Preview: Real-Time Contract Preview: Display a live preview of the contract as the user fills in the details, ensuring transparency and accuracy.
-- Digital Signatures: Digital Signature Integration: Incorporate built-in e-signature capabilities for secure and legally binding contract signing.
-- Hebrew Interface: Native Hebrew Interface: Design the application with a right-to-left layout, Hebrew typography, and culturally appropriate elements for a seamless user experience.
+- Template Library: Provide a library of pre-built, legally sound contract templates specific to Israeli law, covering common needs like rental agreements, service contracts, and employment agreements.
+- Guided Creation Wizard: Offer a step-by-step wizard in Hebrew that asks simple questions to guide users through the contract creation process.
+- AI-Powered Clause Customization: Allow users to add custom clauses to contracts by describing their needs in plain language, with the AI generating appropriate legal wording.
+- Real-Time Contract Preview: Display a live preview of the contract as the user fills in the details, ensuring transparency and accuracy.
+- Digital Signature Integration: Incorporate built-in e-signature capabilities for secure and legally binding contract signing.
+- Native Hebrew Interface: Design the application with a right-to-left layout, Hebrew typography, and culturally appropriate elements for a seamless user experience.
 
 ## Style Guidelines:
 
