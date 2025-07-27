@@ -31,8 +31,6 @@ import {
   Edit,
   Trash2,
   Copy,
-  Phone,
-  Mail,
   Send,
   PenSquare,
   Clock,
@@ -63,6 +61,9 @@ import type {
   SignatureRequestResponse,
   SignatureRequestResponseSignatures,
 } from '@dropbox/sign'; // Adjust the import path as needed
+import ShareContractDialog from '@/components/contracts/ShareContractDialog';
+import { useContractAccess } from '@/hooks/useContractAccess';
+import type { ContractAccess } from '@shared/types/access-control';
 
 interface AuditLogItem {
   action: string;
@@ -108,7 +109,8 @@ export default function ContractViewPage() {
   const [template, setTemplate] = useState<TemplateSchema | null>(null);
   const [isLoadingContract, setIsLoadingContract] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [shareIdentifier, setShareIdentifier] = useState('');
+  const { shareContract, revokeAccess, getAccessList } = useContractAccess();
+  const [accessList, setAccessList] = useState<ContractAccess[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [signatureRequest, setSignatureRequest] =
     useState<SignatureRequestResponse | null>(null);
@@ -184,6 +186,12 @@ export default function ContractViewPage() {
     }
   }, [contract]);
 
+  useEffect(() => {
+    if (contract) {
+      refreshAccessList();
+    }
+  }, [contract, refreshAccessList]);
+
   const getStatusText = (status?: string): string => {
     switch (status) {
       case 'draft':
@@ -236,79 +244,26 @@ export default function ContractViewPage() {
     }
   };
 
-  const handleShareContract = async () => {
-    if (!contract || !shareIdentifier.trim() || !isOwner) return;
-
-    const normalizedIdentifier = shareIdentifier.trim().toLowerCase();
-    if (
-      (currentUser?.email &&
-        normalizedIdentifier === currentUser.email.toLowerCase()) ||
-      (currentUser?.phoneNumber &&
-        normalizedIdentifier === currentUser.phoneNumber)
-    ) {
-      toast({
-        title: 'שגיאה',
-        description: 'לא ניתן לשתף חוזה עם עצמך.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsProcessing(true);
+  const refreshAccessList = useCallback(async () => {
+    if (!contract) return;
     try {
-      const currentSharedWith =
-        contract.sharedWith?.map((s: string) => s.toLowerCase()) || [];
-      if (currentSharedWith.includes(normalizedIdentifier)) {
-        toast({
-          title: 'מידע',
-          description: 'החוזה כבר משותף עם משתמש זה.',
-          variant: 'default',
-        });
-        setShareIdentifier('');
-        setIsProcessing(false);
-        return;
-      }
-      const updatedSharedWith = [
-        ...(contract.sharedWith || []),
-        shareIdentifier.trim(),
-      ];
-      await updateContractData(contract.id, { sharedWith: updatedSharedWith });
-      setContract((prev: Contract | null) =>
-        prev ? { ...prev, sharedWith: updatedSharedWith } : null
-      );
-      toast({
-        title: 'הצלחה',
-        description: `החוזה שותף עם ${shareIdentifier.trim()}.`,
-      });
-      setShareIdentifier('');
+      const list = await getAccessList(contract.id);
+      setAccessList(list);
     } catch (err) {
-      console.error('Error sharing contract:', err);
-      toast({
-        title: 'שגיאה',
-        description: 'שיתוף החוזה נכשל.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsProcessing(false);
+      console.error('Error loading access list:', err);
     }
-  };
+  }, [contract, getAccessList]);
 
-  const handleRemoveShare = async (identifierToRemove: string) => {
+  const handleRemoveShare = async (access: ContractAccess) => {
     if (!contract || !isOwner) return;
     setIsProcessing(true);
     try {
-      const updatedSharedWith =
-        contract.sharedWith?.filter(
-          (u: string) => u.toLowerCase() !== identifierToRemove.toLowerCase()
-        ) || [];
-      await updateContractData(contract.id, { sharedWith: updatedSharedWith });
-      setContract((prev: Contract | null) =>
-        prev ? { ...prev, sharedWith: updatedSharedWith } : null
-      );
+      await revokeAccess({ contractId: contract.id, userIds: [access.userId] });
       toast({
         title: 'הצלחה',
-        description: `השיתוף עם ${identifierToRemove} הוסר.`,
+        description: `השיתוף עם ${access.email || access.userId} הוסר.`,
       });
+      await refreshAccessList();
     } catch (err) {
       console.error('Error removing share:', err);
       toast({
@@ -822,66 +777,36 @@ export default function ContractViewPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className='space-y-4'>
-                  <div className='space-y-2'>
-                    <Label
-                      htmlFor='share-identifier'
-                      className='text-foreground/80'
-                    >
-                      שתף עם (אימייל או טלפון):
-                    </Label>
-                    <div className='flex gap-2'>
-                      <Input
-                        id='share-identifier'
-                        type='text'
-                        value={shareIdentifier}
-                        onChange={e => setShareIdentifier(e.target.value)}
-                        placeholder='you@example.com או 05X-XXX-XXXX'
-                        className='flex-grow'
-                        disabled={isProcessing}
-                      />
-                      <Button
-                        onClick={handleShareContract}
-                        disabled={isProcessing || !shareIdentifier.trim()}
-                        variant='secondary'
-                      >
-                        {isProcessing ? (
-                          <Loader2 className='animate-spin' />
-                        ) : (
-                          <Share2 />
-                        )}
-                        שתף
-                      </Button>
-                    </div>
-                  </div>
+                  <ShareContractDialog
+                    contractId={contract.id}
+                    onShared={refreshAccessList}
+                  />
                   <div>
                     <h4 className='mb-2 text-sm font-medium text-foreground/80'>
-                      משותף עם:
+                      משתמשים עם גישה:
                     </h4>
-                    {(!contract.sharedWith ||
-                      contract.sharedWith.length === 0) && (
+                    {accessList.length === 0 && (
                       <p className='text-xs text-muted-foreground'>
                         החוזה אינו משותף עם משתמשים אחרים עדיין.
                       </p>
                     )}
                     <ul className='space-y-1 text-sm'>
-                      {contract.sharedWith?.map((identifier: string) => (
+                      {accessList.map(access => (
                         <li
-                          key={identifier}
+                          key={access.id}
                           className='flex items-center justify-between rounded-md bg-muted/30 p-1.5'
                         >
                           <span className='flex items-center text-muted-foreground'>
-                            {identifier.includes('@') ? (
-                              <Mail className='ml-2 h-3 w-3 text-gray-500' />
-                            ) : (
-                              <Phone className='ml-2 h-3 w-3 text-gray-500' />
-                            )}
-                            {identifier}
+                            {access.email || access.userId}
+                            <Badge variant='secondary' className='mr-2'>
+                              {access.accessLevel}
+                            </Badge>
                           </span>
                           <Button
                             variant='ghost'
                             size='icon'
                             className='h-6 w-6'
-                            onClick={() => handleRemoveShare(identifier)}
+                            onClick={() => handleRemoveShare(access)}
                             disabled={isProcessing}
                           >
                             <Trash2 className='h-3 w-3 text-destructive' />
