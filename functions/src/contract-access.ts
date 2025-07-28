@@ -1,5 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { onUserCreated } from 'firebase-functions/v2/identity';
+import * as auth from 'firebase-functions/v1/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { z } from 'zod';
@@ -563,8 +563,7 @@ export const listContractsWithAccess = onCall(async request => {
 /**
  * Associate pending contract invites with newly created users
  */
-export const linkInvitesOnUserCreate = onUserCreated(async event => {
-  const user = event.data;
+export const linkInvitesOnUserCreate = auth.user().onCreate(async user => {
   if (!user?.email) {
     return;
   }
@@ -582,7 +581,7 @@ export const linkInvitesOnUserCreate = onUserCreated(async event => {
   }
 
   const batch = db.batch();
-  pending.docs.forEach(doc => {
+  pending.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
     batch.update(doc.ref, { userId: user.uid });
   });
 
