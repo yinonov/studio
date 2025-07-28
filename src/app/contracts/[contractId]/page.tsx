@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   fetchContractById,
-  updateContractData,
   deleteContractById,
   prepareAndSendForSigning,
 } from '@/firebase/contractServices';
@@ -40,8 +39,6 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { fetchTemplateById } from '@/firebase/templateServices';
 import type { TemplateSchema } from '@/types';
@@ -109,7 +106,7 @@ export default function ContractViewPage() {
   const [template, setTemplate] = useState<TemplateSchema | null>(null);
   const [isLoadingContract, setIsLoadingContract] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { shareContract, revokeAccess, getAccessList } = useContractAccess();
+  const { revokeAccess, getAccessList } = useContractAccess();
   const [accessList, setAccessList] = useState<ContractAccess[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [signatureRequest, setSignatureRequest] =
