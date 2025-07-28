@@ -63,7 +63,7 @@ If you prefer to use only the Firebase token (simpler setup), you can modify the
 4. **Runs E2E tests** including Hebrew text rendering verification
 5. **Uploads test artifacts** if tests fail
 
-### Deploy Job (only on main branch)
+### Deploy Job (only on master branch)
 
 1. **Rebuilds** the application and functions
 2. **Authenticates** with Firebase
@@ -81,7 +81,7 @@ You can also trigger deployments manually:
 
 ## Local Testing
 
-Before pushing to main, you can test locally:
+Before pushing to master, you can test locally:
 
 ```bash
 # Run all tests

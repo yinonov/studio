@@ -6,7 +6,7 @@ This document describes the comprehensive CI/CD pipeline and quality assurance s
 
 ### 1. **Continuous Integration (CI)** - `.github/workflows/ci.yml`
 
-Runs on every Pull Request and push to `develop` branch.
+Runs on every Pull Request and push to `master` branch.
 
 **Jobs:**
 
