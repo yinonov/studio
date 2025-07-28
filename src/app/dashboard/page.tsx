@@ -3,11 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  fetchContractsForUser,
-  deleteContractById,
-} from '@/firebase/contractServices';
-import type { StoredContractData } from '@/types';
+import { deleteContractById } from '@/firebase/contractServices';
+import { useContractAccess } from '@/hooks/useContractAccess';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -27,37 +24,24 @@ import { he } from 'date-fns/locale';
 export default function DashboardPage() {
   const { currentUser, isFirebaseLoading } = useAuth();
   const router = useRouter();
-  const [contracts, setContracts] = useState<StoredContractData[]>([]);
-  const [isLoadingContracts, setIsLoadingContracts] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    contracts,
+    loading: isLoadingContracts,
+    error: accessError,
+    refreshContracts,
+  } = useContractAccess();
+  const [localError, setLocalError] = useState<string | null>(null);
   const [selectedContracts, setSelectedContracts] = useState<Set<string>>(
     new Set()
   );
   const [isDeleting, setIsDeleting] = useState(false);
+  const error = localError || accessError;
 
   useEffect(() => {
     if (isFirebaseLoading) return;
     if (!currentUser) {
       router.push('/login?redirect=/dashboard');
-      return;
     }
-
-    setIsLoadingContracts(true);
-    setError(null);
-    const unsubscribe = fetchContractsForUser(
-      currentUser.uid,
-      fetchedContracts => {
-        setContracts(fetchedContracts);
-        setIsLoadingContracts(false);
-      },
-      err => {
-        console.error('Error fetching contracts: ', err);
-        setError('שגיאה בטעינת החוזים.');
-        setIsLoadingContracts(false);
-      }
-    );
-
-    return () => unsubscribe();
   }, [currentUser, isFirebaseLoading, router]);
 
   const getStatusVariant = (
@@ -143,9 +127,10 @@ export default function DashboardPage() {
         )
       );
       setSelectedContracts(new Set());
+      await refreshContracts();
     } catch (error) {
       console.error('Error deleting contracts:', error);
-      setError('שגיאה במחיקת החוזים. אנא נסה שוב.');
+      setLocalError('שגיאה במחיקת החוזים. אנא נסה שוב.');
     } finally {
       setIsDeleting(false);
     }
