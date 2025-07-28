@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { Heebo } from 'next/font/google';
 import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -12,6 +13,12 @@ export const metadata: Metadata = {
     'יצירה וניהול חוזים חכמים לעסקים ואנשים פרטיים בישראל, מותאם לשוק הישראלי.',
 };
 
+const heebo = Heebo({
+  weight: ['300', '400', '500', '700', '800', '900'],
+  subsets: ['hebrew'],
+  display: 'swap',
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -19,20 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='he' dir='rtl'>
-      <head>
-        <link rel='preconnect' href='https://fonts.googleapis.com' />
-        <link
-          rel='preconnect'
-          href='https://fonts.gstatic.com'
-          crossOrigin='anonymous'
-        />
-        {/* Updated to Heebo font */}
-        <link
-          href='https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800;900&display=swap'
-          rel='stylesheet'
-        />
-      </head>
-      <body className='flex min-h-screen flex-col bg-background text-foreground antialiased'>
+      <body
+        className={`${heebo.className} flex min-h-screen flex-col bg-background text-foreground antialiased`}
+      >
         <AuthProvider>
           <AdminProvider>
             <Header />

@@ -33,7 +33,11 @@ describe('Button Component', () => {
     const handleClick = jest.fn();
     const user = userEvent.setup();
 
-    render(<Button disabled onClick={handleClick}>Disabled Button</Button>);
+    render(
+      <Button disabled onClick={handleClick}>
+        Disabled Button
+      </Button>
+    );
 
     const button = screen.getByRole('button');
     expect(button).toBeDisabled();
