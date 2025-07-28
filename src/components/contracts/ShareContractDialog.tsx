@@ -12,7 +12,13 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
@@ -57,9 +63,7 @@ export default function ShareContractDialog({
 
   const togglePermission = (perm: Permission) => {
     setPermissions(prev =>
-      prev.includes(perm)
-        ? prev.filter(p => p !== perm)
-        : [...prev, perm]
+      prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]
     );
   };
 
@@ -86,7 +90,9 @@ export default function ShareContractDialog({
 
   return (
     <Dialog>
-      <DialogTrigger asChild>{trigger || <Button variant='secondary'>שתף חוזה</Button>}</DialogTrigger>
+      <DialogTrigger asChild>
+        {trigger || <Button variant='secondary'>שתף חוזה</Button>}
+      </DialogTrigger>
       <DialogContent className='sm:max-w-md'>
         <DialogHeader>
           <DialogTitle>שתף חוזה</DialogTitle>
@@ -149,4 +155,3 @@ export default function ShareContractDialog({
     </Dialog>
   );
 }
-
