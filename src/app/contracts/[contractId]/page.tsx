@@ -410,6 +410,7 @@ export default function ContractViewPage() {
           title: 'החתימה הושלמה!',
           description: 'הסטטוס יתעדכן בקרוב...',
         });
+        router.push('/signing/success');
       });
 
       client.on('close', () => {
