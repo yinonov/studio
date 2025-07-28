@@ -18,7 +18,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "playwright test --debug"
+    "test:e2e:debug": "playwright test --debug",
+    "quality": "npm run lint && npm run format:check && npm run typecheck && npm test",
+    "quality:fix": "npm run lint:fix && npm run format"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",

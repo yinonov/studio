@@ -108,9 +108,9 @@ const testData = {
 
 ## CI/CD Integration
 
-Tests run automatically on:
+- Tests run automatically on:
 
-- Push to `main` or `develop` branches
+- Push to `master` branch
 - Pull requests
 - Uses GitHub Actions with Ubuntu runners
 - Uploads test reports as artifacts
