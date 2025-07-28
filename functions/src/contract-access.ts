@@ -1,4 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onUserCreated } from 'firebase-functions/v2/identity';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { z } from 'zod';
@@ -557,4 +558,33 @@ export const listContractsWithAccess = onCall(async request => {
       `Failed to list contracts: ${(error as Error).message}`
     );
   }
+});
+
+/**
+ * Associate pending contract invites with newly created users
+ */
+export const linkInvitesOnUserCreate = onUserCreated(async event => {
+  const user = event.data;
+  if (!user?.email) {
+    return;
+  }
+
+  const db = getFirestore();
+
+  const pending = await db
+    .collection('contract_access')
+    .where('email', '==', user.email)
+    .where('userId', '==', '')
+    .get();
+
+  if (pending.empty) {
+    return;
+  }
+
+  const batch = db.batch();
+  pending.docs.forEach(doc => {
+    batch.update(doc.ref, { userId: user.uid });
+  });
+
+  await batch.commit();
 });

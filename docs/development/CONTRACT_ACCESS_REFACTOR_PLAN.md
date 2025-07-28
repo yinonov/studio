@@ -143,6 +143,17 @@ Transform from simple `ownerId` based contract access to a comprehensive access 
 - [x] **Dependencies**: Task 2.5
 - [x] **Completed**: All contract access functions exported from main index
 
+### Task 2.7: Link Pending Invites on User Creation (30 mins)
+
+- [ ] **File**: `/functions/src/contract-access.ts`
+- [ ] **Action**: Trigger function to associate invites when a user registers
+- [ ] **Details**:
+  - Listen to authentication user creation events
+  - Find `contract_access` records where `email` matches the new user and `userId` is empty
+  - Update those records with the user's `uid`
+- [ ] **Test**: Newly registered users immediately see shared contracts
+- [ ] **Dependencies**: Task 2.6
+
 ## Phase 3: Enhanced Backend Services (2-3 hours)
 
 ### Task 3.1: Create Basic Contract Access Service (1 hour) ✅

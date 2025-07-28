@@ -527,4 +527,5 @@ export {
   getContractAccessList,
   updateContractAccess,
   listContractsWithAccess,
+  linkInvitesOnUserCreate,
 } from './contract-access';
