@@ -564,11 +564,7 @@ export default function ContractViewPage() {
               תצוגה מקדימה של המסמך
             </h3>
             <ScrollArea className='flex h-[500px] items-center justify-center rounded-2xl border bg-white p-0 shadow-lg md:h-[600px]'>
-              <div
-                className='rtl mx-auto w-full max-w-3xl p-0 text-right'
-                style={{ fontFamily: 'Heebo, Arial, sans-serif' }}
-              >
-                <style>{`@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap');`}</style>
+              <div className='rtl mx-auto w-full max-w-3xl p-0 text-right'>
                 <header className='mb-8 border-b pb-4 pt-8'>
                   <h1 className='mb-2 text-3xl font-extrabold text-gray-900'>
                     {contract.title}
