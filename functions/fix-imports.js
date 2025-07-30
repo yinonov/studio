@@ -5,16 +5,16 @@ const path = require('path');
 
 function fixSharedImports(directory) {
   const items = fs.readdirSync(directory);
-  
+
   for (const item of items) {
     const fullPath = path.join(directory, item);
     const stat = fs.statSync(fullPath);
-    
+
     if (stat.isDirectory()) {
       fixSharedImports(fullPath);
     } else if (item.endsWith('.js')) {
       let content = fs.readFileSync(fullPath, 'utf8');
-      
+
       // Fix @shared imports to relative paths
       content = content.replace(
         /require\("@shared\/types\/access-control"\)/g,
@@ -27,7 +27,7 @@ function fixSharedImports(directory) {
           return `require("./${relativePath}")`;
         }
       );
-      
+
       // Fix @studio/shared imports to relative paths
       content = content.replace(
         /require\("@studio\/shared"\)/g,
@@ -40,7 +40,7 @@ function fixSharedImports(directory) {
           return `require("./${relativePath}")`;
         }
       );
-      
+
       // Fix shared/types/access-control imports to relative paths
       content = content.replace(
         /require\("shared\/types\/access-control"\)/g,
@@ -53,7 +53,7 @@ function fixSharedImports(directory) {
           return `require("./${relativePath}")`;
         }
       );
-      
+
       fs.writeFileSync(fullPath, content);
     }
   }

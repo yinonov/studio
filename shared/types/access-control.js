@@ -1,7 +1,17 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RequestDataSchema = exports.ContractListQuerySchema = exports.AuditLogSchema = exports.ContractSchema = exports.ContractAccessSchema = exports.UserSchema = exports.GroupSchema = exports.PermissionSchema = exports.AccessLevelSchema = exports.CustomClauseSchema = void 0;
-const zod_1 = require("zod");
+'use strict';
+Object.defineProperty(exports, '__esModule', { value: true });
+exports.RequestDataSchema =
+  exports.ContractListQuerySchema =
+  exports.AuditLogSchema =
+  exports.ContractSchema =
+  exports.ContractAccessSchema =
+  exports.UserSchema =
+  exports.GroupSchema =
+  exports.PermissionSchema =
+  exports.AccessLevelSchema =
+  exports.CustomClauseSchema =
+    void 0;
+const zod_1 = require('zod');
 // Access control schemas based on the report recommendations
 /**
  * CustomClauseSchema - Individual contract clause structure
@@ -9,8 +19,8 @@ const zod_1 = require("zod");
  * Used by: Contract creation, template management, legal review
  */
 exports.CustomClauseSchema = zod_1.z.object({
-    description: zod_1.z.string(),
-    legalWording: zod_1.z.string(),
+  description: zod_1.z.string(),
+  legalWording: zod_1.z.string(),
 });
 /**
  * AccessLevelSchema - Defines the hierarchy of access levels for contracts
@@ -22,12 +32,12 @@ exports.CustomClauseSchema = zod_1.z.object({
  * - admin_viewer: Organization admin with read-only oversight access
  */
 exports.AccessLevelSchema = zod_1.z.enum([
-    'owner',
-    'signer',
-    'viewer',
-    'collaborator',
-    'group_member',
-    'admin_viewer',
+  'owner',
+  'signer',
+  'viewer',
+  'collaborator',
+  'group_member',
+  'admin_viewer',
 ]);
 /**
  * PermissionSchema - Granular permissions that can be granted independently
@@ -41,14 +51,14 @@ exports.AccessLevelSchema = zod_1.z.enum([
  * - delete: Can delete or void the contract
  */
 exports.PermissionSchema = zod_1.z.enum([
-    'view',
-    'edit',
-    'sign',
-    'download',
-    'manage',
-    'comment',
-    'share',
-    'delete',
+  'view',
+  'edit',
+  'sign',
+  'download',
+  'manage',
+  'comment',
+  'share',
+  'delete',
 ]);
 /**
  * GroupSchema - User groups for bulk access management
@@ -57,13 +67,13 @@ exports.PermissionSchema = zod_1.z.enum([
  * Enables: Bulk permission grants, organizational hierarchy
  */
 exports.GroupSchema = zod_1.z.object({
-    id: zod_1.z.string(),
-    name: zod_1.z.string(),
-    description: zod_1.z.string().optional(),
-    permissions: zod_1.z.array(exports.PermissionSchema),
-    organizationId: zod_1.z.string().optional(),
-    createdAt: zod_1.z.any(), // Firestore Timestamp
-    lastUpdatedAt: zod_1.z.any(),
+  id: zod_1.z.string(),
+  name: zod_1.z.string(),
+  description: zod_1.z.string().optional(),
+  permissions: zod_1.z.array(exports.PermissionSchema),
+  organizationId: zod_1.z.string().optional(),
+  createdAt: zod_1.z.any(), // Firestore Timestamp
+  lastUpdatedAt: zod_1.z.any(),
 });
 /**
  * UserSchema - Extended user profile with contract-related metadata
@@ -72,19 +82,19 @@ exports.GroupSchema = zod_1.z.object({
  * Role hierarchy: admin > manager > member > viewer (organizational permissions)
  */
 exports.UserSchema = zod_1.z.object({
-    id: zod_1.z.string(), // Firebase Auth UID
-    email: zod_1.z.string().email(),
-    name: zod_1.z.string(),
-    role: zod_1.z.enum(['admin', 'manager', 'member', 'viewer']),
-    groupIds: zod_1.z.array(zod_1.z.string()).default([]),
-    organizationId: zod_1.z.string().optional(),
-    // Denormalized counts for performance
-    totalContracts: zod_1.z.number().default(0),
-    pendingSignatureCount: zod_1.z.number().default(0),
-    ownedContractsCount: zod_1.z.number().default(0),
-    sharedContractsCount: zod_1.z.number().default(0),
-    createdAt: zod_1.z.any(),
-    lastUpdatedAt: zod_1.z.any(),
+  id: zod_1.z.string(), // Firebase Auth UID
+  email: zod_1.z.string().email(),
+  name: zod_1.z.string(),
+  role: zod_1.z.enum(['admin', 'manager', 'member', 'viewer']),
+  groupIds: zod_1.z.array(zod_1.z.string()).default([]),
+  organizationId: zod_1.z.string().optional(),
+  // Denormalized counts for performance
+  totalContracts: zod_1.z.number().default(0),
+  pendingSignatureCount: zod_1.z.number().default(0),
+  ownedContractsCount: zod_1.z.number().default(0),
+  sharedContractsCount: zod_1.z.number().default(0),
+  createdAt: zod_1.z.any(),
+  lastUpdatedAt: zod_1.z.any(),
 });
 /**
  * ContractAccessSchema - Junction table for many-to-many user-contract relationships
@@ -94,17 +104,17 @@ exports.UserSchema = zod_1.z.object({
  * Query pattern: contract_access.where('userId', '==', uid) to get user's contracts
  */
 exports.ContractAccessSchema = zod_1.z.object({
-    id: zod_1.z.string(), // Auto-generated Firestore document ID
-    contractId: zod_1.z.string(), // Reference to contracts collection
-    userId: zod_1.z.string(), // Reference to users collection (Firebase Auth UID)
-    accessLevel: exports.AccessLevelSchema,
-    permissions: zod_1.z.array(exports.PermissionSchema),
-    groupId: zod_1.z.string().optional(), // If access granted via group
-    grantedBy: zod_1.z.string().optional(), // Who granted this access
-    grantedAt: zod_1.z.any(), // When access was granted
-    expiresAt: zod_1.z.any().optional(), // Optional expiration
-    email: zod_1.z.string().email().optional(), // Denormalized for quick lookups
-    name: zod_1.z.string().optional(), // Denormalized for quick display
+  id: zod_1.z.string(), // Auto-generated Firestore document ID
+  contractId: zod_1.z.string(), // Reference to contracts collection
+  userId: zod_1.z.string(), // Reference to users collection (Firebase Auth UID)
+  accessLevel: exports.AccessLevelSchema,
+  permissions: zod_1.z.array(exports.PermissionSchema),
+  groupId: zod_1.z.string().optional(), // If access granted via group
+  grantedBy: zod_1.z.string().optional(), // Who granted this access
+  grantedAt: zod_1.z.any(), // When access was granted
+  expiresAt: zod_1.z.any().optional(), // Optional expiration
+  email: zod_1.z.string().email().optional(), // Denormalized for quick lookups
+  name: zod_1.z.string().optional(), // Denormalized for quick display
 });
 /**
  * ContractSchema - Core contract document structure
@@ -114,33 +124,33 @@ exports.ContractAccessSchema = zod_1.z.object({
  * Migration: Includes sharedWith for backward compatibility during transition
  */
 exports.ContractSchema = zod_1.z.object({
-    id: zod_1.z.string(),
-    ownerId: zod_1.z.string(), // Firebase Auth UID
-    templateId: zod_1.z.string(),
-    title: zod_1.z.string(),
-    status: zod_1.z.enum([
-        'draft',
-        'generating-pdf',
-        'out-for-signature',
-        'partially-signed',
-        'completed',
-        'voided',
-        'declined',
-        'error',
-    ]),
-    contractType: zod_1.z.string().optional(),
-    effectiveDate: zod_1.z.string().optional(),
-    expirationDate: zod_1.z.string().optional(),
-    organizationId: zod_1.z.string().optional(),
-    dropboxSignSignatureRequestId: zod_1.z.string().optional(),
-    formData: zod_1.z.record(zod_1.z.any()),
-    customClauses: zod_1.z.array(exports.CustomClauseSchema).optional(),
-    tags: zod_1.z.array(zod_1.z.string()).default([]),
-    // Security & Audit
-    createdAt: zod_1.z.any(),
-    lastUpdatedAt: zod_1.z.any(),
-    // Legacy field for backward compatibility during migration
-    sharedWith: zod_1.z.array(zod_1.z.string()).optional(),
+  id: zod_1.z.string(),
+  ownerId: zod_1.z.string(), // Firebase Auth UID
+  templateId: zod_1.z.string(),
+  title: zod_1.z.string(),
+  status: zod_1.z.enum([
+    'draft',
+    'generating-pdf',
+    'out-for-signature',
+    'partially-signed',
+    'completed',
+    'voided',
+    'declined',
+    'error',
+  ]),
+  contractType: zod_1.z.string().optional(),
+  effectiveDate: zod_1.z.string().optional(),
+  expirationDate: zod_1.z.string().optional(),
+  organizationId: zod_1.z.string().optional(),
+  dropboxSignSignatureRequestId: zod_1.z.string().optional(),
+  formData: zod_1.z.record(zod_1.z.any()),
+  customClauses: zod_1.z.array(exports.CustomClauseSchema).optional(),
+  tags: zod_1.z.array(zod_1.z.string()).default([]),
+  // Security & Audit
+  createdAt: zod_1.z.any(),
+  lastUpdatedAt: zod_1.z.any(),
+  // Legacy field for backward compatibility during migration
+  sharedWith: zod_1.z.array(zod_1.z.string()).optional(),
 });
 /**
  * AuditLogSchema - Comprehensive audit trail for security and compliance
@@ -149,26 +159,26 @@ exports.ContractSchema = zod_1.z.object({
  * GDPR compliance: Include IP and user agent for security analysis
  */
 exports.AuditLogSchema = zod_1.z.object({
-    id: zod_1.z.string(),
-    contractId: zod_1.z.string(),
-    userId: zod_1.z.string(),
-    action: zod_1.z.enum([
-        'created',
-        'viewed',
-        'edited',
-        'shared',
-        'signed',
-        'status_changed',
-        'permission_granted',
-        'permission_revoked',
-        'downloaded',
-        'deleted',
-        'restored',
-    ]),
-    details: zod_1.z.record(zod_1.z.any()).optional(),
-    timestamp: zod_1.z.any(),
-    ipAddress: zod_1.z.string().optional(),
-    userAgent: zod_1.z.string().optional(),
+  id: zod_1.z.string(),
+  contractId: zod_1.z.string(),
+  userId: zod_1.z.string(),
+  action: zod_1.z.enum([
+    'created',
+    'viewed',
+    'edited',
+    'shared',
+    'signed',
+    'status_changed',
+    'permission_granted',
+    'permission_revoked',
+    'downloaded',
+    'deleted',
+    'restored',
+  ]),
+  details: zod_1.z.record(zod_1.z.any()).optional(),
+  timestamp: zod_1.z.any(),
+  ipAddress: zod_1.z.string().optional(),
+  userAgent: zod_1.z.string().optional(),
 });
 /**
  * ContractListQuerySchema - Comprehensive query parameters for contract filtering
@@ -177,18 +187,18 @@ exports.AuditLogSchema = zod_1.z.object({
  * Performance: Limit enforced to prevent expensive queries
  */
 exports.ContractListQuerySchema = zod_1.z.object({
-    userId: zod_1.z.string(),
-    page: zod_1.z.number().default(1),
-    limit: zod_1.z.number().min(1).max(100).default(20),
-    status: zod_1.z.array(zod_1.z.string()).optional(),
-    contractType: zod_1.z.string().optional(),
-    accessLevel: zod_1.z.array(exports.AccessLevelSchema).optional(),
-    search: zod_1.z.string().optional(),
-    tags: zod_1.z.array(zod_1.z.string()).optional(),
-    sortBy: zod_1.z
-        .enum(['createdAt', 'lastUpdatedAt', 'title', 'effectiveDate'])
-        .default('lastUpdatedAt'),
-    sortOrder: zod_1.z.enum(['asc', 'desc']).default('desc'),
+  userId: zod_1.z.string(),
+  page: zod_1.z.number().default(1),
+  limit: zod_1.z.number().min(1).max(100).default(20),
+  status: zod_1.z.array(zod_1.z.string()).optional(),
+  contractType: zod_1.z.string().optional(),
+  accessLevel: zod_1.z.array(exports.AccessLevelSchema).optional(),
+  search: zod_1.z.string().optional(),
+  tags: zod_1.z.array(zod_1.z.string()).optional(),
+  sortBy: zod_1.z
+    .enum(['createdAt', 'lastUpdatedAt', 'title', 'effectiveDate'])
+    .default('lastUpdatedAt'),
+  sortOrder: zod_1.z.enum(['asc', 'desc']).default('desc'),
 });
 /**
  * RequestDataSchema - Standard request format for contract operations
@@ -196,6 +206,6 @@ exports.ContractListQuerySchema = zod_1.z.object({
  * Used by: Contract management functions, API validation
  */
 exports.RequestDataSchema = zod_1.z.object({
-    contractId: zod_1.z.string().min(1, { message: 'contractId is required' }),
+  contractId: zod_1.z.string().min(1, { message: 'contractId is required' }),
 });
 //# sourceMappingURL=access-control.js.map
