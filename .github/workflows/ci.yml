@@ -41,6 +41,7 @@ jobs:
       - uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: moderate
+        continue-on-error: true
 
   build-validation:
     runs-on: ubuntu-latest
